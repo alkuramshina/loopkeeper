@@ -1,8 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck } from '@nestjs/terminus';
+import { Public } from '../auth/public.decorator';
 
 @Controller('health')
 export class HealthController {
+  @Public()
   @Get()
   @HealthCheck()
   check() {
