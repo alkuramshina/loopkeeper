@@ -13,8 +13,8 @@ export class AuthService {
 
   async validateUser(username: string, pass: string): Promise<TokenPayloadDto | null> {
     const user = await this.userService.findOne(username);
-    if (user && await argon2.verify(user.password, pass)) {
-      const { password, ...result } = user;
+    if (user && await argon2.verify(user.passwordHash, pass)) {
+      const { passwordHash, ...result } = user;
       return result;
     }
 

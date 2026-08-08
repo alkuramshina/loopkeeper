@@ -1,7 +1,7 @@
 export class User {
   userId!: string;
   username!: string;
-  password!: string;
+  passwordHash!: string;
   email?: string;
   userpicUrl?: string;
 }
