@@ -7,6 +7,11 @@ import { UserModule } from './user/user.module';
 import appConfig from './config/app.config';
 import jwtConfig from './auth/config/jwt.config';
 
+const nodeEnv = (process.env.NODE_ENV ?? 'development') as
+  | 'development'
+  | 'test'
+  | 'production';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -16,6 +21,8 @@ import jwtConfig from './auth/config/jwt.config';
         jwtConfig,
       ],
       validationSchema,
+      envFilePath: [`.env.${nodeEnv}`, '.env'],
+      ignoreEnvFile: nodeEnv === 'production',
     }),
     HealthModule, AuthModule, UserModule
   ],
