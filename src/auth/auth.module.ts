@@ -11,6 +11,7 @@ import { JwtAuthGuard } from './guards/jwt.guard';
 import { UserModule } from '../user/user.module';
 import jwtConfig from './config/jwt.config';
 import type { SignOptions } from 'jsonwebtoken';
+import { RefreshJwtStrategy } from './strategies/refresh.strategy';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import type { SignOptions } from 'jsonwebtoken';
       ) => ({
         secret: config.secret,
         signOptions: {
-          expiresIn: config.expiresIn as SignOptions['expiresIn'],
+          expiresIn: config.expiresIn as SignOptions['expiresIn']
         },
       }),
       imports: [ConfigModule],
@@ -30,7 +31,7 @@ import type { SignOptions } from 'jsonwebtoken';
     }),
   ],
   providers: [
-    AuthService, LocalStrategy, JwtStrategy,
+    AuthService, LocalStrategy, JwtStrategy, RefreshJwtStrategy,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

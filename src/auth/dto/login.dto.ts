@@ -9,3 +9,8 @@ export class LoginDto {
   @IsString()
   password!: string;
 }
+
+export class LoginResponseDto {
+  accessToken!: string;
+  expiresIn!: string;
+}

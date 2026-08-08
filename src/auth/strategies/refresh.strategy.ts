@@ -7,12 +7,14 @@ import { TokenPayloadDto } from "../dto/token-payload.dto";
 import jwtConfig from "../config/jwt.config";
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
 
-  constructor(@Inject(jwtConfig.KEY) config: ConfigType<typeof jwtConfig>) {
+  constructor(@Inject(jwtConfig.KEY) jwtTokenConfig: ConfigType<typeof jwtConfig>) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: config.secret,
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request) => request?.cookies?.[jwtTokenConfig.refreshCookieName],
+      ]),
+      secretOrKey: jwtTokenConfig.refreshSecret,
       ignoreExpiration: false,
     });
   }

@@ -1,14 +1,17 @@
-import { Injectable } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { Inject, Injectable } from '@nestjs/common';
+import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import * as argon2 from 'argon2';
-import { TokenPayloadDto } from './dto/token-payload.dto';
+import { TokenDto, TokenPayloadDto } from './dto/token-payload.dto';
+import jwtConfig from './config/jwt.config';
+import { type ConfigType } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     private userService: UserService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    @Inject(jwtConfig.KEY) private jwtTokenConfig: ConfigType<typeof jwtConfig>
   ) { }
 
   async validateUser(username: string, pass: string): Promise<TokenPayloadDto | null> {
@@ -21,10 +24,18 @@ export class AuthService {
     return null;
   }
 
-  async login(user: TokenPayloadDto) {
+  async generateUserTokens(user: TokenPayloadDto): Promise<TokenDto> {
     const payload = { username: user.username, sub: user.userId };
-    return {
-      access_token: this.jwtService.sign(payload),
+    const refreshOptions: JwtSignOptions = {
+      secret: this.jwtTokenConfig.refreshSecret,
+      expiresIn: this.jwtTokenConfig.refreshExpiresIn as JwtSignOptions['expiresIn'],
     };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.sign(payload),
+      this.jwtService.sign(payload, refreshOptions)
+    ]);
+
+    return { accessToken, refreshToken };
   }
 }

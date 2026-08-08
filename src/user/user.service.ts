@@ -4,15 +4,22 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import * as argon2 from 'argon2';
 
-const Users: User[] = [{
-  userId: '12',
-  username: 'john_doe',
-  email: 'john@example.com',
-  passwordHash: '$argon2id$v=19$m=65536,p=4,t=3$GAUCPG4+wR1vXrJ50hdAKw$tzT8xGhJ+hO4POpqst6FFnAvtgJm7BM+fE1t6Xcr0h8'
-}];
-
 @Injectable()
 export class UserService {
+  private users = [
+    {
+      userId: '12',
+      username: 'john_doe',
+      email: 'john@example.com',
+      password: 'changeme',
+    },
+    {
+      userId: '11',
+      username: 'testuser',
+      email: 'test@example.com',
+      password: 'testpass',
+    }];
+
   async create(createUserDto: CreateUserDto) {
     const passwordHash = await this.hashPassword(createUserDto.password);
     return 'This action adds a new user';
@@ -23,7 +30,12 @@ export class UserService {
   }
 
   async findOne(username: string): Promise<User | null> {
-    return Users.find(user => user.username === username || user.email === username) || null;
+    const user = this.users.find(user => user.username === username || user.email === username) || null;
+    if (!user) {
+      return null;
+    }
+
+    return { ...user, passwordHash: await this.hashPassword(user.password) };
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
