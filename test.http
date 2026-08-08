@@ -1,0 +1,20 @@
+POST http://localhost:3000/auth/login HTTP/1.1
+content-type: application/json
+
+{
+    "username": "john@example.com",
+    "password": "changeme"
+}
+
+###
+
+GET http://localhost:3000/auth/me HTTP/1.1
+
+###
+
+GET http://localhost:3000/auth/me HTTP/1.1
+Authorization: Bearer xxx
+
+###
+
+GET http://localhost:3000/health HTTP/1.1
