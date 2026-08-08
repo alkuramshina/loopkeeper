@@ -41,6 +41,7 @@ coverage/
 # dotenv environment variables file
 .env
 .env.*
+!.env.example
 
 # nested modules
 *.tgz
