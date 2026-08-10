@@ -1,6 +1,7 @@
 export class TokenPayloadDto {
   userId!: string;
   username!: string;
+  email?: string;
 }
 
 export class TokenDto {

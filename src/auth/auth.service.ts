@@ -18,7 +18,10 @@ export class AuthService {
     const user = await this.userService.findOne(username);
     if (user && await argon2.verify(user.passwordHash, pass)) {
       const { passwordHash, ...result } = user;
-      return result;
+      return {
+        ...result,
+        username: user.email,
+      };
     }
 
     return null;

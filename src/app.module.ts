@@ -6,6 +6,7 @@ import { validationSchema } from './config/validation';
 import { UserModule } from './user/user.module';
 import appConfig from './config/app.config';
 import jwtConfig from './auth/config/jwt.config';
+import { PrismaModule } from './prisma/prisma.module';
 
 const nodeEnv = (process.env.NODE_ENV ?? 'development') as
   | 'development'
@@ -24,7 +25,7 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
       envFilePath: [`.env.${nodeEnv}`, '.env'],
       ignoreEnvFile: nodeEnv === 'production',
     }),
-    HealthModule, AuthModule, UserModule
+    HealthModule, AuthModule, UserModule, PrismaModule
   ],
 })
 export class AppModule { }

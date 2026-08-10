@@ -28,6 +28,10 @@
 9. Document auth flow and endpoints
 	- README or Swagger: describe access/refresh tokens, cookie usage, headers.
 
+10. Add bootstrap with admin user creation
+
+11. An endpoint for Change password
+
 Notes:
 - Current state: `argon2` is used for hashing; `LocalAuthGuard` validates `LoginDto`.
 - No user data exists yet; no fallback for bcrypt required.

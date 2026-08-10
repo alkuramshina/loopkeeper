@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  userId              String           @id @default(uuid())
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  email               String           @unique
+  passwordHash        String
+  name                String?
+  avatarUrl           String?
+  applicationRole     ApplicationRole  @default(USER)
+  ownedCampaigns      Campaign[]       @relation("GameMaster")
+  campaignMemberships CampaignMember[] @relation("CampaignMemberships")
+  characters          Character[]
+
+  @@map("users")
+}
+
+model Campaign {
+  campaignId  String           @id @default(uuid())
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  title       String
+  system      System?
+  description String?
+  coverUrl    String?
+  owner       User             @relation("GameMaster", fields: [ownerId], references: [userId])
+  ownerId     String
+  characters  Character[]
+  members     CampaignMember[] @relation("CampaignMembers")
+
+  @@index([ownerId])
+  @@map("campaigns")
+}
+
+model CampaignMember {
+  memberId     String       @id @default(uuid())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  user         User         @relation("CampaignMemberships", fields: [userId], references: [userId])
+  userId       String
+  campaign     Campaign     @relation("CampaignMembers", fields: [campaignId], references: [campaignId])
+  campaignId   String
+  campaignRole CampaignRole @default(PLAYER)
+
+  @@unique([userId, campaignId])
+  @@map("campaign_members")
+}
+
+model Character {
+  characterId String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  name        String
+  description String?
+  avatarUrl   String?
+  campaign    Campaign @relation(fields: [campaignId], references: [campaignId])
+  campaignId  String
+  owner       User     @relation(fields: [ownerId], references: [userId])
+  ownerId     String
+  isNPC       Boolean  @default(false)
+
+  @@index([ownerId])
+  @@map("characters")
+}
+
+enum CampaignRole {
+  PLAYER
+  VIEWER
+}
+
+enum ApplicationRole {
+  USER
+  ADMIN
+}
+
+enum System {
+  TALES_FROM_THE_LOOP
+}

@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: loopkeeper-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: loopkeeper
+      POSTGRES_PASSWORD: loopkeeper
+      POSTGRES_DB: loopkeeper
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

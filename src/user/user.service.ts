@@ -1,41 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
 import * as argon2 from 'argon2';
+import { PrismaService } from '../prisma/prisma.service';
+
+export const PRISMA_CLIENT = Symbol('PRISMA_CLIENT');
 
 @Injectable()
 export class UserService {
-  private users = [
-    {
-      userId: '12',
-      username: 'john_doe',
-      email: 'john@example.com',
-      password: 'changeme',
-    },
-    {
-      userId: '11',
-      username: 'testuser',
-      email: 'test@example.com',
-      password: 'testpass',
-    }];
+  constructor(@Inject(PRISMA_CLIENT) private readonly prisma: Pick<PrismaService, 'user'>) {}
 
   async create(createUserDto: CreateUserDto) {
     const passwordHash = await this.hashPassword(createUserDto.password);
-    return 'This action adds a new user';
+
+    return this.prisma.user.create({
+      data: {
+        email: createUserDto.email,
+        passwordHash,
+        name: createUserDto.name,
+      },
+    });
   }
 
   findAll() {
-    return `This action returns all user`;
+    return this.prisma.user.findMany({
+      select: {
+        userId: true,
+        email: true,
+        name: true,
+        applicationRole: true,
+      },
+    });
   }
 
-  async findOne(username: string): Promise<User | null> {
-    const user = this.users.find(user => user.username === username || user.email === username) || null;
-    if (!user) {
-      return null;
-    }
-
-    return { ...user, passwordHash: await this.hashPassword(user.password) };
+  async findOne(identifier: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { name: identifier },
+        ],
+      },
+    });
   }
 
   update(id: number, updateUserDto: UpdateUserDto) {
