@@ -1,5 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PRISMA_CLIENT, UserService } from './user.service';
+
+jest.mock('../prisma/prisma.service', () => ({
+  PrismaService: class PrismaService { },
+}));
+
+import { PrismaService } from '../prisma/prisma.service';
+import { UserService } from './user.service';
 
 describe('UserService', () => {
   let service: UserService;
@@ -9,7 +15,7 @@ describe('UserService', () => {
       providers: [
         UserService,
         {
-          provide: PRISMA_CLIENT,
+          provide: PrismaService,
           useValue: {
             user: {
               findFirst: jest.fn(),
