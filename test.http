@@ -2,8 +2,8 @@ POST http://localhost:3000/auth/login HTTP/1.1
 content-type: application/json
 
 {
-    "username": "john@example.com",
-    "password": "changeme"
+    "email": "admin@loopkeeper.dev",
+    "password": "admin"
 }
 
 ###

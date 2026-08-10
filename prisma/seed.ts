@@ -1,8 +1,10 @@
 import 'dotenv/config';
-import { PrismaClient } from '../src/generated/prisma/client.ts';
 import argon2 from 'argon2';
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
-const prisma = new PrismaClient({} as never);
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const email = process.env.ADMIN_EMAIL ?? 'admin@loopkeeper.dev';
