@@ -15,6 +15,7 @@ model User {
   name                String?
   avatarUrl           String?
   applicationRole     ApplicationRole  @default(USER)
+  isDeleted           Boolean          @default(false)
   ownedCampaigns      Campaign[]       @relation("GameMaster")
   campaignMemberships CampaignMember[] @relation("CampaignMemberships")
   characters          Character[]

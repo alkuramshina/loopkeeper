@@ -32,6 +32,8 @@
 
 11. An endpoint for Change password
 
+12. Global error handling
+
 Notes:
 - Current state: `argon2` is used for hashing; `LocalAuthGuard` validates `LoginDto`.
 - No user data exists yet; no fallback for bcrypt required.
