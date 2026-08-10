@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import appConfig from './config/app.config';
 import jwtConfig from './auth/config/jwt.config';
 import { PrismaModule } from './prisma/prisma.module';
+import { CampaignModule } from './campaign/campaign.module';
 
 const nodeEnv = (process.env.NODE_ENV ?? 'development') as
   | 'development'
@@ -25,7 +26,7 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
       envFilePath: [`.env.${nodeEnv}`, '.env'],
       ignoreEnvFile: nodeEnv === 'production',
     }),
-    HealthModule, AuthModule, UserModule, PrismaModule
+    HealthModule, AuthModule, UserModule, PrismaModule, CampaignModule
   ],
 })
 export class AppModule { }
