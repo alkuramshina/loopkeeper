@@ -10,8 +10,8 @@ export const validationSchema = Joi.object({
     .default(3000),
 
   FRONTEND_URL: Joi.string()
-    .uri()
-    .required(),
+    .uri({ scheme: ['http', 'https'] })
+    .default('http://localhost:3000'),
 
   DATABASE_URL: Joi.string()
     .uri()
@@ -30,8 +30,19 @@ export const validationSchema = Joi.object({
     .default('7d'),
 
   REFRESH_COOKIE_NAME: Joi.string()
+    .trim()
+    .min(1)
     .default('refresh_token'),
-  REFRESH_COOKIE_SECURE: Joi.boolean(),
+  REFRESH_COOKIE_SECURE: Joi.boolean()
+    .default(false)
+    .when('NODE_ENV', {
+      is: 'production',
+      then: Joi.valid(true).required(),
+    })
+    .when('REFRESH_COOKIE_SAMESITE', {
+      is: 'none',
+      then: Joi.valid(true).required(),
+    }),
   REFRESH_COOKIE_SAMESITE: Joi.string()
     .valid('lax', 'strict', 'none')
     .default('lax')

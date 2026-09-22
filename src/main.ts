@@ -17,8 +17,12 @@ async function bootstrap() {
   const documentFactory = () => SwaggerModule.createDocument(app, docConfig);
   SwaggerModule.setup('docs', app, documentFactory);
 
+  const applicationConfig = app.get<ConfigType<typeof appConfig>>(
+    appConfig.KEY,
+  );
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL,
+    origin: applicationConfig.frontendUrl,
     credentials: true,
   });
   app.use(cookieParser());
@@ -30,10 +34,6 @@ async function bootstrap() {
     transformOptions: { enableImplicitConversion: true },
     validationError: { target: false },
   }));
-
-  const applicationConfig = app.get<ConfigType<typeof appConfig>>(
-    appConfig.KEY,
-  );
 
   await app.listen(applicationConfig.port);
 }

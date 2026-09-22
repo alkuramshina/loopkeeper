@@ -13,7 +13,10 @@ export default registerAs('jwt', (): {
   expiresIn: process.env.JWT_EXPIRES_IN ?? '1h',
   refreshSecret: process.env.REFRESH_JWT_SECRET as string,
   refreshExpiresIn: process.env.REFRESH_JWT_EXPIRES_IN ?? '7d',
-  refreshCookieName: process.env.REFRESH_COOKIE_NAME as string,
+  refreshCookieName: process.env.REFRESH_COOKIE_NAME ?? 'refresh_token',
   refreshCookieSecure: process.env.REFRESH_COOKIE_SECURE === 'true',
-  refreshCookieSameSite: process.env.REFRESH_COOKIE_SAMESITE as 'lax' | 'strict' | 'none',
+  refreshCookieSameSite: (process.env.REFRESH_COOKIE_SAMESITE ?? 'lax') as
+    | 'lax'
+    | 'strict'
+    | 'none',
 }));
