@@ -18,7 +18,11 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/setup/jest-e2e.json",
-    "prisma:up": "prisma migrate dev",
+    "db:up": "docker compose --env-file .env -f deploy/docker-compose.yml up -d postgres",
+    "db:down": "docker compose --env-file .env -f deploy/docker-compose.yml down",
+    "db:reset": "docker compose --env-file .env -f deploy/docker-compose.yml down -v && docker compose --env-file .env -f deploy/docker-compose.yml up -d postgres",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "npx prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts"
   },

@@ -3,17 +3,66 @@ services:
     image: postgres:17
     container_name: loopkeeper-postgres
     restart: unless-stopped
-
     environment:
-      POSTGRES_USER: loopkeeper
-      POSTGRES_PASSWORD: loopkeeper
-      POSTGRES_DB: loopkeeper
-
+      POSTGRES_USER: ${POSTGRES_USER:-loopkeeper}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loopkeeper}
+      POSTGRES_DB: ${POSTGRES_DB:-loopkeeper}
     ports:
-      - "5432:5432"
-
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  migrate:
+    build:
+      context: ..
+      target: builder
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-loopkeeper}:${POSTGRES_PASSWORD:-loopkeeper}@postgres:5432/${POSTGRES_DB:-loopkeeper}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npx", "prisma", "migrate", "deploy"]
+    restart: "no"
+
+  app:
+    build:
+      context: ..
+      target: production
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-loopkeeper}:${POSTGRES_PASSWORD:-loopkeeper}@postgres:5432/${POSTGRES_DB:-loopkeeper}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      REFRESH_JWT_SECRET: ${REFRESH_JWT_SECRET:?Set REFRESH_JWT_SECRET in .env}
+      REFRESH_JWT_EXPIRES_IN: ${REFRESH_JWT_EXPIRES_IN:-7d}
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-refresh_token}
+      REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
+      REFRESH_COOKIE_SAMESITE: ${REFRESH_COOKIE_SAMESITE:-lax}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
 volumes:
   postgres_data:
