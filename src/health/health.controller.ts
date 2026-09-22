@@ -1,16 +1,28 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck } from '@nestjs/terminus';
+import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { Public } from '../auth/decorators/public.decorator';
+import { PrismaHealthIndicator } from './prisma-health.indicator';
 
 @Controller('health')
 export class HealthController {
+  constructor(
+    private readonly health: HealthCheckService,
+    private readonly prismaHealth: PrismaHealthIndicator,
+  ) {}
+
   @Public()
-  @Get()
+  @Get('live')
   @HealthCheck()
-  check() {
-    return {
-      "status": "ok",
-      "error": {},
-    };
+  checkLiveness() {
+    return { status: 'ok' };
+  }
+
+  @Public()
+  @Get('ready')
+  @HealthCheck()
+  checkReadiness() {
+    return this.health.check([
+      () => this.prismaHealth.isHealthy('database'),
+    ]);
   }
 }

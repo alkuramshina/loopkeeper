@@ -1,47 +1,41 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import argon2 from 'argon2';
 import request from 'supertest';
-import cookieParser from 'cookie-parser';
+import { createTestApp } from './helpers/app';
+import {
+  closeTestDatabase,
+  getTestPrisma,
+  resetTestDatabase,
+} from './helpers/database';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication;
-  let AppModule: any;
+  const credentials = {
+    email: 'testuser@loopkeeper.dev',
+    password: 'test-password',
+  };
 
   beforeAll(async () => {
-    process.env.NODE_ENV = 'test';
-    process.env.FRONTEND_URL = 'http://localhost:3000';
-    process.env.DATABASE_URL = 'postgres://user:pass@localhost:5432/testdb';
-    process.env.JWT_SECRET = 'test_jwt_secret_1234567890';
-    process.env.REFRESH_JWT_SECRET = 'test_refresh_secret_1234567890';
-    process.env.REFRESH_COOKIE_NAME = 'refresh_token';
-    process.env.REFRESH_COOKIE_SECURE = 'false';
-    process.env.REFRESH_COOKIE_SAMESITE = 'lax';
+    app = await createTestApp();
+  });
 
-    // Load AppModule after env vars are set so ConfigModule sees them.
-    // Using require avoids dynamic import issues in the current Jest configuration.
-    ({ AppModule } = require('./../src/app.module'));
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    app.use(cookieParser());
-    await app.init();
+  beforeEach(async () => {
+    await resetTestDatabase();
+    await getTestPrisma().user.create({
+      data: {
+        email: credentials.email,
+        passwordHash: await argon2.hash(credentials.password),
+        name: 'Test User',
+      },
+    });
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
+    await app.close();
+    await closeTestDatabase();
   });
 
-  it('/auth/login should set refresh_token cookie and return accessToken', async () => {
-    const credentials = {
-      username: 'testuser',
-      password: 'testpass',
-    };
-
+  it('logs in and sets a refresh cookie', async () => {
     const response = await request(app.getHttpServer())
       .post('/auth/login')
       .send(credentials)
@@ -53,27 +47,28 @@ describe('Auth (e2e)', () => {
     expect(response.headers['set-cookie'][0]).toContain('refresh_token=');
   });
 
-  it('/auth/refresh should return new accessToken when refresh_token cookie is present', async () => {
-    const credentials = {
-      username: 'testuser',
-      password: 'testpass',
-    };
+  it('refreshes an access token from the refresh cookie', async () => {
+    const agent = request.agent(app.getHttpServer());
+    const loginResponse = await agent.post('/auth/login').send(credentials).expect(200);
 
-    const loginResponse = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send(credentials)
-      .expect(200);
+    expect(loginResponse.headers['set-cookie']).toBeDefined();
 
-    const cookie = loginResponse.headers['set-cookie'];
-    expect(cookie).toBeDefined();
-
-    const refreshResponse = await request(app.getHttpServer())
-      .post('/auth/refresh')
-      .set('Cookie', cookie)
-      .expect(200);
+    const refreshResponse = await agent.post('/auth/refresh').expect(200);
 
     expect(refreshResponse.body).toHaveProperty('accessToken');
     expect(refreshResponse.headers['set-cookie']).toBeDefined();
     expect(refreshResponse.headers['set-cookie'][0]).toContain('refresh_token=');
+  });
+
+  it('rejects invalid credentials', () => {
+    return request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ ...credentials, password: 'wrong-password' })
+      .expect(401)
+      .expect({
+        statusCode: 401,
+        message: 'Invalid credentials or user not found',
+        error: 'Unauthorized',
+      });
   });
 });
