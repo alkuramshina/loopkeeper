@@ -14,6 +14,8 @@ import { CharacterModule } from './character/character.module';
 import { GameSystemModule } from './game-system/game-system.module';
 import { NoteModule } from './note/note.module';
 
+import { InvestigationBoardModule } from './investigation-board/investigation-board.module';
+
 const nodeEnv = (process.env.NODE_ENV ?? 'development') as
   'development' | 'test' | 'production';
 
@@ -46,6 +48,8 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
     GameSystemModule,
     CharacterModule,
     NoteModule,
+
+    InvestigationBoardModule,
   ],
   providers: [
     {

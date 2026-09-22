@@ -23,6 +23,9 @@ model User {
   createdCampaignInvitations CampaignInvitation[] @relation("CampaignInvitationCreator")
   notes                      Note[]
 
+  investigationCards InvestigationCard[] @relation("InvestigationCardCreator")
+  investigationLinks InvestigationLink[] @relation("InvestigationLinkCreator")
+
   @@map("users")
 }
 
@@ -56,6 +59,10 @@ model Campaign {
   members     CampaignMember[]     @relation("CampaignMembers")
   invitations CampaignInvitation[]
   notes       Note[]
+
+  investigationBoard InvestigationBoard?
+  investigationCards InvestigationCard[]
+  investigationLinks InvestigationLink[]
 
   @@index([ownerId])
   @@map("campaigns")
@@ -109,6 +116,75 @@ model Note {
   @@index([campaignId, visibility])
   @@index([campaignId, authorId])
   @@map("notes")
+}
+
+model InvestigationBoard {
+  boardId    String              @id @default(uuid())
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  campaign   Campaign            @relation(fields: [campaignId], references: [campaignId])
+  campaignId String              @unique
+  cards      InvestigationCard[]
+  links      InvestigationLink[]
+
+  @@map("investigation_boards")
+}
+
+model InvestigationCard {
+  cardId      String                  @id @default(uuid())
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  title       String
+  content     String?
+  tags        String[]
+  color       String?
+  icon        String?
+  board       InvestigationBoard      @relation(fields: [boardId], references: [boardId], onDelete: Cascade)
+  boardId     String
+  campaign    Campaign                @relation(fields: [campaignId], references: [campaignId])
+  campaignId  String
+  createdBy   User                    @relation("InvestigationCardCreator", fields: [createdById], references: [userId])
+  createdById String
+  node        InvestigationBoardNode?
+  linksFrom   InvestigationLink[]     @relation("InvestigationLinkFrom")
+  linksTo     InvestigationLink[]     @relation("InvestigationLinkTo")
+
+  @@index([campaignId])
+  @@map("investigation_cards")
+}
+
+model InvestigationLink {
+  linkId      String             @id @default(uuid())
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  label       String?
+  board       InvestigationBoard @relation(fields: [boardId], references: [boardId], onDelete: Cascade)
+  boardId     String
+  campaign    Campaign           @relation(fields: [campaignId], references: [campaignId])
+  campaignId  String
+  fromCard    InvestigationCard  @relation("InvestigationLinkFrom", fields: [fromCardId], references: [cardId], onDelete: Cascade)
+  fromCardId  String
+  toCard      InvestigationCard  @relation("InvestigationLinkTo", fields: [toCardId], references: [cardId], onDelete: Cascade)
+  toCardId    String
+  createdBy   User               @relation("InvestigationLinkCreator", fields: [createdById], references: [userId])
+  createdById String
+
+  @@unique([campaignId, fromCardId, toCardId])
+  @@map("investigation_links")
+}
+
+model InvestigationBoardNode {
+  nodeId    String            @id @default(uuid())
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  x         Float             @default(0)
+  y         Float             @default(0)
+  width     Float             @default(240)
+  height    Float             @default(160)
+  card      InvestigationCard @relation(fields: [cardId], references: [cardId], onDelete: Cascade)
+  cardId    String            @unique
+
+  @@map("investigation_board_nodes")
 }
 
 model GameSystem {

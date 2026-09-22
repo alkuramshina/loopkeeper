@@ -42,6 +42,17 @@ export class CampaignAccessService {
     }
   }
 
+  async requireBoardContributor(
+    userId: string,
+    campaignId: string,
+  ): Promise<void> {
+    const access = await this.getAccess(userId, campaignId);
+    if (access.isOwner || access.campaignRole === CampaignRole.PLAYER) {
+      return;
+    }
+    throw new NotFoundException('Campaign not found');
+  }
+
   async requirePlayer(userId: string, campaignId: string): Promise<void> {
     const membership = await this.prisma.campaignMember.findFirst({
       where: { campaignId, userId, campaignRole: CampaignRole.PLAYER },
