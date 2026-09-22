@@ -38,6 +38,22 @@ Loopkeeper — backend-сервис для подготовки и ведени�
 
    API будет доступен по `http://localhost:3000`, Swagger — по `http://localhost:3000/docs`.
 
+### Локальный frontend
+
+Лёгкий React/Vite-каркас расположен в `frontend/`. Он использует access JWT только в памяти браузера, а refresh token — через существующую HTTP-only cookie.
+
+1. В первом терминале запустите backend на `http://localhost:3000`.
+2. Во втором терминале:
+
+   ```sh
+   cd frontend
+   cp .env.example .env # при необходимости изменить VITE_API_URL
+   npm install
+   npm run dev
+   ```
+
+Клиент будет доступен на `http://localhost:5173`. Backend по умолчанию разрешает этот origin через CORS. Текущий UI намеренно минимален: auth, список/создание кампаний и read-only shell доски; визуальную систему и полные экраны следует внедрять по спецификации из локального `resources/FRONTEND-SCREENS-AND-UI-PROMPT.md`.
+
 ### Запуск в Docker
 
 ```sh
