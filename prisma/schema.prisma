@@ -7,31 +7,32 @@ datasource db {
 }
 
 model User {
-  userId              String           @id @default(uuid())
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  email               String           @unique
-  passwordHash        String
-  name                String?
-  avatarUrl           String?
-  applicationRole     ApplicationRole  @default(USER)
-  isDeleted           Boolean          @default(false)
-  ownedCampaigns      Campaign[]       @relation("GameMaster")
-  campaignMemberships CampaignMember[] @relation("CampaignMemberships")
-  characters          Character[]
-  authSessions        AuthSession[]
+  userId                     String               @id @default(uuid())
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
+  email                      String               @unique
+  passwordHash               String
+  name                       String?
+  avatarUrl                  String?
+  applicationRole            ApplicationRole      @default(USER)
+  isDeleted                  Boolean              @default(false)
+  ownedCampaigns             Campaign[]           @relation("GameMaster")
+  campaignMemberships        CampaignMember[]     @relation("CampaignMemberships")
+  characters                 Character[]
+  authSessions               AuthSession[]
+  createdCampaignInvitations CampaignInvitation[] @relation("CampaignInvitationCreator")
 
   @@map("users")
 }
 
 model AuthSession {
-  sessionId        String   @id @default(uuid())
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  sessionId        String    @id @default(uuid())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   refreshTokenHash String
   expiresAt        DateTime
   revokedAt        DateTime?
-  user             User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
   userId           String
 
   @@index([userId])
@@ -40,17 +41,18 @@ model AuthSession {
 }
 
 model Campaign {
-  campaignId  String           @id @default(uuid())
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  campaignId  String               @id @default(uuid())
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
   title       String
   system      System?
   description String?
   coverUrl    String?
-  owner       User             @relation("GameMaster", fields: [ownerId], references: [userId])
+  owner       User                 @relation("GameMaster", fields: [ownerId], references: [userId])
   ownerId     String
   characters  Character[]
-  members     CampaignMember[] @relation("CampaignMembers")
+  members     CampaignMember[]     @relation("CampaignMembers")
+  invitations CampaignInvitation[]
 
   @@index([ownerId])
   @@map("campaigns")
@@ -68,6 +70,25 @@ model CampaignMember {
 
   @@unique([userId, campaignId])
   @@map("campaign_members")
+}
+
+model CampaignInvitation {
+  invitationId String       @id @default(uuid())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  tokenHash    String
+  role         CampaignRole
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+  campaign     Campaign     @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
+  campaignId   String
+  createdBy    User         @relation("CampaignInvitationCreator", fields: [createdById], references: [userId])
+  createdById  String
+
+  @@index([campaignId])
+  @@index([expiresAt])
+  @@map("campaign_invitations")
 }
 
 model Character {

@@ -2,31 +2,41 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { PrismaService } from '../prisma/prisma.service';
+import { CampaignAccessService } from './access/campaign-access.service';
 
 @Injectable()
 export class CampaignService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly campaignAccess: CampaignAccessService,
+  ) {}
 
-  async create(userId: string, createDto: CreateCampaignDto) {
-    return await this.prisma.campaign.create({
+  create(userId: string, createDto: CreateCampaignDto) {
+    return this.prisma.campaign.create({
       data: {
         title: createDto.title,
         description: createDto.description,
         system: 'TALES_FROM_THE_LOOP',
         coverUrl: createDto.coverUrl,
-        ownerId: userId
+        ownerId: userId,
       },
     });
   }
 
-  async findAll() {
-    return await this.prisma.campaign.findMany();
+  findAll(userId: string) {
+    return this.prisma.campaign.findMany({
+      where: {
+        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
   }
 
-  async findOne(id: string) {
+  async findOne(userId: string, campaignId: string) {
     const campaign = await this.prisma.campaign.findFirst({
       where: {
-        campaignId: id,
+        campaignId,
+        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
       },
     });
 
@@ -37,20 +47,21 @@ export class CampaignService {
     return campaign;
   }
 
-  async update(id: string, updateDto: UpdateCampaignDto) {
-    return await this.prisma.campaign.update({
-      where: { campaignId: id },
-      data: {
-        title: updateDto.title,
-        description: updateDto.description,
-        coverUrl: updateDto.coverUrl
-      },
+  async update(
+    userId: string,
+    campaignId: string,
+    updateDto: UpdateCampaignDto,
+  ) {
+    await this.campaignAccess.requireOwner(userId, campaignId);
+
+    return this.prisma.campaign.update({
+      where: { campaignId },
+      data: updateDto,
     });
   }
 
-  async remove(id: string) {
-    await this.prisma.campaign.delete({
-      where: { campaignId: id },
-    });
+  async remove(userId: string, campaignId: string) {
+    await this.campaignAccess.requireOwner(userId, campaignId);
+    await this.prisma.campaign.delete({ where: { campaignId } });
   }
 }
