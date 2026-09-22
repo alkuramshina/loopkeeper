@@ -11,12 +11,28 @@ type AuthenticatedUser = {
 const password = 'test-password-123';
 const characterData = {
   age: 15,
+  type: 'COMPUTER_GEEK',
   body: 3,
   tech: 4,
   heart: 2,
   mind: 3,
-  iconicItem: 'A cassette recorder',
+  force: 1,
+  move: 2,
+  sneak: 2,
+  tinker: 3,
+  program: 3,
+  calculate: 2,
+  contact: 1,
+  charm: 1,
+  lead: 0,
+  investigate: 2,
+  comprehend: 2,
+  empathize: 1,
+  drive: 'Find the truth behind the strange machines.',
   pride: 'I never abandon a friend.',
+  problem: 'My parents do not understand me.',
+  anchor: 'My older sister.',
+  iconicItem: 'A cassette recorder',
 };
 
 async function registerUser(
