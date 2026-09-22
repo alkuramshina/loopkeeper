@@ -19,8 +19,24 @@ model User {
   ownedCampaigns      Campaign[]       @relation("GameMaster")
   campaignMemberships CampaignMember[] @relation("CampaignMemberships")
   characters          Character[]
+  authSessions        AuthSession[]
 
   @@map("users")
+}
+
+model AuthSession {
+  sessionId        String   @id @default(uuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  refreshTokenHash String
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  user             User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  userId           String
+
+  @@index([userId])
+  @@index([userId, revokedAt])
+  @@map("auth_sessions")
 }
 
 model Campaign {

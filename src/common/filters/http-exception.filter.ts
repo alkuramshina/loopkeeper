@@ -28,7 +28,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const errorResponse = this.toErrorResponse(exception);
 
-    if (!(exception instanceof HttpException)) {
+    if (
+      !(exception instanceof HttpException) &&
+      !(
+        exception instanceof Prisma.PrismaClientKnownRequestError &&
+        ['P2002', 'P2025'].includes(exception.code)
+      )
+    ) {
       this.logger.error(
         exception instanceof Error ? exception.stack : String(exception),
       );

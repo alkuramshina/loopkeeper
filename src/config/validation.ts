@@ -17,6 +17,15 @@ export const validationSchema = Joi.object({
     .uri()
     .required(),
 
+  THROTTLE_TTL: Joi.number()
+    .integer()
+    .min(1_000)
+    .default(60_000),
+  THROTTLE_LIMIT: Joi.number()
+    .integer()
+    .min(1)
+    .default(100),
+
   JWT_SECRET: Joi.string()
     .min(20)
     .required(),

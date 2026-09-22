@@ -1,18 +1,24 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigType } from '@nestjs/config';
 import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import jwtConfig from './config/jwt.config';
 
 describe('AuthController', () => {
-  let controller: AuthController;
+  it('is defined with auth service and JWT configuration', () => {
+    const jwtTokenConfig: ConfigType<typeof jwtConfig> = {
+      secret: 'access-secret',
+      expiresIn: '1h',
+      refreshSecret: 'refresh-secret',
+      refreshExpiresIn: '7d',
+      refreshCookieName: 'refresh_token',
+      refreshCookieSecure: false,
+      refreshCookieSameSite: 'lax',
+    };
+    const controller = new AuthController(
+      {} as AuthService,
+      jwtTokenConfig,
+    );
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [AuthController],
-    }).compile();
-
-    controller = module.get<AuthController>(AuthController);
-  });
-
-  it('should be defined', () => {
     expect(controller).toBeDefined();
   });
 });
