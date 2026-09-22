@@ -1,14 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ValidationPipe } from '@nestjs/common';
+import { configureApplication } from './app.setup';
 import appConfig from './config/app.config';
 import { ConfigType } from '@nestjs/config';
-import cookieParser from 'cookie-parser';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  configureApplication(app);
 
   const docConfig = new DocumentBuilder()
     .setTitle('Loopkeeper API')
@@ -21,21 +21,6 @@ async function bootstrap() {
   const applicationConfig = app.get<ConfigType<typeof appConfig>>(
     appConfig.KEY,
   );
-
-  app.enableCors({
-    origin: applicationConfig.frontendUrl,
-    credentials: true,
-  });
-  app.use(cookieParser());
-  app.useGlobalFilters(new HttpExceptionFilter());
-
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-    transformOptions: { enableImplicitConversion: true },
-    validationError: { target: false },
-  }));
 
   await app.listen(applicationConfig.port);
 }

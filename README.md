@@ -58,6 +58,18 @@ npm run prisma:seed      # создать admin только при SEED_ADMIN=t
 
 `prisma:seed` требует `SEED_ADMIN=true`, `ADMIN_EMAIL` и `ADMIN_PASSWORD` длиной не менее 12 символов. Seed не запускается автоматически и не выводит пароль в лог.
 
+## E2E-тесты
+
+E2E используют отдельный PostgreSQL service и только базу `loopkeeper_test`; перед любым destructive действием тесты проверяют её имя.
+
+```sh
+npm run db:test:up
+npm run test:e2e
+npm run db:test:down # остановить только postgres-test
+```
+
+Jest перед тестами применяет committed migrations, а перед каждым сценарием очищает тестовую БД и создаёт необходимые fixtures. Запуск не затрагивает development БД `loopkeeper`.
+
 ## Текущий статус
 
 Базовая инфраструктура NestJS/Prisma, JWT login/refresh, пользователи и начальный CRUD кампаний уже присутствуют. MVP ещё не завершён: прежде всего требуются единый auth-контракт, tenant-права, участники кампаний и игровые домены.
