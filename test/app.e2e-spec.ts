@@ -35,4 +35,23 @@ describe('HealthController (e2e)', () => {
         expect(response.body.info.database.status).toBe('up');
       });
   });
+
+  it('allows the configured local CORS origin', () => {
+    return request(app.getHttpServer())
+      .get('/health/live')
+      .set('Origin', 'http://localhost:3000')
+      .expect('access-control-allow-origin', 'http://localhost:3000')
+      .expect(200);
+  });
+
+  it('requires a JWT for campaign routes', () => {
+    return request(app.getHttpServer())
+      .get('/campaigns')
+      .expect(401)
+      .expect({
+        statusCode: 401,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      });
+  });
 });

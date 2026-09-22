@@ -1,18 +1,26 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigType } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { UserService } from '../user/user.service';
 import { AuthService } from './auth.service';
+import jwtConfig from './config/jwt.config';
 
 describe('AuthService', () => {
-  let service: AuthService;
+  it('is defined with its dependencies', () => {
+    const jwtTokenConfig: ConfigType<typeof jwtConfig> = {
+      secret: 'access-secret',
+      expiresIn: '1h',
+      refreshSecret: 'refresh-secret',
+      refreshExpiresIn: '7d',
+      refreshCookieName: 'refresh_token',
+      refreshCookieSecure: false,
+      refreshCookieSameSite: 'lax',
+    };
+    const service = new AuthService(
+      {} as UserService,
+      {} as JwtService,
+      jwtTokenConfig,
+    );
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [AuthService],
-    }).compile();
-
-    service = module.get<AuthService>(AuthService);
-  });
-
-  it('should be defined', () => {
     expect(service).toBeDefined();
   });
 });
