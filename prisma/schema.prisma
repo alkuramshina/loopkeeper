@@ -21,6 +21,7 @@ model User {
   characters                 Character[]
   authSessions               AuthSession[]
   createdCampaignInvitations CampaignInvitation[] @relation("CampaignInvitationCreator")
+  notes                      Note[]
 
   @@map("users")
 }
@@ -54,6 +55,7 @@ model Campaign {
   characters  Character[]
   members     CampaignMember[]     @relation("CampaignMembers")
   invitations CampaignInvitation[]
+  notes       Note[]
 
   @@index([ownerId])
   @@map("campaigns")
@@ -90,6 +92,23 @@ model CampaignInvitation {
   @@index([campaignId])
   @@index([expiresAt])
   @@map("campaign_invitations")
+}
+
+model Note {
+  noteId     String         @id @default(uuid())
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  title      String
+  content    String
+  visibility NoteVisibility @default(PRIVATE)
+  campaign   Campaign       @relation(fields: [campaignId], references: [campaignId])
+  campaignId String
+  author     User           @relation(fields: [authorId], references: [userId])
+  authorId   String
+
+  @@index([campaignId, visibility])
+  @@index([campaignId, authorId])
+  @@map("notes")
 }
 
 model GameSystem {
@@ -146,6 +165,13 @@ model Character {
 enum CampaignRole {
   PLAYER
   VIEWER
+}
+
+enum NoteVisibility {
+  PRIVATE
+  MASTER_ONLY
+  PLAYERS
+  PUBLIC
 }
 
 enum ApplicationRole {

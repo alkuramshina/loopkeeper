@@ -6,6 +6,31 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class CampaignAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getAccess(userId: string, campaignId: string) {
+    const campaign = await this.prisma.campaign.findFirst({
+      where: {
+        campaignId,
+        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+      },
+      select: {
+        ownerId: true,
+        members: {
+          where: { userId },
+          select: { campaignRole: true },
+        },
+      },
+    });
+
+    if (!campaign) {
+      throw new NotFoundException('Campaign not found');
+    }
+
+    return {
+      isOwner: campaign.ownerId === userId,
+      campaignRole: campaign.members[0]?.campaignRole,
+    };
+  }
+
   async requireOwner(userId: string, campaignId: string): Promise<void> {
     const campaign = await this.prisma.campaign.findFirst({
       where: { campaignId, ownerId: userId },

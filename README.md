@@ -91,6 +91,27 @@ PATCH  /characters/:characterId
 DELETE /characters/:characterId
 ```
 
+## Заметки и visibility
+
+Заметки являются кампанийными данными и получают visibility только внутри tenant:
+
+| Visibility    | Доступ                                    |
+| ------------- | ----------------------------------------- |
+| `PRIVATE`     | Только автор заметки.                     |
+| `MASTER_ONLY` | Владелец кампании.                        |
+| `PLAYERS`     | Владелец и участники с ролью `PLAYER`.    |
+| `PUBLIC`      | Все участники кампании, включая `VIEWER`. |
+
+Владелец создаёт заметки с любой visibility и управляет доступными ему заметками кампании. Игрок создаёт `PRIVATE`, `PLAYERS` и `PUBLIC` заметки и меняет только свои. Наблюдатель имеет доступ только на чтение `PUBLIC` заметок.
+
+```text
+POST   /campaigns/:campaignId/notes
+GET    /campaigns/:campaignId/notes
+GET    /notes/:noteId
+PATCH  /notes/:noteId
+DELETE /notes/:noteId
+```
+
 ## E2E-тесты
 
 E2E используют отдельный PostgreSQL service и только базу `loopkeeper_test`; перед любым destructive действием тесты проверяют её имя.
@@ -105,4 +126,4 @@ Jest перед тестами применяет committed migrations, а пе�
 
 ## Текущий статус
 
-Готовы базовая инфраструктура NestJS/Prisma, безопасная JWT-аутентификация с rotating refresh sessions, tenant-кампании, участники и одноразовые приглашения, а также Tales from the Loop персонажи и NPC. Следующий backend-этап MVP — заметки и правила visibility; после стабилизации контрактов персонажей можно начинать локальный фронтенд.
+Готовы базовая инфраструктура NestJS/Prisma, безопасная JWT-аутентификация с rotating refresh sessions, tenant-кампании, участники и одноразовые приглашения, Tales from the Loop персонажи и NPC, а также заметки с матрицей visibility. Следующий backend-этап MVP — совместный стол расследования, раздатки и timeline; локальный фронтенд можно начинать параллельно с его техническим каркасом.

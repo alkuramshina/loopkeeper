@@ -12,6 +12,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CampaignModule } from './campaign/campaign.module';
 import { CharacterModule } from './character/character.module';
 import { GameSystemModule } from './game-system/game-system.module';
+import { NoteModule } from './note/note.module';
 
 const nodeEnv = (process.env.NODE_ENV ?? 'development') as
   'development' | 'test' | 'production';
@@ -44,6 +45,7 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
     CampaignModule,
     GameSystemModule,
     CharacterModule,
+    NoteModule,
   ],
   providers: [
     {
