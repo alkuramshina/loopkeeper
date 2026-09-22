@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -24,11 +24,17 @@ export class CampaignService {
   }
 
   async findOne(id: string) {
-    return await this.prisma.campaign.findFirst({
+    const campaign = await this.prisma.campaign.findFirst({
       where: {
         campaignId: id,
       },
     });
+
+    if (!campaign) {
+      throw new NotFoundException('Campaign not found');
+    }
+
+    return campaign;
   }
 
   async update(id: string, updateDto: UpdateCampaignDto) {

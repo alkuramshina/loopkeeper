@@ -16,11 +16,11 @@ describe('HealthController (e2e)', () => {
     await app.init();
   });
 
-  it('/health (GET)', () => {
+  it('/health/live (GET)', () => {
     return request(app.getHttpServer())
-      .get('/health')
+      .get('/health/live')
       .expect(200)
-      .expect({ status: 'ok', error: {} });
+      .expect({ status: 'ok' });
   });
 
   afterEach(async () => {

@@ -5,6 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 import appConfig from './config/app.config';
 import { ConfigType } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -26,6 +27,7 @@ async function bootstrap() {
     credentials: true,
   });
   app.use(cookieParser());
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,

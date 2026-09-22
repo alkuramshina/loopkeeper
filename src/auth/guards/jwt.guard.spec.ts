@@ -39,7 +39,8 @@ describe('JwtAuthGuard', () => {
   });
 
   it.each([
-    [HealthController.prototype, HealthController.prototype.check],
+    [HealthController.prototype, HealthController.prototype.checkLiveness],
+    [HealthController.prototype, HealthController.prototype.checkReadiness],
     [AuthController.prototype, AuthController.prototype.login],
     [AuthController.prototype, AuthController.prototype.refresh],
   ])('bypasses Passport JWT validation for public endpoints', (controller, handler) => {
