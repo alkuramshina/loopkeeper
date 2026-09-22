@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import jwtConfig from './auth/config/jwt.config';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import appConfig from './config/app.config';
@@ -11,6 +12,7 @@ export function configureApplication(app: INestApplication): void {
   );
   const jwtTokenConfig = app.get<ConfigType<typeof jwtConfig>>(jwtConfig.KEY);
 
+  app.use(helmet());
   app.enableCors({
     origin: applicationConfig.frontendUrl,
     credentials: true,

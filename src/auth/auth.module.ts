@@ -9,6 +9,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './guards/jwt.guard';
 import { UserModule } from '../user/user.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import jwtConfig from './config/jwt.config';
 import type { SignOptions } from 'jsonwebtoken';
 import { RefreshJwtStrategy } from './strategies/refresh.strategy';
@@ -17,6 +18,7 @@ import { RefreshJwtStrategy } from './strategies/refresh.strategy';
   imports: [
     PassportModule,
     UserModule,
+    PrismaModule,
     JwtModule.registerAsync({
       useFactory: (
         config: ConfigType<typeof jwtConfig>,

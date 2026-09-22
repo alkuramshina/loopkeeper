@@ -41,6 +41,7 @@ describe('JwtAuthGuard', () => {
   it.each([
     [HealthController.prototype, HealthController.prototype.checkLiveness],
     [HealthController.prototype, HealthController.prototype.checkReadiness],
+    [AuthController.prototype, AuthController.prototype.register],
     [AuthController.prototype, AuthController.prototype.login],
     [AuthController.prototype, AuthController.prototype.refresh],
   ])('bypasses Passport JWT validation for public endpoints', (controller, handler) => {
@@ -50,7 +51,10 @@ describe('JwtAuthGuard', () => {
 
   it.each([
     [AuthController.prototype, AuthController.prototype.getProfile],
-    [UserController.prototype, UserController.prototype.findAll],
+    [AuthController.prototype, AuthController.prototype.logout],
+    [AuthController.prototype, AuthController.prototype.changePassword],
+    [UserController.prototype, UserController.prototype.findMe],
+    [UserController.prototype, UserController.prototype.updateMe],
     [CampaignController.prototype, CampaignController.prototype.findAll],
   ])('delegates protected endpoints to Passport JWT validation', (controller, handler) => {
     expect(guard.canActivate(createContext(controller, handler))).toBe(true);

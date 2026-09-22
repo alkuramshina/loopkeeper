@@ -58,6 +58,17 @@ npm run prisma:seed      # создать admin только при SEED_ADMIN=t
 
 `prisma:seed` требует `SEED_ADMIN=true`, `ADMIN_EMAIL` и `ADMIN_PASSWORD` длиной не менее 12 символов. Seed не запускается автоматически и не выводит пароль в лог.
 
+## Аутентификация
+
+- `POST /auth/register` создаёт пользователя, возвращает access token и устанавливает HTTP-only refresh cookie.
+- `POST /auth/login` создаёт новую refresh session.
+- `POST /auth/refresh` проверяет refresh cookie, отзывает старую session и выдаёт новую пару токенов.
+- `POST /auth/logout` требует access token, отзывает текущую refresh session и очищает cookie.
+- `POST /auth/change-password` требует access token и отзывает все refresh sessions пользователя.
+- `GET /auth/me`, `GET /users/me`, `PATCH /users/me` требуют access token.
+
+Access token передаётся в заголовке `Authorization: Bearer <token>`. Refresh token никогда не возвращается JSON-ответом и хранится на сервере только как Argon2 hash. Auth routes ограничены in-memory rate limiting, а Helmet добавляет базовые HTTP security headers.
+
 ## E2E-тесты
 
 E2E используют отдельный PostgreSQL service и только базу `loopkeeper_test`; перед любым destructive действием тесты проверяют её имя.

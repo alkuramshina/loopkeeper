@@ -17,7 +17,7 @@ export function getTestPrisma(): PrismaClient {
 
 export async function resetTestDatabase(): Promise<void> {
   await getTestPrisma().$executeRawUnsafe(
-    'TRUNCATE TABLE "campaign_members", "characters", "campaigns", "users" RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE "auth_sessions", "campaign_members", "characters", "campaigns", "users" RESTART IDENTITY CASCADE',
   );
 }
 

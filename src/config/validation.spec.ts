@@ -15,6 +15,8 @@ describe('validationSchema', () => {
       NODE_ENV: 'development',
       PORT: 3000,
       FRONTEND_URL: 'http://localhost:3000',
+      THROTTLE_TTL: 60_000,
+      THROTTLE_LIMIT: 100,
       REFRESH_COOKIE_NAME: 'refresh_token',
       REFRESH_COOKIE_SECURE: false,
       REFRESH_COOKIE_SAMESITE: 'lax',

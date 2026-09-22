@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -9,78 +10,130 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
+import jwtConfig from './config/jwt.config';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { LoginResponseDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { TokenDto, TokenPayloadDto } from './dto/token-payload.dto';
 import { Public } from './decorators/public.decorator';
 import { LocalAuthGuard } from './guards/local.guard';
-import { TokenPayloadDto } from './dto/token-payload.dto';
-import { LoginResponseDto } from './dto/login.dto';
 import { RefreshJwtAuthGuard } from './guards/refresh.guard';
-import jwtConfig from './config/jwt.config';
-import { type ConfigType } from '@nestjs/config';
-import { type Response } from 'express'
+
+const AUTH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    @Inject(jwtConfig.KEY) private jwtTokenConfig: ConfigType<typeof jwtConfig>
-  ) { }
+    @Inject(jwtConfig.KEY)
+    private readonly jwtTokenConfig: ConfigType<typeof jwtConfig>,
+  ) {}
 
   @Public()
+  @Throttle(AUTH_THROTTLE)
+  @Post('register')
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<LoginResponseDto> {
+    const tokens = await this.authService.register(registerDto);
+
+    this.setRefreshCookie(response, tokens);
+    return this.createLoginResponse(tokens);
+  }
+
+  @Public()
+  @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @Post('login')
   @UseGuards(LocalAuthGuard)
   async login(
-    @Request() request,
-    @Res({ passthrough: true }) response: Response
+    @Request() request: { user: TokenPayloadDto },
+    @Res({ passthrough: true }) response: Response,
   ): Promise<LoginResponseDto> {
-    const tokens = await this.authService.generateUserTokens(request.user as TokenPayloadDto);
+    const tokens = await this.authService.login(request.user);
 
-    response.cookie(
-      this.jwtTokenConfig.refreshCookieName,
-      tokens.refreshToken,
-      this.getRefreshCookieOptions(),
-    );
-
-    return {
-      accessToken: tokens.accessToken,
-      expiresIn: this.jwtTokenConfig.expiresIn,
-    };
+    this.setRefreshCookie(response, tokens);
+    return this.createLoginResponse(tokens);
   }
 
   @Public()
+  @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @UseGuards(RefreshJwtAuthGuard)
   @Post('refresh')
   async refresh(
-    @Request() request,
+    @Request() request: { user: TokenPayloadDto },
     @Res({ passthrough: true }) response: Response,
   ): Promise<LoginResponseDto> {
-    const tokens = await this.authService.generateUserTokens(request.user as TokenPayloadDto);
+    const tokens = await this.authService.rotateRefreshSession(request.user);
 
-    response.cookie(
+    this.setRefreshCookie(response, tokens);
+    return this.createLoginResponse(tokens);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(
+    @Request() request: { user: TokenPayloadDto; cookies?: Record<string, string> },
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.authService.logout(
+      request.user.userId,
+      request.cookies?.[this.jwtTokenConfig.refreshCookieName],
+    );
+    response.clearCookie(
       this.jwtTokenConfig.refreshCookieName,
-      tokens.refreshToken,
       this.getRefreshCookieOptions(),
     );
+  }
 
+  @Get('me')
+  getProfile(@Request() request: { user: TokenPayloadDto }) {
+    return this.authService.getProfile(request.user.userId);
+  }
+
+  @Throttle(AUTH_THROTTLE)
+  @Post('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async changePassword(
+    @Request() request: { user: TokenPayloadDto },
+    @Body() changePasswordDto: ChangePasswordDto,
+  ): Promise<void> {
+    await this.authService.changePassword(
+      request.user.userId,
+      changePasswordDto,
+    );
+  }
+
+  private createLoginResponse(tokens: TokenDto): LoginResponseDto {
     return {
       accessToken: tokens.accessToken,
       expiresIn: this.jwtTokenConfig.expiresIn,
     };
   }
 
-  @Get('me')
-  getProfile(@Request() request) {
-    return request.user as TokenPayloadDto;
+  private setRefreshCookie(response: Response, tokens: TokenDto): void {
+    response.cookie(
+      this.jwtTokenConfig.refreshCookieName,
+      tokens.refreshToken,
+      this.getRefreshCookieOptions(tokens.refreshExpiresAt),
+    );
   }
 
-  private getRefreshCookieOptions() {
+  private getRefreshCookieOptions(expiresAt?: Date) {
     return {
       httpOnly: true,
       secure: this.jwtTokenConfig.refreshCookieSecure,
       sameSite: this.jwtTokenConfig.refreshCookieSameSite,
-      maxAge: 1000 * 60 * 60 * 24 * 7,
+      path: '/',
+      ...(expiresAt
+        ? { maxAge: Math.max(expiresAt.getTime() - Date.now(), 0) }
+        : {}),
     };
   }
 }

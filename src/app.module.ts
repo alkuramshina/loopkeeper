@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigType } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { validationSchema } from './config/validation';
 import { UserModule } from './user/user.module';
@@ -26,7 +28,25 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
       envFilePath: [`.env.${nodeEnv}`, '.env'],
       ignoreEnvFile: nodeEnv === 'production',
     }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [appConfig.KEY],
+      useFactory: (config: ConfigType<typeof appConfig>) => ({
+        throttlers: [
+          {
+            ttl: config.throttleTtl,
+            limit: config.throttleLimit,
+          },
+        ],
+      }),
+    }),
     HealthModule, AuthModule, UserModule, PrismaModule, CampaignModule
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule { }

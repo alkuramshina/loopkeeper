@@ -1,5 +1,6 @@
 import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from '../user/user.service';
 import { AuthService } from './auth.service';
 import jwtConfig from './config/jwt.config';
@@ -17,6 +18,7 @@ describe('AuthService', () => {
     };
     const service = new AuthService(
       {} as UserService,
+      {} as PrismaService,
       {} as JwtService,
       jwtTokenConfig,
     );
