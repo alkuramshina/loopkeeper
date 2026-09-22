@@ -22,5 +22,6 @@ import { CampaignService } from './campaign.service';
     CampaignMemberService,
     CampaignInvitationService,
   ],
+  exports: [CampaignAccessService],
 })
 export class CampaignModule {}

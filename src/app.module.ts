@@ -10,20 +10,17 @@ import appConfig from './config/app.config';
 import jwtConfig from './auth/config/jwt.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { CampaignModule } from './campaign/campaign.module';
+import { CharacterModule } from './character/character.module';
+import { GameSystemModule } from './game-system/game-system.module';
 
 const nodeEnv = (process.env.NODE_ENV ?? 'development') as
-  | 'development'
-  | 'test'
-  | 'production';
+  'development' | 'test' | 'production';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [
-        appConfig,
-        jwtConfig,
-      ],
+      load: [appConfig, jwtConfig],
       validationSchema,
       envFilePath: [`.env.${nodeEnv}`, '.env'],
       ignoreEnvFile: nodeEnv === 'production',
@@ -40,7 +37,13 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
         ],
       }),
     }),
-    HealthModule, AuthModule, UserModule, PrismaModule, CampaignModule
+    HealthModule,
+    AuthModule,
+    UserModule,
+    PrismaModule,
+    CampaignModule,
+    GameSystemModule,
+    CharacterModule,
   ],
   providers: [
     {
@@ -49,4 +52,4 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

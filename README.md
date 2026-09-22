@@ -53,10 +53,10 @@ npm run db:down          # остановить локальный Compose-ст�
 npm run db:reset         # удалить локальный Docker volume и пересоздать PostgreSQL
 npm run prisma:migrate   # создать и применить development migration
 npm run prisma:deploy    # применить committed migrations без создания новой
-npm run prisma:seed      # создать admin только при SEED_ADMIN=true
+npm run prisma:seed      # применить справочные данные; admin — при SEED_ADMIN=true
 ```
 
-`prisma:seed` требует `SEED_ADMIN=true`, `ADMIN_EMAIL` и `ADMIN_PASSWORD` длиной не менее 12 символов. Seed не запускается автоматически и не выводит пароль в лог.
+`prisma:seed` безопасно upsert-ит справочные данные Tales from the Loop и шаблон персонажа `Kid`. Чтобы дополнительно создать локального admin-пользователя, задайте `SEED_ADMIN=true`, `ADMIN_EMAIL` и `ADMIN_PASSWORD` длиной не менее 12 символов. Seed не запускается автоматически и не выводит пароль в лог.
 
 ## Аутентификация
 
@@ -68,6 +68,28 @@ npm run prisma:seed      # создать admin только при SEED_ADMIN=t
 - `GET /auth/me`, `GET /users/me`, `PATCH /users/me` требуют access token.
 
 Access token передаётся в заголовке `Authorization: Bearer <token>`. Refresh token никогда не возвращается JSON-ответом и хранится на сервере только как Argon2 hash. Auth routes ограничены in-memory rate limiting, а Helmet добавляет базовые HTTP security headers.
+
+## Кампании и персонажи
+
+Кампания — изолированный tenant. Владелец кампании управляет её настройками, участниками, приглашениями и NPC. Участник может состоять в нескольких кампаниях, но API не раскрывает данные чужой кампании и возвращает `404`.
+
+- `PLAYER` может создать и изменить одного активного персонажа в каждой кампании;
+- `VIEWER` может читать реестр персонажей, но не изменять его;
+- владелец создаёт неограниченное число NPC;
+- игровой справочник пока содержит только **Tales from the Loop** и шаблон `Kid`;
+- данные листа персонажа валидируются по декларативной схеме выбранного шаблона.
+
+Основные endpoints:
+
+```text
+GET    /game-systems
+GET    /game-systems/:systemId/templates
+POST   /campaigns/:campaignId/characters
+GET    /campaigns/:campaignId/characters
+GET    /characters/:characterId
+PATCH  /characters/:characterId
+DELETE /characters/:characterId
+```
 
 ## E2E-тесты
 
@@ -83,4 +105,4 @@ Jest перед тестами применяет committed migrations, а пе�
 
 ## Текущий статус
 
-Базовая инфраструктура NestJS/Prisma, JWT login/refresh, пользователи и начальный CRUD кампаний уже присутствуют. MVP ещё не завершён: прежде всего требуются единый auth-контракт, tenant-права, участники кампаний и игровые домены.
+Готовы базовая инфраструктура NestJS/Prisma, безопасная JWT-аутентификация с rotating refresh sessions, tenant-кампании, участники и одноразовые приглашения, а также Tales from the Loop персонажи и NPC. Следующий backend-этап MVP — заметки и правила visibility; после стабилизации контрактов персонажей можно начинать локальный фронтенд.

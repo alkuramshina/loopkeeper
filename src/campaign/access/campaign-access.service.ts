@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { CampaignRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -12,6 +13,17 @@ export class CampaignAccessService {
     });
 
     if (!campaign) {
+      throw new NotFoundException('Campaign not found');
+    }
+  }
+
+  async requirePlayer(userId: string, campaignId: string): Promise<void> {
+    const membership = await this.prisma.campaignMember.findFirst({
+      where: { campaignId, userId, campaignRole: CampaignRole.PLAYER },
+      select: { memberId: true },
+    });
+
+    if (!membership) {
       throw new NotFoundException('Campaign not found');
     }
   }

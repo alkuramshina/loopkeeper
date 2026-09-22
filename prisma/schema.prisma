@@ -50,6 +50,7 @@ model Campaign {
   coverUrl    String?
   owner       User                 @relation("GameMaster", fields: [ownerId], references: [userId])
   ownerId     String
+  gameSystem  GameSystem?          @relation(fields: [system], references: [slug])
   characters  Character[]
   members     CampaignMember[]     @relation("CampaignMembers")
   invitations CampaignInvitation[]
@@ -91,19 +92,53 @@ model CampaignInvitation {
   @@map("campaign_invitations")
 }
 
+model GameSystem {
+  slug        System              @id
+  name        String
+  description String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  campaigns   Campaign[]
+  templates   CharacterTemplate[]
+
+  @@map("game_systems")
+}
+
+model CharacterTemplate {
+  templateId String      @id @default(uuid())
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  name       String
+  schema     Json
+  version    Int         @default(1)
+  isActive   Boolean     @default(true)
+  system     GameSystem  @relation(fields: [systemSlug], references: [slug])
+  systemSlug System
+  characters Character[]
+
+  @@unique([systemSlug, name, version])
+  @@index([systemSlug, isActive])
+  @@map("character_templates")
+}
+
 model Character {
-  characterId String   @id @default(uuid())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  characterId String            @id @default(uuid())
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   name        String
   description String?
   avatarUrl   String?
-  campaign    Campaign @relation(fields: [campaignId], references: [campaignId])
+  data        Json              @default("{}")
+  isNPC       Boolean           @default(false)
+  isActive    Boolean           @default(true)
+  campaign    Campaign          @relation(fields: [campaignId], references: [campaignId])
   campaignId  String
-  owner       User     @relation(fields: [ownerId], references: [userId])
+  owner       User              @relation(fields: [ownerId], references: [userId])
   ownerId     String
-  isNPC       Boolean  @default(false)
+  template    CharacterTemplate @relation(fields: [templateId], references: [templateId])
+  templateId  String
 
+  @@index([campaignId])
   @@index([ownerId])
   @@map("characters")
 }
