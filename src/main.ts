@@ -12,7 +12,16 @@ async function bootstrap() {
 
   const docConfig = new DocumentBuilder()
     .setTitle('Loopkeeper API')
+    .setDescription(
+      'Local REST API for tenant-isolated tabletop RPG campaigns. Use a Bearer access token for protected routes; refresh tokens are HttpOnly cookies and are never entered in Swagger.',
+    )
     .setVersion('1.0')
+    .addServer('http://localhost:3000', 'Local development server')
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'access-token',
+    )
+    .addSecurityRequirements('access-token')
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, docConfig);

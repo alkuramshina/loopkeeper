@@ -112,6 +112,27 @@ PATCH  /notes/:noteId
 DELETE /notes/:noteId
 ```
 
+## Стол расследования
+
+У кампании есть одна общая доска расследования. Карточки универсальны: ими можно описывать NPC, улику, локацию, событие или любую гипотезу без создания отдельного backend-типа. У карточки есть содержание, свободные теги, hex-цвет, ключ иконки и сохранённая раскладка.
+
+Владелец и `PLAYER` совместно создают, изменяют и удаляют любые карточки и ненаправленные связи. `VIEWER` и внешний пользователь не имеют доступа. Дублирующая связь и связь карточки с самой собой отклоняются API.
+
+```text
+GET    /campaigns/:campaignId/investigation-board
+POST   /campaigns/:campaignId/investigation-cards
+PATCH  /investigation-cards/:cardId
+DELETE /investigation-cards/:cardId
+POST   /campaigns/:campaignId/investigation-links
+PATCH  /investigation-links/:linkId
+DELETE /investigation-links/:linkId
+PATCH  /investigation-board/nodes/:cardId
+```
+
+## API-документация
+
+Swagger доступен на `http://localhost:3000/docs`. Для защищённых маршрутов используйте кнопку **Authorize** и security scheme `access-token`, передав только access JWT в формате `Bearer <token>`. Refresh token хранится в HTTP-only cookie и в Swagger не вводится.
+
 ## E2E-тесты
 
 E2E используют отдельный PostgreSQL service и только базу `loopkeeper_test`; перед любым destructive действием тесты проверяют её имя.
@@ -126,4 +147,4 @@ Jest перед тестами применяет committed migrations, а пе�
 
 ## Текущий статус
 
-Готовы базовая инфраструктура NestJS/Prisma, безопасная JWT-аутентификация с rotating refresh sessions, tenant-кампании, участники и одноразовые приглашения, Tales from the Loop персонажи и NPC, а также заметки с матрицей visibility. Текущий следующий backend-этап — совместный стол расследования с универсальными карточками; отдельные раздатки и timeline в MVP не планируются. Локальный фронтенд можно начинать параллельно с его техническим каркасом.
+Backend MVP готов: инфраструктура NestJS/Prisma, безопасная JWT-аутентификация с rotating refresh sessions, tenant-кампании, участники и одноразовые приглашения, Tales from the Loop персонажи и NPC, заметки с visibility и совместный стол расследования. Отдельные раздатки и timeline в MVP не планируются. Следующий продуктовый шаг — локальный фронтенд; расширения realtime и инфраструктуры описаны отдельным локальным планом.
