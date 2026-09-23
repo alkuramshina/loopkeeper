@@ -1,20 +1,47 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/auth-context';
-import {
-  CampaignListPage,
-  CampaignWorkspacePage,
-} from '../features/campaigns/pages';
-import { InvitationPage } from '../features/campaigns/invitation-page';
-import { CharactersPage } from '../features/campaigns/characters-page';
-import { NotesPage } from '../features/campaigns/notes-page';
-import { MembersPage } from '../features/campaigns/members-page';
-import { BoardPage } from '../features/campaigns/board-page';
-import { BackgroundSettingsPage } from '../features/campaigns/background-settings-page';
-import { LocationsPage } from '../features/campaigns/locations-page';
-import { CampaignSettingsPage } from '../features/campaigns/campaign-settings-page';
-import { AccountSettingsPage } from '../features/account/account-settings-page';
 import { AuthPage } from '../auth/auth-page';
+
+const CampaignListPage = lazy(async () => ({
+  default: (await import('../features/campaigns/pages')).CampaignListPage,
+}));
+const CampaignWorkspacePage = lazy(async () => ({
+  default: (await import('../features/campaigns/pages')).CampaignWorkspacePage,
+}));
+const InvitationPage = lazy(async () => ({
+  default: (await import('../features/campaigns/invitation-page'))
+    .InvitationPage,
+}));
+const CharactersPage = lazy(async () => ({
+  default: (await import('../features/campaigns/characters-page'))
+    .CharactersPage,
+}));
+const NotesPage = lazy(async () => ({
+  default: (await import('../features/campaigns/notes-page')).NotesPage,
+}));
+const MembersPage = lazy(async () => ({
+  default: (await import('../features/campaigns/members-page')).MembersPage,
+}));
+const BoardPage = lazy(async () => ({
+  default: (await import('../features/campaigns/board-page')).BoardPage,
+}));
+const BackgroundSettingsPage = lazy(async () => ({
+  default: (await import('../features/campaigns/background-settings-page'))
+    .BackgroundSettingsPage,
+}));
+const LocationsPage = lazy(async () => ({
+  default: (await import('../features/campaigns/locations-page')).LocationsPage,
+}));
+const CampaignSettingsPage = lazy(async () => ({
+  default: (await import('../features/campaigns/campaign-settings-page'))
+    .CampaignSettingsPage,
+}));
+const AccountSettingsPage = lazy(async () => ({
+  default: (await import('../features/account/account-settings-page'))
+    .AccountSettingsPage,
+}));
 
 function ProtectedRoute() {
   const { profile, loading } = useAuth();
@@ -46,44 +73,49 @@ function InvitationEntry() {
 }
 
 export function AppRouter() {
+  const { t } = useTranslation();
   return (
-    <Routes>
-      <Route element={<PublicOnlyRoute />}>
-        <Route path="/sign-in" element={<AuthPage mode="sign-in" />} />
-        <Route path="/sign-up" element={<AuthPage mode="sign-up" />} />
-      </Route>
-      <Route element={<ProtectedRoute />}>
-        <Route path="/campaigns" element={<CampaignListPage />} />
-        <Route path="/settings/account" element={<AccountSettingsPage />} />
-        <Route
-          path="/campaigns/:campaignId"
-          element={<CampaignWorkspacePage section="overview" />}
-        />
-        <Route path="/campaigns/:campaignId/board" element={<BoardPage />} />
-        <Route
-          path="/campaigns/:campaignId/locations"
-          element={<LocationsPage />}
-        />
-        <Route
-          path="/campaigns/:campaignId/settings"
-          element={<CampaignSettingsPage />}
-        />
-        <Route
-          path="/campaigns/:campaignId/settings/backgrounds"
-          element={<BackgroundSettingsPage />}
-        />
-        <Route
-          path="/campaigns/:campaignId/characters"
-          element={<CharactersPage />}
-        />
-        <Route path="/campaigns/:campaignId/notes" element={<NotesPage />} />
-        <Route
-          path="/campaigns/:campaignId/members"
-          element={<MembersPage />}
-        />
-      </Route>
-      <Route path="/invitations/:token" element={<InvitationEntry />} />
-      <Route path="*" element={<Navigate to="/campaigns" replace />} />
-    </Routes>
+    <Suspense
+      fallback={<main className="page-state">{t('common.loading')}</main>}
+    >
+      <Routes>
+        <Route element={<PublicOnlyRoute />}>
+          <Route path="/sign-in" element={<AuthPage mode="sign-in" />} />
+          <Route path="/sign-up" element={<AuthPage mode="sign-up" />} />
+        </Route>
+        <Route element={<ProtectedRoute />}>
+          <Route path="/campaigns" element={<CampaignListPage />} />
+          <Route path="/settings/account" element={<AccountSettingsPage />} />
+          <Route
+            path="/campaigns/:campaignId"
+            element={<CampaignWorkspacePage section="overview" />}
+          />
+          <Route path="/campaigns/:campaignId/board" element={<BoardPage />} />
+          <Route
+            path="/campaigns/:campaignId/locations"
+            element={<LocationsPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/settings"
+            element={<CampaignSettingsPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/settings/backgrounds"
+            element={<BackgroundSettingsPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/characters"
+            element={<CharactersPage />}
+          />
+          <Route path="/campaigns/:campaignId/notes" element={<NotesPage />} />
+          <Route
+            path="/campaigns/:campaignId/members"
+            element={<MembersPage />}
+          />
+        </Route>
+        <Route path="/invitations/:token" element={<InvitationEntry />} />
+        <Route path="*" element={<Navigate to="/campaigns" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
