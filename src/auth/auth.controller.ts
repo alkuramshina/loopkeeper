@@ -12,13 +12,22 @@ import {
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ApiCommonErrors } from '../common/swagger/api-errors.decorator';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import jwtConfig from './config/jwt.config';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { LoginResponseDto } from './dto/login.dto';
+import { LoginDto, LoginResponseDto } from './dto/login.dto';
+import { ProfileResponseDto } from './dto/profile-response.dto';
 import { RegisterDto } from './dto/register.dto';
 import { TokenDto, TokenPayloadDto } from './dto/token-payload.dto';
 import { Public } from './decorators/public.decorator';
@@ -39,6 +48,8 @@ export class AuthController {
   @Public()
   @Throttle(AUTH_THROTTLE)
   @ApiOperation({ summary: 'Register a user and start a session' })
+  @ApiBody({ type: RegisterDto })
+  @ApiCreatedResponse({ type: LoginResponseDto })
   @ApiCommonErrors({ conflict: true, notFound: false, unauthorized: false })
   @Post('register')
   async register(
@@ -46,7 +57,6 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<LoginResponseDto> {
     const tokens = await this.authService.register(registerDto);
-
     this.setRefreshCookie(response, tokens);
     return this.createLoginResponse(tokens);
   }
@@ -55,6 +65,8 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sign in and start a session' })
+  @ApiBody({ type: LoginDto })
+  @ApiOkResponse({ type: LoginResponseDto })
   @ApiCommonErrors({ notFound: false })
   @Post('login')
   @UseGuards(LocalAuthGuard)
@@ -63,7 +75,6 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<LoginResponseDto> {
     const tokens = await this.authService.login(request.user);
-
     this.setRefreshCookie(response, tokens);
     return this.createLoginResponse(tokens);
   }
@@ -73,6 +84,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(RefreshJwtAuthGuard)
   @ApiOperation({ summary: 'Rotate the refresh session and return a new access token' })
+  @ApiOkResponse({ type: LoginResponseDto })
   @ApiCommonErrors({ badRequest: false, notFound: false })
   @Post('refresh')
   async refresh(
@@ -107,6 +119,7 @@ export class AuthController {
 
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get the authenticated user profile' })
+  @ApiOkResponse({ type: ProfileResponseDto })
   @ApiCommonErrors({ badRequest: false })
   @Get('me')
   getProfile(@Request() request: { user: TokenPayloadDto }) {
@@ -116,6 +129,7 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Change password and revoke all refresh sessions' })
+  @ApiBody({ type: ChangePasswordDto })
   @ApiNoContentResponse()
   @ApiCommonErrors({ notFound: false })
   @Post('change-password')

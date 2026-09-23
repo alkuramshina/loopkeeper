@@ -47,12 +47,11 @@ Loopkeeper — backend-сервис для подготовки и ведени�
 
    ```sh
    cd frontend
-   cp .env.example .env # при необходимости изменить VITE_API_URL
    npm install
    npm run dev
    ```
 
-Клиент будет доступен на `http://localhost:5173`. Backend по умолчанию разрешает этот origin через CORS. Текущий UI намеренно минимален: auth, список/создание кампаний и read-only shell доски; визуальную систему и полные экраны следует внедрять по спецификации из локального `resources/FRONTEND-SCREENS-AND-UI-PROMPT.md`.
+Клиент будет доступен на `http://localhost:5173`. В development Vite проксирует запросы `/api` к `http://localhost:3000`, поэтому браузер не выполняет CORS preflight для API. Для отдельного API задайте `VITE_API_URL` в `frontend/.env` по примеру из `.env.example`. Текущий UI намеренно минимален: auth, список/создание кампаний и read-only shell доски; визуальную систему и полные экраны следует внедрять по спецификации из локального `resources/FRONTEND-SCREENS-AND-UI-PROMPT.md`.
 
 ### Запуск в Docker
 

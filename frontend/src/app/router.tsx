@@ -9,6 +9,7 @@ import { InvitationPage } from '../features/campaigns/invitation-page';
 import { CharactersPage } from '../features/campaigns/characters-page';
 import { NotesPage } from '../features/campaigns/notes-page';
 import { MembersPage } from '../features/campaigns/members-page';
+import { BoardPage } from '../features/campaigns/board-page';
 import { AuthPage } from '../auth/auth-page';
 
 function ProtectedRoute() {
@@ -53,10 +54,7 @@ export function AppRouter() {
           path="/campaigns/:campaignId"
           element={<CampaignWorkspacePage section="overview" />}
         />
-        <Route
-          path="/campaigns/:campaignId/board"
-          element={<CampaignWorkspacePage section="board" />}
-        />
+        <Route path="/campaigns/:campaignId/board" element={<BoardPage />} />
         <Route
           path="/campaigns/:campaignId/characters"
           element={<CharactersPage />}

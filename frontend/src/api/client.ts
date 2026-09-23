@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_URL ?? '/api';
 
 export type ApiErrorBody = {
   statusCode: number;
@@ -68,9 +68,29 @@ export type Campaign = {
   system?: string | null;
   currentUserRole: 'OWNER' | 'PLAYER' | 'VIEWER';
 };
+export type BoardCard = {
+  cardId: string;
+  cardKind: 'FREE' | 'NOTE_REFERENCE' | 'CHARACTER_REFERENCE';
+  title: string;
+  content?: string | null;
+  tags: string[];
+  color?: string | null;
+  icon?: string | null;
+  node?: { x: number; y: number; width: number; height: number } | null;
+  reference?: { kind: 'NOTE' | 'CHARACTER'; noteId?: string; characterId?: string; isNPC?: boolean };
+};
+
+export type BoardLink = {
+  linkId: string;
+  fromCardId: string;
+  toCardId: string;
+  label?: string | null;
+};
+
 export type Board = {
   boardId: string;
-  cards: Array<{ cardId: string; title: string; content?: string | null; tags: string[]; color?: string | null }>;
+  cards: BoardCard[];
+  links: BoardLink[];
 };
 
 export type CharacterField = {

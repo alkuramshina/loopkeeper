@@ -7,9 +7,21 @@ import {
   Post,
   Request,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { CampaignInvitationService } from './campaign-invitation.service';
+import {
+  CampaignInvitationResponseDto,
+  CreatedCampaignInvitationResponseDto,
+} from './dto/campaign-invitation-response.dto';
+import { AcceptedCampaignMemberResponseDto } from './dto/campaign-member-response.dto';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 
 @ApiTags('Campaign invitations')
@@ -18,6 +30,9 @@ import { CreateInvitationDto } from './dto/create-invitation.dto';
 export class CampaignInvitationController {
   constructor(private readonly invitations: CampaignInvitationService) {}
 
+  @ApiOperation({ summary: 'Create an invitation for an owned campaign' })
+  @ApiBody({ type: CreateInvitationDto })
+  @ApiCreatedResponse({ type: CreatedCampaignInvitationResponseDto })
   @Post('campaigns/:campaignId/invitations')
   create(
     @Param('campaignId') campaignId: string,
@@ -27,6 +42,8 @@ export class CampaignInvitationController {
     return this.invitations.create(request.user.userId, campaignId, createDto);
   }
 
+  @ApiOperation({ summary: 'List invitations for an owned campaign' })
+  @ApiOkResponse({ type: CampaignInvitationResponseDto, isArray: true })
   @Get('campaigns/:campaignId/invitations')
   findAll(
     @Param('campaignId') campaignId: string,
@@ -35,6 +52,8 @@ export class CampaignInvitationController {
     return this.invitations.findAll(request.user.userId, campaignId);
   }
 
+  @ApiOperation({ summary: 'Revoke a pending campaign invitation' })
+  @ApiOkResponse({ description: 'Invitation revoked.' })
   @Delete('campaigns/:campaignId/invitations/:invitationId')
   revoke(
     @Param('campaignId') campaignId: string,
@@ -48,6 +67,8 @@ export class CampaignInvitationController {
     );
   }
 
+  @ApiOperation({ summary: 'Accept a campaign invitation' })
+  @ApiCreatedResponse({ type: AcceptedCampaignMemberResponseDto })
   @Post('invitations/:token/accept')
   accept(
     @Param('token') token: string,

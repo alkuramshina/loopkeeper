@@ -30,6 +30,49 @@ describe('OpenAPI contract', () => {
     expect(document.paths['/health/live']).toHaveProperty('get');
   });
 
+  it('documents request and successful response schemas for critical operations', () => {
+    const loginOperation = document.paths['/auth/login'].post;
+    const registerOperation = document.paths['/auth/register'].post;
+    const campaignListOperation = document.paths['/campaigns'].get;
+    const boardOperation = document.paths['/campaigns/{campaignId}/investigation-board'].get;
+
+    expect(loginOperation?.requestBody).toMatchObject({
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/LoginDto' },
+        },
+      },
+    });
+    expect(registerOperation?.responses?.['201']).toMatchObject({
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/LoginResponseDto' },
+        },
+      },
+    });
+    expect(campaignListOperation?.responses?.['200']).toMatchObject({
+      content: {
+        'application/json': {
+          schema: { items: { $ref: '#/components/schemas/CampaignResponseDto' } },
+        },
+      },
+    });
+    expect(boardOperation?.responses?.['200']).toMatchObject({
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/InvestigationBoardResponseDto' },
+        },
+      },
+    });
+    expect(document.components?.schemas?.LoginDto).toMatchObject({
+      properties: expect.objectContaining({
+        email: expect.any(Object),
+        password: expect.any(Object),
+      }),
+      required: ['email', 'password'],
+    });
+  });
+
   it('documents the locale-neutral error schema for critical operations', () => {
     const registerResponses = document.paths['/auth/register'].post?.responses;
     const boardResponses = document.paths['/campaigns/{campaignId}/cards'].post?.responses;

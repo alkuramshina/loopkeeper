@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import jwtConfig from './auth/config/jwt.config';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { developmentRequestLogger } from './common/middleware/development-request-logger.middleware';
 import { ValidationException } from './common/exceptions/validation.exception';
 import appConfig from './config/app.config';
 
@@ -12,6 +13,10 @@ export function configureApplication(app: INestApplication): void {
     appConfig.KEY,
   );
   const jwtTokenConfig = app.get<ConfigType<typeof jwtConfig>>(jwtConfig.KEY);
+
+  if (applicationConfig.environment === 'development') {
+    app.use(developmentRequestLogger);
+  }
 
   app.use(helmet());
   app.enableCors({

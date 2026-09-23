@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { ApiClient, AuthResponse, Profile } from '../api/client';
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionRestoreStarted = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -80,6 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [api]);
 
   useEffect(() => {
+    if (sessionRestoreStarted.current) return;
+    sessionRestoreStarted.current = true;
     void refresh().finally(() => setLoading(false));
   }, [refresh]);
 

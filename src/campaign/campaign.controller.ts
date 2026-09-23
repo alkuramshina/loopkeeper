@@ -8,10 +8,18 @@ import {
   Post,
   Request,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ApiCommonErrors } from '../common/swagger/api-errors.decorator';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { CampaignService } from './campaign.service';
+import { CampaignResponseDto } from './dto/campaign-response.dto';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 
@@ -22,6 +30,8 @@ export class CampaignController {
   constructor(private readonly campaignService: CampaignService) {}
 
   @ApiOperation({ summary: 'Create a campaign owned by the authenticated user' })
+  @ApiBody({ type: CreateCampaignDto })
+  @ApiCreatedResponse({ type: CampaignResponseDto })
   @ApiCommonErrors({ notFound: false })
   @Post()
   create(
@@ -32,6 +42,7 @@ export class CampaignController {
   }
 
   @ApiOperation({ summary: 'List campaigns owned by or shared with the authenticated user' })
+  @ApiOkResponse({ type: CampaignResponseDto, isArray: true })
   @ApiCommonErrors({ badRequest: false, notFound: false })
   @Get()
   findAll(@Request() request: { user: TokenPayloadDto }) {
@@ -39,6 +50,7 @@ export class CampaignController {
   }
 
   @ApiOperation({ summary: 'Get an accessible campaign' })
+  @ApiOkResponse({ type: CampaignResponseDto })
   @ApiCommonErrors({ badRequest: false })
   @Get(':campaignId')
   findOne(
@@ -49,6 +61,8 @@ export class CampaignController {
   }
 
   @ApiOperation({ summary: 'Update a campaign as its owner' })
+  @ApiBody({ type: UpdateCampaignDto })
+  @ApiOkResponse({ type: CampaignResponseDto })
   @ApiCommonErrors()
   @Patch(':campaignId')
   update(
@@ -64,6 +78,7 @@ export class CampaignController {
   }
 
   @ApiOperation({ summary: 'Delete a campaign as its owner' })
+  @ApiOkResponse({ description: 'Campaign deleted.' })
   @ApiCommonErrors({ badRequest: false })
   @Delete(':campaignId')
   remove(

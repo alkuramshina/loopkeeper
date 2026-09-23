@@ -1,9 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { SkipThrottle } from '@nestjs/throttler';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
 import { PrismaHealthIndicator } from './prisma-health.indicator';
+import { LivenessResponseDto, ReadinessResponseDto } from './dto/health-response.dto';
 
 @ApiTags('Health')
 @Controller('health')
@@ -15,6 +16,8 @@ export class HealthController {
 
   @Public()
   @SkipThrottle()
+  @ApiOperation({ summary: 'Check whether the service is running' })
+  @ApiOkResponse({ type: LivenessResponseDto })
   @Get('live')
   @HealthCheck()
   checkLiveness() {
@@ -23,6 +26,8 @@ export class HealthController {
 
   @Public()
   @SkipThrottle()
+  @ApiOperation({ summary: 'Check whether the service is ready to accept traffic' })
+  @ApiOkResponse({ type: ReadinessResponseDto })
   @Get('ready')
   @HealthCheck()
   checkReadiness() {

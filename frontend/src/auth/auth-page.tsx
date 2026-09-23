@@ -33,6 +33,7 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           : '/campaigns',
       );
     } catch (cause) {
+      console.warn(cause);
       setError(
         cause instanceof ApiError
           ? t(`errors.${cause.code}`, { defaultValue: t('errors.unexpected') })
