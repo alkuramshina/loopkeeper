@@ -235,8 +235,9 @@ model CharacterTemplate {
   updatedAt  DateTime    @updatedAt
   name       String
   schema     Json
-  version    Int         @default(1)
-  isActive   Boolean     @default(true)
+  version       Int                   @default(1)
+  characterKind CharacterTemplateKind @default(PLAYER_CHARACTER)
+  isActive      Boolean               @default(true)
   system     GameSystem  @relation(fields: [systemSlug], references: [slug])
   systemSlug System
   characters Character[]
@@ -267,6 +268,11 @@ model Character {
   @@index([campaignId])
   @@index([ownerId])
   @@map("characters")
+}
+
+enum CharacterTemplateKind {
+  PLAYER_CHARACTER
+  NPC
 }
 
 enum CampaignBackgroundSelectionMode {

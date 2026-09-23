@@ -55,11 +55,17 @@ function CharacterEditor({
   const { api } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const availableTemplates = templates.filter(
+    (item) =>
+      item.characterKind === (target.isNPC ? 'NPC' : 'PLAYER_CHARACTER'),
+  );
   const [templateId, setTemplateId] = useState(
-    target.character?.templateId ?? templates[0]?.templateId ?? '',
+    target.character?.templateId ?? availableTemplates[0]?.templateId ?? '',
   );
   const [error, setError] = useState<string>();
-  const template = templates.find((item) => item.templateId === templateId);
+  const template = availableTemplates.find(
+    (item) => item.templateId === templateId,
+  );
 
   const save = useMutation({
     mutationFn: async (event: FormEvent<HTMLFormElement>) => {
@@ -141,7 +147,7 @@ function CharacterEditor({
               value={templateId}
               onChange={(event) => setTemplateId(event.target.value)}
             >
-              {templates.map((item) => (
+              {availableTemplates.map((item) => (
                 <option key={item.templateId} value={item.templateId}>
                   {item.name}
                 </option>

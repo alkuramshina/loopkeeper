@@ -104,19 +104,25 @@ describe('Characters (e2e)', () => {
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
       .set(authenticate(player))
       .expect(200);
-    expect(templates.body).toHaveLength(1);
-    const templateId = templates.body[0].templateId;
+    expect(templates.body).toHaveLength(2);
+    const playerTemplateId = templates.body.find(
+      (template: { characterKind: string }) =>
+        template.characterKind === 'PLAYER_CHARACTER',
+    ).templateId;
+    const npcTemplateId = templates.body.find(
+      (template: { characterKind: string }) => template.characterKind === 'NPC',
+    ).templateId;
 
     const playerCharacter = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
-      .send({ name: 'Alex', templateId, data: characterData })
+      .send({ name: 'Alex', templateId: playerTemplateId, data: characterData })
       .expect(201);
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
-      .send({ name: 'Another Alex', templateId, data: characterData })
+      .send({ name: 'Another Alex', templateId: playerTemplateId, data: characterData })
       .expect(409);
 
     await request(app.getHttpServer())
@@ -124,7 +130,7 @@ describe('Characters (e2e)', () => {
       .set(authenticate(player))
       .send({
         name: 'Not an NPC',
-        templateId,
+        templateId: playerTemplateId,
         data: characterData,
         isNPC: true,
       })
@@ -133,13 +139,18 @@ describe('Characters (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(viewer))
-      .send({ name: 'Viewer', templateId, data: characterData })
+      .send({ name: 'Viewer', templateId: playerTemplateId, data: characterData })
       .expect(404);
 
     const npc = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(owner))
-      .send({ name: 'Mr. Berg', templateId, data: characterData, isNPC: true })
+      .send({
+        name: 'Mr. Berg',
+        templateId: npcTemplateId,
+        data: { role: 'Loop technician', secret: 'Knows where the robot came from.' },
+        isNPC: true,
+      })
       .expect(201);
 
     await request(app.getHttpServer())
@@ -184,7 +195,10 @@ describe('Characters (e2e)', () => {
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
       .set(authenticate(player))
       .expect(200);
-    const templateId = templates.body[0].templateId;
+    const templateId = templates.body.find(
+      (template: { characterKind: string }) =>
+        template.characterKind === 'PLAYER_CHARACTER',
+    ).templateId;
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)

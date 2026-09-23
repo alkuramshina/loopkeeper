@@ -135,6 +135,7 @@ export type CharacterField = {
 export type CharacterTemplate = {
   templateId: string;
   name: string;
+  characterKind: 'PLAYER_CHARACTER' | 'NPC';
   schema: {
     title?: string;
     sections?: Array<{ key: string; label: string }>;

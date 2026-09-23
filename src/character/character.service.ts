@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { CharacterTemplateKind, Prisma } from '@prisma/client';
 import {
   DomainException,
   ErrorViolation,
@@ -55,7 +55,7 @@ export class CharacterService {
         isActive: true,
       },
     });
-    if (!template) {
+    if (!template || template.characterKind !== this.templateKindFor(isNPC)) {
       throw this.templateNotFound();
     }
 
@@ -151,6 +151,12 @@ export class CharacterService {
     }
 
     await this.prisma.character.delete({ where: { characterId } });
+  }
+
+  private templateKindFor(isNPC: boolean): CharacterTemplateKind {
+    return isNPC
+      ? CharacterTemplateKind.NPC
+      : CharacterTemplateKind.PLAYER_CHARACTER;
   }
 
   private validateData(
