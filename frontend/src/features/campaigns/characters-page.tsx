@@ -25,7 +25,11 @@ function apiErrorMessage(cause: unknown, t: TFunction) {
     : t('errors.unexpected');
 }
 
-function canEdit(character: Character, profileId: string | undefined, role: Campaign['currentUserRole']) {
+function canEdit(
+  character: Character,
+  profileId: string | undefined,
+  role: Campaign['currentUserRole'],
+) {
   return character.isNPC ? role === 'OWNER' : character.ownerId === profileId;
 }
 
@@ -77,17 +81,22 @@ function CharacterEditor({
           : { templateId: template.templateId, isNPC: target.isNPC }),
       };
       return target.character
-        ? api.request<Character>(`/characters/${target.character.characterId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(payload),
-          })
+        ? api.request<Character>(
+            `/characters/${target.character.characterId}`,
+            {
+              method: 'PATCH',
+              body: JSON.stringify(payload),
+            },
+          )
         : api.request<Character>(`/campaigns/${campaignId}/characters`, {
             method: 'POST',
             body: JSON.stringify(payload),
           });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['characters', campaignId] });
+      void queryClient.invalidateQueries({
+        queryKey: ['characters', campaignId],
+      });
       onClose();
     },
     onError: (cause) => setError(apiErrorMessage(cause, t)),
@@ -113,7 +122,9 @@ function CharacterEditor({
       <div className="section-heading">
         <div>
           <p className="kicker">
-            {target.isNPC ? t('characters.npc') : t('characters.playerCharacter')}
+            {target.isNPC
+              ? t('characters.npc')
+              : t('characters.playerCharacter')}
           </p>
           <h2>{t(target.character ? 'characters.edit' : 'characters.new')}</h2>
         </div>
@@ -125,7 +136,10 @@ function CharacterEditor({
         {!target.character && (
           <label>
             {t('characters.template')}
-            <select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
+            <select
+              value={templateId}
+              onChange={(event) => setTemplateId(event.target.value)}
+            >
               {templates.map((item) => (
                 <option key={item.templateId} value={item.templateId}>
                   {item.name}
@@ -136,7 +150,12 @@ function CharacterEditor({
         )}
         <label>
           {t('characters.name')}
-          <input name="name" defaultValue={target.character?.name} maxLength={100} required />
+          <input
+            name="name"
+            defaultValue={target.character?.name}
+            maxLength={100}
+            required
+          />
         </label>
         <label>
           {t('characters.description')}
@@ -163,11 +182,19 @@ function CharacterEditor({
           <fieldset className="character-fieldset">
             <legend>{template.name}</legend>
             {template.schema.fields.map((field) => (
-              <SchemaField key={field.key} field={field} value={target.character?.data[field.key]} />
+              <SchemaField
+                key={field.key}
+                field={field}
+                value={target.character?.data[field.key]}
+              />
             ))}
           </fieldset>
         )}
-        {error && <p className="form-error" role="alert">{error}</p>}
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
         <button disabled={save.isPending}>
           {t(target.character ? 'common.save' : 'characters.create')}
         </button>
@@ -176,11 +203,21 @@ function CharacterEditor({
   );
 }
 
-function SchemaField({ field, value }: { field: CharacterField; value: unknown }) {
+function SchemaField({
+  field,
+  value,
+}: {
+  field: CharacterField;
+  value: unknown;
+}) {
   if (field.type === 'boolean') {
     return (
       <label className="checkbox-field">
-        <input name={field.key} type="checkbox" defaultChecked={value === true} />
+        <input
+          name={field.key}
+          type="checkbox"
+          defaultChecked={value === true}
+        />
         {field.label}
       </label>
     );
@@ -190,9 +227,15 @@ function SchemaField({ field, value }: { field: CharacterField; value: unknown }
     return (
       <label>
         {field.label}
-        <select name={field.key} defaultValue={typeof value === 'string' ? value : ''} required={field.required}>
+        <select
+          name={field.key}
+          defaultValue={typeof value === 'string' ? value : ''}
+          required={field.required}
+        >
           {!field.required && <option value="" />}
-          {field.options?.map((option) => <option key={option}>{option}</option>)}
+          {field.options?.map((option) => (
+            <option key={option}>{option}</option>
+          ))}
         </select>
       </label>
     );
@@ -204,7 +247,9 @@ function SchemaField({ field, value }: { field: CharacterField; value: unknown }
       <input
         name={field.key}
         type={field.type === 'number' ? 'number' : 'text'}
-        defaultValue={typeof value === 'string' || typeof value === 'number' ? value : ''}
+        defaultValue={
+          typeof value === 'string' || typeof value === 'number' ? value : ''
+        }
         min={field.min}
         max={field.max}
         maxLength={field.maxLength}
@@ -230,13 +275,17 @@ export function CharactersPage() {
   });
   const characters = useQuery({
     queryKey: ['characters', campaignId],
-    queryFn: () => api.request<Character[]>(`/campaigns/${campaignId}/characters`),
+    queryFn: () =>
+      api.request<Character[]>(`/campaigns/${campaignId}/characters`),
     enabled: Boolean(campaignId),
     retry: false,
   });
   const templates = useQuery({
     queryKey: ['character-templates', campaign.data?.system],
-    queryFn: () => api.request<CharacterTemplate[]>(`/game-systems/${campaign.data?.system}/templates`),
+    queryFn: () =>
+      api.request<CharacterTemplate[]>(
+        `/game-systems/${campaign.data?.system}/templates`,
+      ),
     enabled: Boolean(campaign.data?.system),
     retry: false,
   });
@@ -253,22 +302,31 @@ export function CharactersPage() {
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });
   const remove = useMutation({
-    mutationFn: (characterId: string) => api.request<void>(`/characters/${characterId}`, { method: 'DELETE' }),
+    mutationFn: (characterId: string) =>
+      api.request<void>(`/characters/${characterId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['characters', campaignId] });
+      void queryClient.invalidateQueries({
+        queryKey: ['characters', campaignId],
+      });
       setError(undefined);
     },
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });
 
   const visibleCharacters = useMemo(() => {
-    if (filter === 'players') return characters.data?.filter((character) => !character.isNPC);
-    if (filter === 'npcs') return characters.data?.filter((character) => character.isNPC);
+    if (filter === 'players')
+      return characters.data?.filter((character) => !character.isNPC);
+    if (filter === 'npcs')
+      return characters.data?.filter((character) => character.isNPC);
     return characters.data;
   }, [characters.data, filter]);
 
   if (campaign.isError || characters.isError) {
-    return <main className="page-state" role="alert">{t('errors.resource.not_found')}</main>;
+    return (
+      <main className="page-state" role="alert">
+        {t('errors.resource.not_found')}
+      </main>
+    );
   }
 
   const data = campaign.data;
@@ -280,21 +338,33 @@ export function CharactersPage() {
       <header className="topbar">
         <Link to="/campaigns">Loopkeeper</Link>
         <span>{profile?.name ?? profile?.email}</span>
-        <button className="button-ghost" onClick={() => void signOut()}>{t('auth.signOut')}</button>
+        <button className="button-ghost" onClick={() => void signOut()}>
+          {t('auth.signOut')}
+        </button>
       </header>
       <section className="workspace-heading">
-        <Link className="back-link" to={basePath}>← {t('workspace.backToCampaign')}</Link>
+        <Link className="back-link" to={basePath}>
+          ← {t('workspace.backToCampaign')}
+        </Link>
         <div>
-          <p className="kicker">{data ? t(`workspace.roles.${data.currentUserRole}`) : '…'}</p>
+          <p className="kicker">
+            {data ? t(`workspace.roles.${data.currentUserRole}`) : '…'}
+          </p>
           <h1>{data?.title ?? '…'}</h1>
         </div>
       </section>
       <nav className="workspace-nav" aria-label={t('campaigns.title')}>
-        <NavLink end to={basePath}>{t('workspace.overview')}</NavLink>
+        <NavLink end to={basePath}>
+          {t('workspace.overview')}
+        </NavLink>
         <NavLink to={`${basePath}/board`}>{t('workspace.board')}</NavLink>
-        <NavLink to={`${basePath}/characters`}>{t('workspace.characters')}</NavLink>
-        <span>{t('workspace.notes')}</span>
-        {data?.currentUserRole === 'OWNER' && <span>{t('workspace.members')}</span>}
+        <NavLink to={`${basePath}/characters`}>
+          {t('workspace.characters')}
+        </NavLink>
+        <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
+        {data?.currentUserRole === 'OWNER' && (
+          <span>{t('workspace.members')}</span>
+        )}
       </nav>
       <section className="page-header character-page-header">
         <div>
@@ -303,15 +373,29 @@ export function CharactersPage() {
         </div>
         <div className="action-row">
           {data?.currentUserRole === 'PLAYER' && templates.data?.length ? (
-            <button onClick={() => setEditor({ isNPC: false })}>{t('characters.newPlayerCharacter')}</button>
+            <button onClick={() => setEditor({ isNPC: false })}>
+              {t('characters.newPlayerCharacter')}
+            </button>
           ) : null}
           {data?.currentUserRole === 'OWNER' && templates.data?.length ? (
-            <button onClick={() => setEditor({ isNPC: true })}>{t('characters.newNpc')}</button>
+            <button onClick={() => setEditor({ isNPC: true })}>
+              {t('characters.newNpc')}
+            </button>
           ) : null}
         </div>
       </section>
-      {editor ? <CharacterEditor target={editor} templates={templates.data ?? []} onClose={() => setEditor(undefined)} /> : null}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      {editor ? (
+        <CharacterEditor
+          target={editor}
+          templates={templates.data ?? []}
+          onClose={() => setEditor(undefined)}
+        />
+      ) : null}
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="filter-row" aria-label={t('characters.filtersLabel')}>
         {(['all', 'players', 'npcs'] as const).map((item) => (
           <button
@@ -329,31 +413,59 @@ export function CharactersPage() {
       ) : visibleCharacters?.length ? (
         <section className="character-list">
           {visibleCharacters.map((character) => {
-            const editable = canEdit(character, profile?.userId, data?.currentUserRole ?? 'VIEWER');
+            const editable = canEdit(
+              character,
+              profile?.userId,
+              data?.currentUserRole ?? 'VIEWER',
+            );
             return (
               <article className="character-card" key={character.characterId}>
                 <div>
-                  <p className="kicker">{character.isNPC ? t('characters.npc') : t('characters.playerCharacter')}</p>
+                  <p className="kicker">
+                    {character.isNPC
+                      ? t('characters.npc')
+                      : t('characters.playerCharacter')}
+                  </p>
                   <h3>{character.name}</h3>
                   {character.description && <p>{character.description}</p>}
                 </div>
                 <div className="action-row">
                   {canAddToBoard && (
-                    <button className="button-ghost" type="button" onClick={() => addToBoard.mutate(character.characterId)}>
+                    <button
+                      className="button-ghost"
+                      type="button"
+                      onClick={() => addToBoard.mutate(character.characterId)}
+                    >
                       {t('characters.addToBoard')}
                     </button>
                   )}
                   {editable && (
-                    <button className="button-ghost" type="button" onClick={() => setEditor({ character, isNPC: character.isNPC })}>
+                    <button
+                      className="button-ghost"
+                      type="button"
+                      onClick={() =>
+                        setEditor({ character, isNPC: character.isNPC })
+                      }
+                    >
                       {t('common.edit')}
                     </button>
                   )}
                   {editable && (
-                    <button className="button-danger" type="button" onClick={() => {
-                      if (window.confirm(t('characters.deleteConfirmation', { name: character.name }))) {
-                        remove.mutate(character.characterId);
-                      }
-                    }}>
+                    <button
+                      className="button-danger"
+                      type="button"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            t('characters.deleteConfirmation', {
+                              name: character.name,
+                            }),
+                          )
+                        ) {
+                          remove.mutate(character.characterId);
+                        }
+                      }}
+                    >
                       {t('common.delete')}
                     </button>
                   )}
@@ -363,7 +475,9 @@ export function CharactersPage() {
           })}
         </section>
       ) : (
-        <section className="panel empty-state"><p>{t('characters.empty')}</p></section>
+        <section className="panel empty-state">
+          <p>{t('characters.empty')}</p>
+        </section>
       )}
     </main>
   );

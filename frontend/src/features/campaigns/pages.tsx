@@ -163,7 +163,7 @@ export function CampaignWorkspacePage({
         <NavLink to={`${basePath}/characters`}>
           {t('workspace.characters')}
         </NavLink>
-        <span>{t('workspace.notes')}</span>
+        <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
         {data?.currentUserRole === 'OWNER' && (
           <span>{t('workspace.members')}</span>
         )}

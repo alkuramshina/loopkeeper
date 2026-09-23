@@ -7,6 +7,7 @@ import {
 } from '../features/campaigns/pages';
 import { InvitationPage } from '../features/campaigns/invitation-page';
 import { CharactersPage } from '../features/campaigns/characters-page';
+import { NotesPage } from '../features/campaigns/notes-page';
 import { AuthPage } from '../auth/auth-page';
 
 function ProtectedRoute() {
@@ -59,6 +60,7 @@ export function AppRouter() {
           path="/campaigns/:campaignId/characters"
           element={<CharactersPage />}
         />
+        <Route path="/campaigns/:campaignId/notes" element={<NotesPage />} />
       </Route>
       <Route path="/invitations/:token" element={<InvitationEntry />} />
       <Route path="*" element={<Navigate to="/campaigns" replace />} />

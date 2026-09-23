@@ -279,6 +279,86 @@ textarea {
 .empty-state {
   margin-top: 1rem;
 }
+.note-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.note-page-header h2 {
+  margin: 0;
+}
+.notes-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.35fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+.note-list {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+}
+.note-list-item {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  color: #262521;
+  background: #fffdf7;
+  border: 1px solid #d4cfc4;
+  text-align: left;
+}
+.note-list-item.selected {
+  border-color: #6d1f25;
+  box-shadow: 0 0 0 2px #6d1f2530;
+}
+.visibility-badge {
+  display: inline-block;
+  margin: 0;
+  padding: 0.15rem 0.4rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  background: #e4dfd4;
+  color: #504d46;
+}
+.visibility-private,
+.visibility-master_only {
+  background: #e9d8d9;
+  color: #6d1f25;
+}
+.visibility-players {
+  background: #dce4d1;
+  color: #3f5424;
+}
+.preview-panel {
+  padding: 1rem;
+  border: 1px dashed #aaa396;
+  border-radius: 7px;
+}
+.markdown-preview {
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview p {
+  margin: 0.6rem 0;
+}
+.markdown-preview ul {
+  margin: 0.6rem 0;
+  padding-left: 1.25rem;
+}
+.markdown-preview code {
+  padding: 0.1rem 0.25rem;
+  background: #e4dfd4;
+  border-radius: 3px;
+}
+.note-detail {
+  min-width: 0;
+}
+.note-detail .section-heading {
+  align-items: start;
+  margin-bottom: 1rem;
+}
 .board-preview p {
   margin: 0.25rem 0;
 }
@@ -301,9 +381,13 @@ textarea {
     overflow-x: auto;
   }
   .character-page-header,
+  .note-page-header,
   .character-card {
     align-items: stretch;
     flex-direction: column;
+  }
+  .notes-layout {
+    grid-template-columns: 1fr;
   }
   .character-card .action-row {
     justify-content: start;

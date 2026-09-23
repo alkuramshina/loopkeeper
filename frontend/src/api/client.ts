@@ -107,3 +107,15 @@ export type Character = {
   isNPC: boolean;
   isActive: boolean;
 };
+
+export type NoteVisibility = 'PRIVATE' | 'MASTER_ONLY' | 'PLAYERS' | 'PUBLIC';
+
+export type Note = {
+  noteId: string;
+  campaignId: string;
+  authorId: string;
+  title: string;
+  content: string;
+  visibility: NoteVisibility;
+  updatedAt: string;
+};
