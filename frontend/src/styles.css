@@ -817,9 +817,20 @@ textarea {
 .markdown-preview p {
   margin: 0.6rem 0;
 }
-.markdown-preview ul {
+.markdown-preview ul,
+.markdown-preview ol {
   margin: 0.6rem 0;
   padding-left: 1.25rem;
+}
+.markdown-preview blockquote {
+  margin: 0.75rem 0;
+  padding-left: 0.9rem;
+  border-left: 3px solid #bdb8ad;
+  color: #625e56;
+}
+.markdown-preview a {
+  color: #2e5f88;
+  text-decoration-thickness: 1px;
 }
 .markdown-preview code {
   padding: 0.1rem 0.25rem;

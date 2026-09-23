@@ -1,9 +1,10 @@
-import { FormEvent, Fragment, useMemo, useState, type ReactNode } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Campaign, Note, NoteVisibility } from '../../api/client';
+import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 
@@ -30,69 +31,31 @@ function canManage(
   return role === 'OWNER' || note.authorId === profileId;
 }
 
-function InlineMarkdown({ content }: { content: string }) {
-  const parts = content.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith('`') && part.endsWith('`'))
-      return <code key={index}>{part.slice(1, -1)}</code>;
-    if (part.startsWith('**') && part.endsWith('**'))
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
-    if (part.startsWith('*') && part.endsWith('*'))
-      return <em key={index}>{part.slice(1, -1)}</em>;
-    return <Fragment key={index}>{part}</Fragment>;
-  });
+function safeMarkdownUrl(url: string) {
+  return /^(https?:|mailto:)/i.test(url) ? url : '';
 }
 
 function MarkdownPreview({ content }: { content: string }) {
-  const lines = content.split('\n');
-  const result: ReactNode[] = [];
-  let list: string[] = [];
-
-  const flushList = () => {
-    if (list.length) {
-      result.push(
-        <ul key={`list-${result.length}`}>
-          {list.map((item, index) => (
-            <li key={index}>
-              <InlineMarkdown content={item} />
-            </li>
-          ))}
-        </ul>,
-      );
-      list = [];
-    }
-  };
-
-  lines.forEach((line, index) => {
-    const heading = /^(#{1,3})\s+(.+)$/.exec(line);
-    const item = /^[-*]\s+(.+)$/.exec(line);
-    if (item) {
-      list.push(item[1]);
-      return;
-    }
-    flushList();
-    if (heading) {
-      const level = heading[1].length;
-      const text = <InlineMarkdown content={heading[2]} />;
-      result.push(
-        level === 1 ? (
-          <h1 key={index}>{text}</h1>
-        ) : level === 2 ? (
-          <h2 key={index}>{text}</h2>
-        ) : (
-          <h3 key={index}>{text}</h3>
-        ),
-      );
-    } else if (line) {
-      result.push(
-        <p key={index}>
-          <InlineMarkdown content={line} />
-        </p>,
-      );
-    }
-  });
-  flushList();
-  return <div className="markdown-preview">{result}</div>;
+  return (
+    <div className="markdown-preview">
+      <ReactMarkdown
+        components={{
+          a: ({ href, children }) => (
+            <a
+              href={href || undefined}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              {children}
+            </a>
+          ),
+        }}
+        urlTransform={safeMarkdownUrl}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 function NoteEditor({

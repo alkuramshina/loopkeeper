@@ -18,6 +18,7 @@
     "react": "latest",
     "react-dom": "latest",
     "react-i18next": "^17.0.15",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "latest",
     "vite": "latest"
   },
