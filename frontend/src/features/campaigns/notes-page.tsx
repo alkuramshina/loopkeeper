@@ -294,8 +294,20 @@ export function NotesPage() {
           {t('workspace.characters')}
         </NavLink>
         <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
+        {(role === 'OWNER' || role === 'PLAYER') && (
+          <NavLink to={`${basePath}/locations`}>
+            {t('workspace.locations')}
+          </NavLink>
+        )}
         {role === 'OWNER' && (
-          <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
+          <>
+            <NavLink to={`${basePath}/members`}>
+              {t('workspace.members')}
+            </NavLink>
+            <NavLink to={`${basePath}/settings/backgrounds`}>
+              {t('workspace.backgroundSettings')}
+            </NavLink>
+          </>
         )}
       </nav>
       <section className="page-header note-page-header">

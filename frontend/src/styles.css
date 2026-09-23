@@ -170,7 +170,39 @@ textarea {
   font-size: 0.85rem;
 }
 .workspace-overview {
+  position: relative;
+  min-height: 14rem;
   margin-top: 1.5rem;
+  overflow: hidden;
+}
+.workspace-overview-content {
+  position: relative;
+  z-index: 1;
+}
+.campaign-background-layer {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  background: #e4dfd4;
+}
+.campaign-background-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.campaign-background-fallback {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e4dfd4, #d7d0c3);
+}
+.workspace-overview-content {
+  padding: 1rem;
+  border-radius: 7px;
+  background: #fffdf7e8;
 }
 .workspace-overview dl {
   display: grid;
@@ -438,11 +470,70 @@ textarea {
   gap: 1rem;
 }
 .board-canvas {
+  position: relative;
   min-height: 65vh;
   overflow: hidden;
   border: 1px solid #aaa396;
   border-radius: 10px;
   background: #e4dfd4;
+}
+.board-canvas .react-flow {
+  position: relative;
+  z-index: 1;
+}
+.background-settings {
+  max-width: 46rem;
+}
+.background-settings h3 {
+  margin: 0;
+}
+.background-entry {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid #d4cfc4;
+  border-radius: 7px;
+}
+.background-entry legend {
+  padding: 0 0.25rem;
+  color: #504d46;
+  font-weight: 700;
+}
+.locations-layout {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.35fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+.location-list {
+  display: grid;
+  align-content: start;
+  gap: 0.5rem;
+}
+.location-list-item {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+  color: #262521;
+  background: #fffdf7;
+  border: 1px solid #d4cfc4;
+  text-align: left;
+}
+.location-list-item.selected {
+  border-color: #6d1f25;
+  box-shadow: 0 0 0 2px #6d1f2530;
+}
+.location-detail form {
+  display: grid;
+  gap: 1rem;
+}
+.location-image {
+  display: block;
+  width: 100%;
+  max-height: 20rem;
+  object-fit: contain;
+  background: #e4dfd4;
+  border-radius: 7px;
 }
 .flow-card {
   width: 100%;
@@ -525,7 +616,8 @@ textarea {
     flex-direction: column;
   }
   .notes-layout,
-  .members-layout {
+  .members-layout,
+  .locations-layout {
     grid-template-columns: 1fr;
   }
   .member-section {

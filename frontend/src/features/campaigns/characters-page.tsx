@@ -362,8 +362,21 @@ export function CharactersPage() {
           {t('workspace.characters')}
         </NavLink>
         <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
+        {(data?.currentUserRole === 'OWNER' ||
+          data?.currentUserRole === 'PLAYER') && (
+          <NavLink to={`${basePath}/locations`}>
+            {t('workspace.locations')}
+          </NavLink>
+        )}
         {data?.currentUserRole === 'OWNER' && (
-          <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
+          <>
+            <NavLink to={`${basePath}/members`}>
+              {t('workspace.members')}
+            </NavLink>
+            <NavLink to={`${basePath}/settings/backgrounds`}>
+              {t('workspace.backgroundSettings')}
+            </NavLink>
+          </>
         )}
       </nav>
       <section className="page-header character-page-header">

@@ -92,7 +92,14 @@ describe('Campaign tenant access (e2e)', () => {
       .get(`/campaigns/${campaignId}`)
       .set(authenticate(player))
       .expect(200)
-      .expect({ ...campaignResponse.body });
+      .expect((response) => {
+        const { currentUserRole: _ownerRole, ...ownerCampaign } =
+          campaignResponse.body;
+        expect(response.body).toEqual({
+          ...ownerCampaign,
+          currentUserRole: 'PLAYER',
+        });
+      });
 
     await request(app.getHttpServer())
       .patch(`/campaigns/${campaignId}`)

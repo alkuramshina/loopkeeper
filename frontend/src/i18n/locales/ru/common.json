@@ -38,6 +38,8 @@
     "characters": "Персонажи",
     "notes": "Заметки",
     "members": "Участники",
+    "locations": "Локации",
+    "backgroundSettings": "Фоны",
     "role": "Ваша роль",
     "roles": {
       "OWNER": "Мастер",
@@ -115,6 +117,37 @@
       "NOTE_REFERENCE": "Заметка",
       "CHARACTER_REFERENCE": "Персонаж"
     }
+  },
+  "backgrounds": {
+    "title": "Фоны кампании",
+    "selectionMode": "Способ выбора",
+    "fixedBackground": "Фиксированный фон",
+    "noFixedBackground": "Не выбран",
+    "list": "Доступные фоны",
+    "add": "Добавить фон",
+    "item": "Фон {{number}}",
+    "name": "Название",
+    "imageUrl": "HTTPS-адрес изображения",
+    "enabled": "Использовать этот фон",
+    "order": "Порядок",
+    "unnamed": "Без названия",
+    "modes": {
+      "FIXED": "Фиксированный",
+      "RANDOM": "Случайный"
+    }
+  },
+  "locations": {
+    "title": "Локации",
+    "new": "Новая локация",
+    "edit": "Редактирование локации",
+    "name": "Название",
+    "description": "Описание",
+    "imageUrl": "HTTPS-адрес изображения",
+    "order": "Порядок",
+    "orderValue": "Порядок: {{value}}",
+    "empty": "В кампании пока нет локаций.",
+    "select": "Выберите локацию из списка.",
+    "deleteConfirmation": "Удалить локацию «{{title}}»?"
   },
   "members": {
     "title": "Участники и приглашения",

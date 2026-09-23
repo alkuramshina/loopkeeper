@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CampaignRole, Prisma } from '@prisma/client';
+import { CampaignBackgroundDto } from './dto/campaign-background-settings.dto';
 import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { CampaignAccessService } from './access/campaign-access.service';
@@ -16,6 +17,9 @@ const campaignForCurrentUser = (userId: string) => ({
   system: true,
   description: true,
   coverUrl: true,
+  backgroundSelectionMode: true,
+  fixedBackgroundId: true,
+  backgrounds: true,
   ownerId: true,
   members: {
     where: { userId },
@@ -102,10 +106,32 @@ export class CampaignService {
     campaign: Prisma.CampaignGetPayload<{ select: ReturnType<typeof campaignForCurrentUser> }>,
     userId: string,
   ) {
-    const { members, ownerId, ...campaignData } = campaign;
+    const {
+      members,
+      ownerId,
+      backgroundSelectionMode,
+      fixedBackgroundId,
+      backgrounds,
+      ...campaignData
+    } = campaign;
     const currentUserRole: CurrentUserRole =
       ownerId === userId ? 'OWNER' : members[0]!.campaignRole;
 
-    return { ...campaignData, currentUserRole };
+    const response = { ...campaignData, currentUserRole };
+
+    if (currentUserRole === 'OWNER' || currentUserRole === CampaignRole.PLAYER) {
+      return {
+        ...response,
+        backgroundConfig: {
+          selectionMode: backgroundSelectionMode,
+          fixedBackgroundId,
+          backgrounds: (backgrounds as unknown as CampaignBackgroundDto[]).filter(
+            (background) => background.isEnabled,
+          ),
+        },
+      };
+    }
+
+    return response;
   }
 }

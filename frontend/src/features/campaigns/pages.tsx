@@ -5,6 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Board, Campaign } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import {
+  CampaignBackgroundLayer,
+  useCampaignBackground,
+} from './use-campaign-background';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -122,13 +126,18 @@ export function CampaignWorkspacePage({
     retry: false,
   });
 
+  const data = campaign.data;
+  const background = useCampaignBackground(
+    campaignId,
+    data?.backgroundConfig,
+    data?.currentUserRole,
+  );
   if (campaign.isError)
     return (
       <main className="page-state" role="alert">
         {t('errors.resource.not_found')}
       </main>
     );
-  const data = campaign.data;
   const basePath = `/campaigns/${campaignId}`;
 
   return (
@@ -164,22 +173,41 @@ export function CampaignWorkspacePage({
           {t('workspace.characters')}
         </NavLink>
         <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
+        {(data?.currentUserRole === 'OWNER' ||
+          data?.currentUserRole === 'PLAYER') && (
+          <NavLink to={`${basePath}/locations`}>
+            {t('workspace.locations')}
+          </NavLink>
+        )}
         {data?.currentUserRole === 'OWNER' && (
-          <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
+          <>
+            <NavLink to={`${basePath}/members`}>
+              {t('workspace.members')}
+            </NavLink>
+            <NavLink to={`${basePath}/settings/backgrounds`}>
+              {t('workspace.backgroundSettings')}
+            </NavLink>
+          </>
         )}
       </nav>
       {section === 'overview' ? (
         <section className="workspace-overview panel">
-          <h2>{t('workspace.summary')}</h2>
-          <p>{data?.description || '—'}</p>
-          <dl>
-            <dt>{t('workspace.system')}</dt>
-            <dd>{data?.system ?? '—'}</dd>
-          </dl>
-          <Link className="button-link" to={`${basePath}/board`}>
-            {t('workspace.openBoard')}
-          </Link>
-          <p className="muted">{t('workspace.comingSoon')}</p>
+          {(data?.currentUserRole === 'OWNER' ||
+            data?.currentUserRole === 'PLAYER') && (
+            <CampaignBackgroundLayer background={background} />
+          )}
+          <div className="workspace-overview-content">
+            <h2>{t('workspace.summary')}</h2>
+            <p>{data?.description || '—'}</p>
+            <dl>
+              <dt>{t('workspace.system')}</dt>
+              <dd>{data?.system ?? '—'}</dd>
+            </dl>
+            <Link className="button-link" to={`${basePath}/board`}>
+              {t('workspace.openBoard')}
+            </Link>
+            <p className="muted">{t('workspace.comingSoon')}</p>
+          </div>
         </section>
       ) : (
         <section className="board-preview">

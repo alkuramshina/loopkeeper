@@ -29,6 +29,10 @@ import {
   Campaign,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import {
+  CampaignBackgroundLayer,
+  useCampaignBackground,
+} from './use-campaign-background';
 
 type NodeDimensions = {
   x: number;
@@ -408,13 +412,18 @@ export function BoardPage() {
     [persistNodeDimensions],
   );
 
+  const data = campaign.data;
+  const background = useCampaignBackground(
+    campaignId,
+    data?.backgroundConfig,
+    data?.currentUserRole,
+  );
   if (campaign.isError || board.isError)
     return (
       <main className="page-state" role="alert">
         {t('workspace.boardUnavailable')}
       </main>
     );
-  const data = campaign.data;
   const basePath = `/campaigns/${campaignId}`;
 
   return (
@@ -446,8 +455,21 @@ export function BoardPage() {
           {t('workspace.characters')}
         </NavLink>
         <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
+        {(data?.currentUserRole === 'OWNER' ||
+          data?.currentUserRole === 'PLAYER') && (
+          <NavLink to={`${basePath}/locations`}>
+            {t('workspace.locations')}
+          </NavLink>
+        )}
         {data?.currentUserRole === 'OWNER' && (
-          <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
+          <>
+            <NavLink to={`${basePath}/members`}>
+              {t('workspace.members')}
+            </NavLink>
+            <NavLink to={`${basePath}/settings/backgrounds`}>
+              {t('workspace.backgroundSettings')}
+            </NavLink>
+          </>
         )}
       </nav>
       <section className="board-toolbar">
@@ -478,6 +500,10 @@ export function BoardPage() {
       ) : (
         <section className="board-workspace">
           <div className="board-canvas">
+            {(data?.currentUserRole === 'OWNER' ||
+              data?.currentUserRole === 'PLAYER') && (
+              <CampaignBackgroundLayer background={background} />
+            )}
             <ReactFlow
               edges={edges}
               fitView

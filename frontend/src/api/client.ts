@@ -61,12 +61,39 @@ export class ApiClient {
 
 export type Profile = { userId: string; email: string; name?: string };
 export type AuthResponse = { accessToken: string };
+export type CampaignBackground = {
+  backgroundId: string;
+  name: string;
+  imageUrl: string;
+  isEnabled: boolean;
+  sortOrder: number;
+};
+
+export type CampaignBackgroundConfig = {
+  selectionMode: 'FIXED' | 'RANDOM';
+  fixedBackgroundId: string | null;
+  backgrounds: CampaignBackground[];
+};
+
 export type Campaign = {
   campaignId: string;
   title: string;
   description?: string | null;
   system?: string | null;
   currentUserRole: 'OWNER' | 'PLAYER' | 'VIEWER';
+  backgroundConfig?: CampaignBackgroundConfig;
+};
+
+export type Location = {
+  locationId: string;
+  title: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  sortOrder: number;
+  campaignId: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
 };
 export type BoardCard = {
   cardId: string;

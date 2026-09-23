@@ -22,6 +22,7 @@ model User {
   authSessions               AuthSession[]
   createdCampaignInvitations CampaignInvitation[] @relation("CampaignInvitationCreator")
   notes                      Note[]
+  createdLocations           CampaignLocation[]
 
   investigationCards InvestigationCard[] @relation("InvestigationCardCreator")
   investigationLinks InvestigationLink[] @relation("InvestigationLinkCreator")
@@ -59,6 +60,10 @@ model Campaign {
   members     CampaignMember[]     @relation("CampaignMembers")
   invitations CampaignInvitation[]
   notes       Note[]
+  locations   CampaignLocation[]
+  backgrounds Json                   @default("[]")
+  backgroundSelectionMode CampaignBackgroundSelectionMode @default(FIXED)
+  fixedBackgroundId String?
 
   investigationBoard InvestigationBoard?
   investigationCards InvestigationCard[]
@@ -99,6 +104,23 @@ model CampaignInvitation {
   @@index([campaignId])
   @@index([expiresAt])
   @@map("campaign_invitations")
+}
+
+model CampaignLocation {
+  locationId  String   @id @default(uuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  title       String
+  description String?
+  imageUrl    String?
+  sortOrder   Int      @default(0)
+  campaign    Campaign @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
+  campaignId  String
+  createdBy   User     @relation(fields: [createdById], references: [userId])
+  createdById String
+
+  @@index([campaignId, sortOrder])
+  @@map("campaign_locations")
 }
 
 model Note {
@@ -245,6 +267,11 @@ model Character {
   @@index([campaignId])
   @@index([ownerId])
   @@map("characters")
+}
+
+enum CampaignBackgroundSelectionMode {
+  FIXED
+  RANDOM
 }
 
 enum InvestigationCardKind {

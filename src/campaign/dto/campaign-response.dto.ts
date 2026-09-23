@@ -1,5 +1,6 @@
 import { CampaignRole, System } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CampaignBackgroundRenderConfigDto } from './campaign-background-settings.dto';
 
 export class CampaignResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -25,4 +26,7 @@ export class CampaignResponseDto {
 
   @ApiProperty({ enum: ['OWNER', ...Object.values(CampaignRole)] })
   currentUserRole!: 'OWNER' | CampaignRole;
+
+  @ApiPropertyOptional({ type: CampaignBackgroundRenderConfigDto })
+  backgroundConfig?: CampaignBackgroundRenderConfigDto;
 }

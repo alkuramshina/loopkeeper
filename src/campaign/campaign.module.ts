@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { UserModule } from '../user/user.module';
 import { CampaignAccessService } from './access/campaign-access.service';
+import { CampaignBackgroundSettingsController } from './campaign-background-settings.controller';
+import { CampaignBackgroundSettingsService } from './campaign-background-settings.service';
 import { CampaignController } from './campaign.controller';
 import { CampaignInvitationController } from './campaign-invitation.controller';
 import { CampaignInvitationService } from './campaign-invitation.service';
@@ -13,11 +15,13 @@ import { CampaignService } from './campaign.service';
   imports: [PrismaModule, UserModule],
   controllers: [
     CampaignController,
+    CampaignBackgroundSettingsController,
     CampaignMemberController,
     CampaignInvitationController,
   ],
   providers: [
     CampaignService,
+    CampaignBackgroundSettingsService,
     CampaignAccessService,
     CampaignMemberService,
     CampaignInvitationService,
