@@ -21,6 +21,7 @@ type AuthState = {
     name?: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (payload: { name: string }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -98,6 +99,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, [api]);
 
+  const updateProfile = useCallback(
+    async (payload: { name: string }) => {
+      const updated = await api.request<Profile>('/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      setProfile(updated);
+    },
+    [api],
+  );
+
   useEffect(() => {
     if (sessionRestoreStarted.current) return;
     sessionRestoreStarted.current = true;
@@ -113,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn: (body) => authenticate('/auth/login', body),
         signUp: (body) => authenticate('/auth/register', body),
         signOut,
+        updateProfile,
       }}
     >
       {children}

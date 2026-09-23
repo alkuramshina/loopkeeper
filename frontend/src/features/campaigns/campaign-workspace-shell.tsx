@@ -41,6 +41,10 @@ export function CampaignWorkspaceShell({
       ? [
           { to: `${basePath}/members`, label: t('workspace.members') },
           {
+            to: `${basePath}/settings`,
+            label: t('workspace.campaignSettings'),
+          },
+          {
             to: `${basePath}/settings/backgrounds`,
             label: t('workspace.backgroundSettings'),
           },
@@ -84,7 +88,9 @@ export function CampaignWorkspaceShell({
           </div>
           {navigation('campaign-workspace-shell-navigation')}
           <footer className="campaign-workspace-shell-profile">
-            <span>{profile?.name ?? profile?.email}</span>
+            <Link to="/settings/account">
+              {profile?.name ?? profile?.email}
+            </Link>
             <button
               className="button-ghost"
               onClick={() => void signOut()}

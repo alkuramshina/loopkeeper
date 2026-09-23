@@ -9,6 +9,28 @@
     "edit": "Редактировать",
     "delete": "Удалить"
   },
+  "account": {
+    "kicker": "Ваш аккаунт",
+    "title": "Настройки аккаунта",
+    "profile": "Профиль",
+    "password": "Пароль",
+    "saved": "Сохранено",
+    "currentPassword": "Текущий пароль",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Повторите новый пароль",
+    "passwordMismatch": "Новые пароли не совпадают.",
+    "passwordNotice": "После смены пароля нужно будет войти снова на всех устройствах.",
+    "changePassword": "Изменить пароль"
+  },
+  "campaignSettings": {
+    "title": "Настройки кампании",
+    "details": "Основные сведения",
+    "saved": "Сохранено",
+    "dangerTitle": "Удаление кампании",
+    "dangerDescription": "Это действие удалит кампанию и её связанные данные. Отменить его нельзя.",
+    "delete": "Удалить кампанию",
+    "deleteConfirmation": "Удалить кампанию «{{title}}»? Это действие нельзя отменить."
+  },
   "auth": {
     "signIn": "Войти",
     "signUp": "Создать аккаунт",
@@ -93,6 +115,7 @@
     "notes": "Заметки",
     "members": "Участники",
     "locations": "Локации",
+    "campaignSettings": "Настройки кампании",
     "backgroundSettings": "Фоны",
     "role": "Ваша роль",
     "roles": {

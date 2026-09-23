@@ -12,6 +12,8 @@ import { MembersPage } from '../features/campaigns/members-page';
 import { BoardPage } from '../features/campaigns/board-page';
 import { BackgroundSettingsPage } from '../features/campaigns/background-settings-page';
 import { LocationsPage } from '../features/campaigns/locations-page';
+import { CampaignSettingsPage } from '../features/campaigns/campaign-settings-page';
+import { AccountSettingsPage } from '../features/account/account-settings-page';
 import { AuthPage } from '../auth/auth-page';
 
 function ProtectedRoute() {
@@ -52,6 +54,7 @@ export function AppRouter() {
       </Route>
       <Route element={<ProtectedRoute />}>
         <Route path="/campaigns" element={<CampaignListPage />} />
+        <Route path="/settings/account" element={<AccountSettingsPage />} />
         <Route
           path="/campaigns/:campaignId"
           element={<CampaignWorkspacePage section="overview" />}
@@ -60,6 +63,10 @@ export function AppRouter() {
         <Route
           path="/campaigns/:campaignId/locations"
           element={<LocationsPage />}
+        />
+        <Route
+          path="/campaigns/:campaignId/settings"
+          element={<CampaignSettingsPage />}
         />
         <Route
           path="/campaigns/:campaignId/settings/backgrounds"
