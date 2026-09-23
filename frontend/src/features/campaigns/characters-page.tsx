@@ -333,6 +333,12 @@ export function CharactersPage() {
   const data = campaign.data;
   const basePath = `/campaigns/${campaignId}`;
   const canAddToBoard = data?.currentUserRole !== 'VIEWER';
+  const hasActivePlayerCharacter = characters.data?.some(
+    (character) =>
+      !character.isNPC &&
+      character.isActive &&
+      character.ownerId === profile?.userId,
+  );
 
   return (
     <CampaignWorkspaceShell campaign={data}>
@@ -342,7 +348,9 @@ export function CharactersPage() {
           <h2>{t('characters.title')}</h2>
         </div>
         <div className="action-row">
-          {data?.currentUserRole === 'PLAYER' && templates.data?.length ? (
+          {data?.currentUserRole === 'PLAYER' &&
+          templates.data?.length &&
+          !hasActivePlayerCharacter ? (
             <button onClick={() => setEditor({ isNPC: false })}>
               {t('characters.newPlayerCharacter')}
             </button>

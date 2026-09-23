@@ -30,25 +30,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const sessionRestoreStarted = useRef(false);
+  const refreshPromise = useRef<Promise<string | null> | null>(null);
 
-  const refresh = useCallback(async () => {
-    try {
-      const anonymousApi = new ApiClient(
-        () => null,
-        async () => null,
-      );
-      const result = await anonymousApi.request<AuthResponse>('/auth/refresh', {
-        method: 'POST',
-      });
-      setAccessToken(result.accessToken);
-      const refreshedApi = new ApiClient(() => result.accessToken, refresh);
-      setProfile(await refreshedApi.request<Profile>('/auth/me'));
-      return result.accessToken;
-    } catch {
-      setAccessToken(null);
-      setProfile(null);
-      return null;
-    }
+  const refresh = useCallback(() => {
+    if (refreshPromise.current) return refreshPromise.current;
+
+    const attempt = (async () => {
+      try {
+        const anonymousApi = new ApiClient(
+          () => null,
+          async () => null,
+        );
+        const result = await anonymousApi.request<AuthResponse>(
+          '/auth/refresh',
+          {
+            method: 'POST',
+          },
+        );
+        setAccessToken(result.accessToken);
+        const refreshedApi = new ApiClient(
+          () => result.accessToken,
+          async () => null,
+        );
+        setProfile(await refreshedApi.request<Profile>('/auth/me'));
+        return result.accessToken;
+      } catch {
+        setAccessToken(null);
+        setProfile(null);
+        return null;
+      }
+    })();
+
+    refreshPromise.current = attempt;
+    void attempt.finally(() => {
+      if (refreshPromise.current === attempt) refreshPromise.current = null;
+    });
+    return attempt;
   }, []);
 
   const api = useMemo(

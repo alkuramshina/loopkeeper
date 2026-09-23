@@ -335,7 +335,7 @@ export function BoardPage() {
     queryKey: ['board', campaignId],
     queryFn: () =>
       api.request<Board>(`/campaigns/${campaignId}/investigation-board`),
-    enabled: Boolean(campaignId),
+    enabled: Boolean(campaignId) && campaign.data?.currentUserRole !== 'VIEWER',
     retry: false,
   });
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BoardNodeData>>(
@@ -361,7 +361,7 @@ export function BoardPage() {
     (cardId: string, dimensions: NodeDimensions) => {
       updateNode.mutate({ cardId, dimensions });
     },
-    [updateNode],
+    [updateNode.mutate],
   );
 
   useEffect(() => {
@@ -419,13 +419,14 @@ export function BoardPage() {
     data?.backgroundConfig,
     data?.currentUserRole,
   );
-  if (campaign.isError || board.isError)
+  if (campaign.isError || board.isError || data?.currentUserRole === 'VIEWER')
     return (
       <main className="page-state" role="alert">
         {t('workspace.boardUnavailable')}
       </main>
     );
-  const basePath = `/campaigns/${campaignId}`;
+  const canManage =
+    data?.currentUserRole === 'OWNER' || data?.currentUserRole === 'PLAYER';
 
   return (
     <CampaignWorkspaceShell campaign={data}>
@@ -442,9 +443,11 @@ export function BoardPage() {
             >
               {t('board.refresh')}
             </button>
-            <button onClick={() => setEditor({ type: 'new-card' })}>
-              {t('board.newCard')}
-            </button>
+            {canManage && (
+              <button onClick={() => setEditor({ type: 'new-card' })}>
+                {t('board.newCard')}
+              </button>
+            )}
           </div>
         </section>
         {error && (
@@ -470,18 +473,27 @@ export function BoardPage() {
                 fitView
                 nodes={nodes}
                 nodeTypes={nodeTypes}
-                onConnect={onConnect}
+                nodesConnectable={canManage}
+                nodesDraggable={canManage}
+                onConnect={canManage ? onConnect : undefined}
                 onEdgesChange={onEdgesChange}
-                onEdgeClick={(_event, edge) => {
-                  const link = board.data?.links.find(
-                    (item) => item.linkId === edge.id,
-                  );
-                  if (link) setEditor({ type: 'link', link });
-                }}
-                onNodeClick={(_event, node) =>
-                  setEditor({ type: 'card', card: node.data.card })
+                onEdgeClick={
+                  canManage
+                    ? (_event, edge) => {
+                        const link = board.data?.links.find(
+                          (item) => item.linkId === edge.id,
+                        );
+                        if (link) setEditor({ type: 'link', link });
+                      }
+                    : undefined
                 }
-                onNodeDragStop={onNodeDragStop}
+                onNodeClick={
+                  canManage
+                    ? (_event, node) =>
+                        setEditor({ type: 'card', card: node.data.card })
+                    : undefined
+                }
+                onNodeDragStop={canManage ? onNodeDragStop : undefined}
                 onNodesChange={onNodesChange}
               >
                 <Background gap={20} />
@@ -489,7 +501,7 @@ export function BoardPage() {
                 <MiniMap />
               </ReactFlow>
             </div>
-            {editor && (
+            {canManage && editor && (
               <CardEditor
                 target={editor}
                 onClose={() => setEditor(undefined)}
