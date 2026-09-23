@@ -44,7 +44,11 @@ export function AppRouter() {
         <Route path="/campaigns" element={<CampaignListPage />} />
         <Route
           path="/campaigns/:campaignId"
-          element={<CampaignWorkspacePage />}
+          element={<CampaignWorkspacePage section="overview" />}
+        />
+        <Route
+          path="/campaigns/:campaignId/board"
+          element={<CampaignWorkspacePage section="board" />}
         />
       </Route>
       <Route path="/invitations/:token" element={<InvitationEntry />} />

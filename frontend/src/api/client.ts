@@ -61,7 +61,13 @@ export class ApiClient {
 
 export type Profile = { userId: string; email: string; name?: string };
 export type AuthResponse = { accessToken: string };
-export type Campaign = { campaignId: string; title: string; description?: string };
+export type Campaign = {
+  campaignId: string;
+  title: string;
+  description?: string | null;
+  system?: string | null;
+  currentUserRole: 'OWNER' | 'PLAYER' | 'VIEWER';
+};
 export type Board = {
   boardId: string;
   cards: Array<{ cardId: string; title: string; content?: string | null; tags: string[]; color?: string | null }>;

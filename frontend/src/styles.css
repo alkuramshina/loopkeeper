@@ -126,12 +126,72 @@ textarea {
   padding: 1rem;
   align-self: start;
 }
+.workspace-heading {
+  display: flex;
+  align-items: end;
+  gap: 1rem;
+  padding: 1.5rem 0 1rem;
+}
+.workspace-heading h1 {
+  margin: 0;
+}
+.workspace-heading .role-badge {
+  margin-left: auto;
+}
+.back-link {
+  display: block;
+  align-self: start;
+}
 .workspace-nav {
   display: flex;
   gap: 1rem;
   padding: 1rem 0;
   color: #625e56;
   border-bottom: 1px solid #d4cfc4;
+}
+.workspace-nav a {
+  text-decoration: none;
+}
+.workspace-nav a.active {
+  color: #262521;
+  font-weight: 700;
+  border-bottom: 2px solid #6d1f25;
+}
+.workspace-nav span {
+  color: #888176;
+}
+.role-badge {
+  display: inline-block;
+  margin: 0;
+  color: #504d46;
+  font-size: 0.85rem;
+}
+.workspace-overview {
+  margin-top: 1.5rem;
+}
+.workspace-overview dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+}
+.workspace-overview dt {
+  color: #726d63;
+}
+.workspace-overview dd {
+  margin: 0;
+}
+.button-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.65rem 0.9rem;
+  color: #fff;
+  background: #6d1f25;
+  border-radius: 7px;
+  text-decoration: none;
+}
+.muted {
+  color: #726d63;
+  font-size: 0.9rem;
 }
 .board-preview {
   min-height: 24rem;
@@ -155,6 +215,13 @@ textarea {
 @media (max-width: 700px) {
   .campaign-layout {
     grid-template-columns: 1fr;
+  }
+  .workspace-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .workspace-heading .role-badge {
+    margin-left: 0;
   }
   .workspace-nav {
     overflow-x: auto;
