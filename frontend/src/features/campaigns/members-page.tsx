@@ -12,6 +12,7 @@ import {
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { Avatar } from '../../components/avatar';
 
 const roles = ['PLAYER', 'VIEWER'] as const;
 
@@ -231,9 +232,17 @@ export function MembersPage() {
               <div className="member-list">
                 {members.data.map((member) => (
                   <article className="member-row" key={member.memberId}>
-                    <div>
-                      <strong>{member.user.name || member.user.email}</strong>
-                      {member.user.name && <p>{member.user.email}</p>}
+                    <div className="member-identity">
+                      <Avatar
+                        alt={member.user.name || member.user.email}
+                        imageUrl={member.user.avatarUrl}
+                        seed={member.user.userId}
+                        size="small"
+                      />
+                      <div>
+                        <strong>{member.user.name || member.user.email}</strong>
+                        {member.user.name && <p>{member.user.email}</p>}
+                      </div>
                     </div>
                     <div className="action-row">
                       <select

@@ -12,6 +12,7 @@ import {
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { Avatar } from '../../components/avatar';
 
 type Filter = 'all' | 'players' | 'npcs';
 
@@ -404,14 +405,21 @@ export function CharactersPage() {
             );
             return (
               <article className="character-card" key={character.characterId}>
-                <div>
-                  <p className="kicker">
-                    {character.isNPC
-                      ? t('characters.npc')
-                      : t('characters.playerCharacter')}
-                  </p>
-                  <h3>{character.name}</h3>
-                  {character.description && <p>{character.description}</p>}
+                <div className="character-card-identity">
+                  <Avatar
+                    alt={character.name}
+                    imageUrl={character.avatarUrl}
+                    seed={character.characterId}
+                  />
+                  <div>
+                    <p className="kicker">
+                      {character.isNPC
+                        ? t('characters.npc')
+                        : t('characters.playerCharacter')}
+                    </p>
+                    <h3>{character.name}</h3>
+                    {character.description && <p>{character.description}</p>}
+                  </div>
                 </div>
                 <div className="action-row">
                   {canAddToBoard && (
