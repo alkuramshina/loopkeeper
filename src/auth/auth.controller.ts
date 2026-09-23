@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
+import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiCommonErrors } from '../common/swagger/api-errors.decorator';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import jwtConfig from './config/jwt.config';
@@ -25,6 +27,7 @@ import { RefreshJwtAuthGuard } from './guards/refresh.guard';
 
 const AUTH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
 
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -35,6 +38,8 @@ export class AuthController {
 
   @Public()
   @Throttle(AUTH_THROTTLE)
+  @ApiOperation({ summary: 'Register a user and start a session' })
+  @ApiCommonErrors({ conflict: true, notFound: false, unauthorized: false })
   @Post('register')
   async register(
     @Body() registerDto: RegisterDto,
@@ -49,6 +54,8 @@ export class AuthController {
   @Public()
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sign in and start a session' })
+  @ApiCommonErrors({ notFound: false })
   @Post('login')
   @UseGuards(LocalAuthGuard)
   async login(
@@ -65,6 +72,8 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @UseGuards(RefreshJwtAuthGuard)
+  @ApiOperation({ summary: 'Rotate the refresh session and return a new access token' })
+  @ApiCommonErrors({ badRequest: false, notFound: false })
   @Post('refresh')
   async refresh(
     @Request() request: { user: TokenPayloadDto },
@@ -76,6 +85,10 @@ export class AuthController {
     return this.createLoginResponse(tokens);
   }
 
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Revoke the current refresh session' })
+  @ApiNoContentResponse()
+  @ApiCommonErrors({ badRequest: false, notFound: false })
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
@@ -92,12 +105,19 @@ export class AuthController {
     );
   }
 
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Get the authenticated user profile' })
+  @ApiCommonErrors({ badRequest: false })
   @Get('me')
   getProfile(@Request() request: { user: TokenPayloadDto }) {
     return this.authService.getProfile(request.user.userId);
   }
 
   @Throttle(AUTH_THROTTLE)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Change password and revoke all refresh sessions' })
+  @ApiNoContentResponse()
+  @ApiCommonErrors({ notFound: false })
   @Post('change-password')
   @HttpCode(HttpStatus.NO_CONTENT)
   async changePassword(

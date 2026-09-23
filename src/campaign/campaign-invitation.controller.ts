@@ -7,10 +7,13 @@ import {
   Post,
   Request,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { CampaignInvitationService } from './campaign-invitation.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 
+@ApiTags('Campaign invitations')
+@ApiBearerAuth('access-token')
 @Controller()
 export class CampaignInvitationController {
   constructor(private readonly invitations: CampaignInvitationService) {}

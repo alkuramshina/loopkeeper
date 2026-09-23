@@ -8,11 +8,14 @@ import {
   Post,
   Request,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { NoteService } from './note.service';
 
+@ApiTags('Notes')
+@ApiBearerAuth('access-token')
 @Controller()
 export class NoteController {
   constructor(private readonly notes: NoteService) {}

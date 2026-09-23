@@ -8,11 +8,14 @@ import {
   Post,
   Request,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { CampaignMemberService } from './campaign-member.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 
+@ApiTags('Campaign members')
+@ApiBearerAuth('access-token')
 @Controller('campaigns/:campaignId/members')
 export class CampaignMemberController {
   constructor(private readonly members: CampaignMemberService) {}

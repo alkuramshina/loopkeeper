@@ -8,11 +8,14 @@ import {
   Post,
   Request,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { CharacterService } from './character.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 
+@ApiTags('Characters')
+@ApiBearerAuth('access-token')
 @Controller()
 export class CharacterController {
   constructor(private readonly characters: CharacterService) {}

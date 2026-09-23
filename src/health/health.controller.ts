@@ -1,9 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
 import { SkipThrottle } from '@nestjs/throttler';
+import { ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/decorators/public.decorator';
 import { PrismaHealthIndicator } from './prisma-health.indicator';
 
+@ApiTags('Health')
 @Controller('health')
 export class HealthController {
   constructor(
