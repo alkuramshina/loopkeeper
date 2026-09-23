@@ -4,6 +4,23 @@ import { ApiError } from '../api/client';
 import { useAuth } from './auth-context';
 import { useTranslation } from 'react-i18next';
 
+const brandVariantKeys = ['focus', 'threads', 'table'] as const;
+const brandVariantStorageKey = 'loopkeeper.auth-brand-variant';
+
+type BrandVariantKey = (typeof brandVariantKeys)[number];
+
+function selectBrandVariant(): BrandVariantKey {
+  const stored = window.sessionStorage.getItem(brandVariantStorageKey);
+  if (stored && brandVariantKeys.includes(stored as BrandVariantKey)) {
+    return stored as BrandVariantKey;
+  }
+
+  const variant =
+    brandVariantKeys[Math.floor(Math.random() * brandVariantKeys.length)];
+  window.sessionStorage.setItem(brandVariantStorageKey, variant);
+  return variant;
+}
+
 export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const { t } = useTranslation();
   const { signIn, signUp } = useAuth();
@@ -17,7 +34,11 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [invitationError, setInvitationError] = useState<string>();
   const [isInvitationEntryOpen, setInvitationEntryOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [brandVariant] = useState(selectBrandVariant);
   const isSignUp = mode === 'sign-up';
+  const brandCopyPath = `auth.brandVariants.${brandVariant}.${
+    isSignUp ? 'signUp' : 'signIn'
+  }`;
 
   useEffect(() => {
     setError(undefined);
@@ -93,12 +114,8 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
               <span className="brand-mark" aria-hidden="true" />
               {t('appName')}
             </div>
-            <h1>
-              {t(isSignUp ? 'auth.signUpBrandTitle' : 'auth.signInBrandTitle')}
-            </h1>
-            <p>
-              {t(isSignUp ? 'auth.signUpBrandBody' : 'auth.signInBrandBody')}
-            </p>
+            <h1>{t(`${brandCopyPath}.title`)}</h1>
+            <p>{t(`${brandCopyPath}.body`)}</p>
           </div>
           <p className="auth-note">
             {t(isSignUp ? 'auth.signUpPrivacyNote' : 'auth.signInPrivacyNote')}
