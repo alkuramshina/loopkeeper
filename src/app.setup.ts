@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import jwtConfig from './auth/config/jwt.config';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ValidationException } from './common/exceptions/validation.exception';
 import appConfig from './config/app.config';
 
 export function configureApplication(app: INestApplication): void {
@@ -26,6 +27,7 @@ export function configureApplication(app: INestApplication): void {
       transform: true,
       transformOptions: { enableImplicitConversion: true },
       validationError: { target: false },
+      exceptionFactory: (errors) => new ValidationException(errors),
     }),
   );
 

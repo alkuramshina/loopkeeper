@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateCampaignDto } from './dto/create-campaign.dto';
-import { UpdateCampaignDto } from './dto/update-campaign.dto';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { CampaignAccessService } from './access/campaign-access.service';
+import { CreateCampaignDto } from './dto/create-campaign.dto';
+import { UpdateCampaignDto } from './dto/update-campaign.dto';
 
 @Injectable()
 export class CampaignService {
@@ -41,7 +42,11 @@ export class CampaignService {
     });
 
     if (!campaign) {
-      throw new NotFoundException('Campaign not found');
+      throw new DomainException(
+        HttpStatus.NOT_FOUND,
+        'campaign.not_found',
+        'The requested campaign is unavailable',
+      );
     }
 
     return campaign;

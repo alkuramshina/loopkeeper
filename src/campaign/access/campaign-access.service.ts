@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { CampaignRole } from '@prisma/client';
+import { DomainException } from '../../common/exceptions/domain.exception';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -22,7 +23,7 @@ export class CampaignAccessService {
     });
 
     if (!campaign) {
-      throw new NotFoundException('Campaign not found');
+      throw this.campaignNotFound();
     }
 
     return {
@@ -38,7 +39,7 @@ export class CampaignAccessService {
     });
 
     if (!campaign) {
-      throw new NotFoundException('Campaign not found');
+      throw this.campaignNotFound();
     }
   }
 
@@ -50,7 +51,7 @@ export class CampaignAccessService {
     if (access.isOwner || access.campaignRole === CampaignRole.PLAYER) {
       return;
     }
-    throw new NotFoundException('Campaign not found');
+    throw this.campaignNotFound();
   }
 
   async requirePlayer(userId: string, campaignId: string): Promise<void> {
@@ -60,7 +61,7 @@ export class CampaignAccessService {
     });
 
     if (!membership) {
-      throw new NotFoundException('Campaign not found');
+      throw this.campaignNotFound();
     }
   }
 
@@ -74,7 +75,15 @@ export class CampaignAccessService {
     });
 
     if (!campaign) {
-      throw new NotFoundException('Campaign not found');
+      throw this.campaignNotFound();
     }
+  }
+
+  private campaignNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'campaign.not_found',
+      'Campaign not found',
+    );
   }
 }

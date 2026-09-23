@@ -92,3 +92,4 @@ nestjs-debug.log
 
 /src/generated/prisma
 resources/
+AGENTS.md

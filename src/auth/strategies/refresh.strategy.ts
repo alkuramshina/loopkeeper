@@ -1,8 +1,9 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { JwtPayload } from 'jsonwebtoken';
+import { DomainException } from '../../common/exceptions/domain.exception';
 import { AuthService } from '../auth.service';
 import jwtConfig from '../config/jwt.config';
 import { TokenPayloadDto } from '../dto/token-payload.dto';
@@ -38,7 +39,11 @@ export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       typeof sessionId !== 'string' ||
       typeof refreshToken !== 'string'
     ) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new DomainException(
+        HttpStatus.UNAUTHORIZED,
+        'auth.refresh_invalid',
+        'The refresh session is invalid',
+      );
     }
 
     return this.authService.validateRefreshSession(userId, sessionId, refreshToken);

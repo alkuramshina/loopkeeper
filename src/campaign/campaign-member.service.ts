@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { CampaignRole } from '@prisma/client';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from './access/campaign-access.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
@@ -39,7 +40,11 @@ export class CampaignMemberService {
 
     const user = await this.users.findByEmail(createDto.email);
     if (!user || user.userId === ownerId) {
-      throw new NotFoundException('User not found');
+      throw new DomainException(
+        HttpStatus.NOT_FOUND,
+        'resource.not_found',
+        'The requested user is unavailable',
+      );
     }
 
     return this.prisma.campaignMember.create({

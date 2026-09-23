@@ -160,8 +160,8 @@ describe('Auth (e2e)', () => {
       .expect(409)
       .expect({
         statusCode: 409,
-        message: 'A resource with this value already exists',
-        error: 'Conflict',
+        code: 'resource.conflict',
+        message: 'The resource conflicts with existing data',
       });
   });
 });

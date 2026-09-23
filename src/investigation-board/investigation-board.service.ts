@@ -1,8 +1,5 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from '../campaign/access/campaign-access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -80,16 +77,22 @@ export class InvestigationBoardService {
     dto: CreateInvestigationLinkDto,
   ) {
     await this.access.requireBoardContributor(userId, campaignId);
-    if (dto.cardAId === dto.cardBId)
-      throw new BadRequestException('A card cannot link to itself');
+    if (dto.cardAId === dto.cardBId) {
+      throw new DomainException(
+        HttpStatus.BAD_REQUEST,
+        'board.self_link',
+        'A card cannot link to itself',
+      );
+    }
     const board = await this.getOrCreate(campaignId);
     const [fromCardId, toCardId] = [dto.cardAId, dto.cardBId].sort();
     const cards = await this.prisma.investigationCard.findMany({
       where: { cardId: { in: [fromCardId, toCardId] }, boardId: board.boardId },
       select: { cardId: true },
     });
-    if (cards.length !== 2)
-      throw new NotFoundException('Investigation card not found');
+    if (cards.length !== 2) {
+      throw this.cardNotFound();
+    }
     return this.prisma.investigationLink.create({
       data: {
         boardId: board.boardId,
@@ -134,6 +137,22 @@ export class InvestigationBoardService {
     });
   }
 
+  private cardNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'board.card_not_found',
+      'Investigation card not found',
+    );
+  }
+
+  private linkNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'board.link_not_found',
+      'Investigation link not found',
+    );
+  }
+
   private async getOrCreate(campaignId: string) {
     return this.prisma.investigationBoard.upsert({
       where: { campaignId },
@@ -152,7 +171,7 @@ export class InvestigationBoardService {
       },
       select: { cardId: true, campaignId: true },
     });
-    if (!card) throw new NotFoundException('Investigation card not found');
+    if (!card) throw this.cardNotFound();
     await this.access.requireBoardContributor(userId, card.campaignId);
     return card;
   }
@@ -167,7 +186,7 @@ export class InvestigationBoardService {
       },
       select: { linkId: true, campaignId: true },
     });
-    if (!link) throw new NotFoundException('Investigation link not found');
+    if (!link) throw this.linkNotFound();
     await this.access.requireBoardContributor(userId, link.campaignId);
     return link;
   }

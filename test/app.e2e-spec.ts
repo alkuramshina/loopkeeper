@@ -50,8 +50,8 @@ describe('HealthController (e2e)', () => {
       .expect(401)
       .expect({
         statusCode: 401,
-        message: 'Unauthorized',
-        error: 'Unauthorized',
+        code: 'auth.invalid_token',
+        message: 'Authentication is required',
       });
   });
 });

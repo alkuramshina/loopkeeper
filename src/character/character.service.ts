@@ -1,9 +1,9 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  DomainException,
+  ErrorViolation,
+} from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from '../campaign/access/campaign-access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
@@ -45,7 +45,7 @@ export class CharacterService {
       select: { system: true },
     });
     if (!campaign?.system) {
-      throw new NotFoundException('Campaign not found');
+      throw this.campaignNotFound();
     }
 
     const template = await this.prisma.characterTemplate.findFirst({
@@ -56,7 +56,7 @@ export class CharacterService {
       },
     });
     if (!template) {
-      throw new NotFoundException('Character template not found');
+      throw this.templateNotFound();
     }
 
     this.validateData(createDto.data, template.schema);
@@ -95,7 +95,7 @@ export class CharacterService {
     });
 
     if (!character) {
-      throw new NotFoundException('Character not found');
+      throw this.characterNotFound();
     }
 
     return character;
@@ -111,7 +111,7 @@ export class CharacterService {
     if (character.isNPC) {
       await this.campaignAccess.requireOwner(userId, character.campaignId);
     } else if (character.ownerId !== userId) {
-      throw new NotFoundException('Character not found');
+      throw this.characterNotFound();
     } else {
       await this.campaignAccess.requirePlayer(userId, character.campaignId);
     }
@@ -122,7 +122,7 @@ export class CharacterService {
         select: { schema: true },
       });
       if (!template) {
-        throw new NotFoundException('Character template not found');
+        throw this.templateNotFound();
       }
       this.validateData(updateDto.data, template.schema);
     }
@@ -145,7 +145,7 @@ export class CharacterService {
     if (character.isNPC) {
       await this.campaignAccess.requireOwner(userId, character.campaignId);
     } else if (character.ownerId !== userId) {
-      throw new NotFoundException('Character not found');
+      throw this.characterNotFound();
     } else {
       await this.campaignAccess.requirePlayer(userId, character.campaignId);
     }
@@ -159,60 +159,92 @@ export class CharacterService {
   ) {
     const schema = rawSchema as unknown as CharacterSchema;
     if (!Array.isArray(schema.fields)) {
-      throw new BadRequestException('Character template has an invalid schema');
+      throw new DomainException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        'internal.error',
+        'An unexpected error occurred',
+      );
     }
 
     const fieldsByKey = new Map(
       schema.fields.map((field) => [field.key, field]),
     );
-    const errors: string[] = [];
+    const violations: ErrorViolation[] = [];
 
     for (const key of Object.keys(data)) {
       if (!fieldsByKey.has(key)) {
-        errors.push(`data.${key} is not supported by the character template`);
+        violations.push({ field: `data.${key}`, code: 'validation.invalid_value' });
       }
     }
 
     for (const field of schema.fields) {
       const value = data[field.key];
+      const fieldPath = `data.${field.key}`;
       if (value === undefined || value === null) {
         if (field.required) {
-          errors.push(`data.${field.key} is required`);
+          violations.push({ field: fieldPath, code: 'validation.required' });
         }
         continue;
       }
 
       if (field.type === 'string' || field.type === 'select') {
         if (typeof value !== 'string') {
-          errors.push(`data.${field.key} must be a string`);
+          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
           continue;
         }
         if (field.maxLength !== undefined && value.length > field.maxLength) {
-          errors.push(
-            `data.${field.key} must not exceed ${field.maxLength} characters`,
-          );
+          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
         }
         if (field.options && !field.options.includes(value)) {
-          errors.push(`data.${field.key} must be one of the template options`);
+          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
         }
       } else if (field.type === 'number') {
         if (typeof value !== 'number' || !Number.isFinite(value)) {
-          errors.push(`data.${field.key} must be a finite number`);
+          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
           continue;
         }
         if (field.min !== undefined && value < field.min) {
-          errors.push(`data.${field.key} must be at least ${field.min}`);
+          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
         }
         if (field.max !== undefined && value > field.max) {
-          errors.push(`data.${field.key} must not exceed ${field.max}`);
+          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
         }
       } else if (field.type === 'boolean' && typeof value !== 'boolean') {
-        errors.push(`data.${field.key} must be a boolean`);
+        violations.push({ field: fieldPath, code: 'validation.invalid_value' });
       }
     }
 
-    if (errors.length > 0) {
-      throw new BadRequestException(errors);
+    if (violations.length > 0) {
+      throw new DomainException(
+        HttpStatus.BAD_REQUEST,
+        'validation.failed',
+        'Request validation failed',
+        violations,
+      );
     }
+  }
+
+  private campaignNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'campaign.not_found',
+      'The requested campaign is unavailable',
+    );
+  }
+
+  private characterNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'resource.not_found',
+      'The requested character is unavailable',
+    );
+  }
+
+  private templateNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'resource.not_found',
+      'The requested character template is unavailable',
+    );
   }
 }

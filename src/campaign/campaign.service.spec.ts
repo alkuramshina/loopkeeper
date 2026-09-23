@@ -1,4 +1,3 @@
-import { NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CampaignAccessService } from './access/campaign-access.service';
 import { CampaignService } from './campaign.service';
@@ -25,11 +24,11 @@ describe('CampaignService', () => {
     );
   });
 
-  it('throws 404 when a campaign is inaccessible', async () => {
+  it('returns a campaign-not-found code when a campaign is inaccessible', async () => {
     (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(null);
 
-    await expect(
-      service.findOne('user-id', 'missing-id'),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.findOne('user-id', 'missing-id')).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'campaign.not_found' }),
+    });
   });
 });

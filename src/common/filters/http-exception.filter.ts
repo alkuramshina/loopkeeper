@@ -8,12 +8,16 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
+import { ErrorViolation } from '../exceptions/domain.exception';
 
 type ErrorResponse = {
   statusCode: number;
-  message: string | string[];
-  error: string;
+  code: string;
+  message: string;
+  violations?: ErrorViolation[];
 };
+
+type HttpExceptionResponse = Partial<Omit<ErrorResponse, 'statusCode'>>;
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -28,13 +32,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const errorResponse = this.toErrorResponse(exception);
 
-    if (
-      !(exception instanceof HttpException) &&
-      !(
-        exception instanceof Prisma.PrismaClientKnownRequestError &&
-        ['P2002', 'P2025'].includes(exception.code)
-      )
-    ) {
+    if (!this.isExpectedException(exception)) {
       this.logger.error(
         exception instanceof Error ? exception.stack : String(exception),
       );
@@ -48,59 +46,126 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (exception.code === 'P2002') {
         return this.createResponse(
           HttpStatus.CONFLICT,
-          'A resource with this value already exists',
+          'resource.conflict',
+          'The resource conflicts with existing data',
         );
       }
 
       if (exception.code === 'P2025') {
-        return this.createResponse(HttpStatus.NOT_FOUND, 'Resource not found');
+        return this.createResponse(
+          HttpStatus.NOT_FOUND,
+          'resource.not_found',
+          'The requested resource is unavailable',
+        );
       }
-
-      return this.createResponse(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        'Internal server error',
-      );
     }
 
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
-      if (typeof exceptionResponse === 'string') {
-        return this.createResponse(statusCode, exceptionResponse);
+      if (typeof exceptionResponse !== 'string') {
+        const { code, message, violations } =
+          exceptionResponse as HttpExceptionResponse;
+
+        const hasStableCode = this.isStableCode(code);
+
+        return this.createResponse(
+          statusCode,
+          hasStableCode ? code : this.defaultCodeForStatus(statusCode),
+          hasStableCode && typeof message === 'string'
+            ? message
+            : this.defaultMessageForStatus(statusCode),
+          this.isValidViolations(violations) ? violations : undefined,
+        );
       }
 
-      const { message, error } = exceptionResponse as Partial<ErrorResponse>;
-
-      return {
+      return this.createResponse(
         statusCode,
-        message: message ?? this.getStatusError(statusCode),
-        error: error ?? this.getStatusError(statusCode),
-      };
+        this.defaultCodeForStatus(statusCode),
+        this.defaultMessageForStatus(statusCode),
+      );
     }
 
     return this.createResponse(
       HttpStatus.INTERNAL_SERVER_ERROR,
-      'Internal server error',
+      'internal.error',
+      'An unexpected error occurred',
+    );
+  }
+
+  private isExpectedException(exception: unknown): boolean {
+    return (
+      exception instanceof HttpException ||
+      (exception instanceof Prisma.PrismaClientKnownRequestError &&
+        ['P2002', 'P2025'].includes(exception.code))
     );
   }
 
   private createResponse(
-    statusCode: HttpStatus,
+    statusCode: number,
+    code: string,
     message: string,
+    violations?: ErrorViolation[],
   ): ErrorResponse {
     return {
       statusCode,
+      code,
       message,
-      error: this.getStatusError(statusCode),
+      ...(violations?.length ? { violations } : {}),
     };
   }
 
-  private getStatusError(statusCode: number): string {
-    return HttpStatus[statusCode]
-      .toLowerCase()
-      .split('_')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+  private defaultCodeForStatus(statusCode: number): string {
+    switch (statusCode) {
+      case HttpStatus.BAD_REQUEST:
+        return 'validation.failed';
+      case HttpStatus.UNAUTHORIZED:
+        return 'auth.invalid_token';
+      case HttpStatus.FORBIDDEN:
+        return 'resource.access_denied';
+      case HttpStatus.NOT_FOUND:
+        return 'resource.not_found';
+      case HttpStatus.CONFLICT:
+        return 'resource.conflict';
+      default:
+        return 'internal.error';
+    }
+  }
+
+  private defaultMessageForStatus(statusCode: number): string {
+    switch (statusCode) {
+      case HttpStatus.BAD_REQUEST:
+        return 'Request validation failed';
+      case HttpStatus.UNAUTHORIZED:
+        return 'Authentication is required';
+      case HttpStatus.FORBIDDEN:
+        return 'The requested action is not allowed';
+      case HttpStatus.NOT_FOUND:
+        return 'The requested resource is unavailable';
+      case HttpStatus.CONFLICT:
+        return 'The resource conflicts with existing data';
+      default:
+        return 'An unexpected error occurred';
+    }
+  }
+
+  private isStableCode(value: unknown): value is string {
+    return typeof value === 'string' && /^[a-z]+(?:[._][a-z]+)*$/.test(value);
+  }
+
+  private isValidViolations(
+    violations: unknown,
+  ): violations is ErrorViolation[] {
+    return (
+      Array.isArray(violations) &&
+      violations.every(
+        (violation) =>
+          typeof violation === 'object' &&
+          violation !== null &&
+          typeof violation.field === 'string' &&
+          typeof violation.code === 'string',
+      )
+    );
   }
 }

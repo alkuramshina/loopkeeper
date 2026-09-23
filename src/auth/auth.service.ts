@@ -1,8 +1,7 @@
 import {
   Inject,
+  HttpStatus,
   Injectable,
-  NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
@@ -10,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { randomUUID } from 'node:crypto';
 import { JwtPayload } from 'jsonwebtoken';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from '../user/user.service';
 import jwtConfig from './config/jwt.config';
@@ -73,7 +73,11 @@ export class AuthService {
     });
 
     if (!session || !(await argon2.verify(session.refreshTokenHash, refreshToken))) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new DomainException(
+        HttpStatus.UNAUTHORIZED,
+        'auth.refresh_invalid',
+        'Invalid refresh token',
+      );
     }
 
     return {
@@ -85,7 +89,11 @@ export class AuthService {
 
   async rotateRefreshSession(user: TokenPayloadDto): Promise<TokenDto> {
     if (!user.sessionId) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new DomainException(
+        HttpStatus.UNAUTHORIZED,
+        'auth.refresh_invalid',
+        'Invalid refresh token',
+      );
     }
 
     return this.prisma.$transaction(async (transaction) => {
@@ -100,7 +108,11 @@ export class AuthService {
       });
 
       if (revoked.count !== 1) {
-        throw new UnauthorizedException('Invalid refresh token');
+        throw new DomainException(
+          HttpStatus.UNAUTHORIZED,
+          'auth.refresh_invalid',
+          'Invalid refresh token',
+        );
       }
 
       return this.createSessionTokens(user, transaction);
@@ -142,7 +154,11 @@ export class AuthService {
     const user = await this.userService.findById(userId);
 
     if (!user || !(await argon2.verify(user.passwordHash, changePasswordDto.currentPassword))) {
-      throw new UnauthorizedException('Invalid current password');
+      throw new DomainException(
+        HttpStatus.UNAUTHORIZED,
+        'auth.invalid_credentials',
+        'Invalid current password',
+      );
     }
 
     const passwordHash = await argon2.hash(changePasswordDto.newPassword);
@@ -163,7 +179,11 @@ export class AuthService {
     const user = await this.userService.findPublicById(userId);
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new DomainException(
+        HttpStatus.NOT_FOUND,
+        'resource.not_found',
+        'User not found',
+      );
     }
 
     return user;

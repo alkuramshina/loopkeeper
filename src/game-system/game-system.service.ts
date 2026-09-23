@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { System } from '@prisma/client';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -17,7 +18,11 @@ export class GameSystemService {
     });
 
     if (!gameSystem) {
-      throw new NotFoundException('Game system not found');
+      throw new DomainException(
+        HttpStatus.NOT_FOUND,
+        'resource.not_found',
+        'The requested game system is unavailable',
+      );
     }
 
     return this.prisma.characterTemplate.findMany({

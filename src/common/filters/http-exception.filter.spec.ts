@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { Response } from 'express';
+import { DomainException } from '../exceptions/domain.exception';
 import { HttpExceptionFilter } from './http-exception.filter';
 
 type MockResponse = Pick<Response, 'status' | 'json' | 'headersSent'>;
@@ -50,20 +51,62 @@ describe('HttpExceptionFilter', () => {
   });
 
   it.each([
-    [new BadRequestException('Invalid input'), HttpStatus.BAD_REQUEST, 'Invalid input', 'Bad Request'],
-    [new UnauthorizedException(), HttpStatus.UNAUTHORIZED, 'Unauthorized', 'Unauthorized'],
-    [new NotFoundException('Campaign not found'), HttpStatus.NOT_FOUND, 'Campaign not found', 'Not Found'],
-    [prismaError('P2002'), HttpStatus.CONFLICT, 'A resource with this value already exists', 'Conflict'],
-  ])('maps exceptions to a safe response', (exception, statusCode, message, error) => {
+    [
+      new BadRequestException('Invalid input'),
+      HttpStatus.BAD_REQUEST,
+      'validation.failed',
+      'Request validation failed',
+    ],
+    [
+      new UnauthorizedException(),
+      HttpStatus.UNAUTHORIZED,
+      'auth.invalid_token',
+      'Authentication is required',
+    ],
+    [
+      new NotFoundException('Campaign not found'),
+      HttpStatus.NOT_FOUND,
+      'resource.not_found',
+      'The requested resource is unavailable',
+    ],
+    [
+      prismaError('P2002'),
+      HttpStatus.CONFLICT,
+      'resource.conflict',
+      'The resource conflicts with existing data',
+    ],
+  ])(
+    'maps exceptions to a final locale-neutral response',
+    (exception, statusCode, code, message) => {
+      const response = createResponse();
+
+      filter.catch(exception, createHost(response));
+
+      expect(response.status).toHaveBeenCalledWith(statusCode);
+      expect(response.json).toHaveBeenCalledWith({
+        statusCode,
+        code,
+        message,
+      });
+    },
+  );
+
+  it('preserves a domain code and safe field violations', () => {
     const response = createResponse();
+    const exception = new DomainException(
+      HttpStatus.CONFLICT,
+      'auth.email_taken',
+      'Email is already registered',
+      [{ field: 'email', code: 'validation.unique' }],
+    );
 
     filter.catch(exception, createHost(response));
 
-    expect(response.status).toHaveBeenCalledWith(statusCode);
     expect(response.json).toHaveBeenCalledWith({
-      statusCode,
-      message,
-      error,
+      statusCode: HttpStatus.CONFLICT,
+      code: 'auth.email_taken',
+      message: 'Email is already registered',
+      violations: [{ field: 'email', code: 'validation.unique' }],
     });
   });
 
@@ -75,8 +118,8 @@ describe('HttpExceptionFilter', () => {
     expect(response.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
     expect(response.json).toHaveBeenCalledWith({
       statusCode: HttpStatus.NOT_FOUND,
-      message: 'Resource not found',
-      error: 'Not Found',
+      code: 'resource.not_found',
+      message: 'The requested resource is unavailable',
     });
   });
 
@@ -87,8 +130,8 @@ describe('HttpExceptionFilter', () => {
 
     expect(response.json).toHaveBeenCalledWith({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: 'Internal server error',
-      error: 'Internal Server Error',
+      code: 'internal.error',
+      message: 'An unexpected error occurred',
     });
   });
 });

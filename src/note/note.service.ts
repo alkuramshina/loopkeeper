@@ -1,9 +1,6 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { CampaignRole, NoteVisibility, Prisma } from '@prisma/client';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from '../campaign/access/campaign-access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNoteDto } from './dto/create-note.dto';
@@ -47,12 +44,12 @@ export class NoteService {
       },
     });
     if (!note) {
-      throw new NotFoundException('Note not found');
+      throw this.noteNotFound();
     }
 
     const access = await this.campaignAccess.getAccess(userId, note.campaignId);
     if (!this.canRead(note, userId, access)) {
-      throw new NotFoundException('Note not found');
+      throw this.noteNotFound();
     }
 
     return note;
@@ -79,6 +76,14 @@ export class NoteService {
     this.assertCanManage(note.authorId, userId, access.isOwner);
 
     await this.prisma.note.delete({ where: { noteId } });
+  }
+
+  private noteNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'resource.not_found',
+      'Note not found',
+    );
   }
 
   private readScope(
@@ -140,7 +145,9 @@ export class NoteService {
       access.campaignRole !== CampaignRole.PLAYER ||
       visibility === NoteVisibility.MASTER_ONLY
     ) {
-      throw new ForbiddenException(
+      throw new DomainException(
+        HttpStatus.FORBIDDEN,
+        'resource.access_denied',
         'You cannot create a note with this visibility',
       );
     }
@@ -150,6 +157,10 @@ export class NoteService {
     if (isOwner || authorId === userId) {
       return;
     }
-    throw new ForbiddenException('You cannot modify this note');
+    throw new DomainException(
+      HttpStatus.FORBIDDEN,
+      'resource.access_denied',
+      'You cannot modify this note',
+    );
   }
 }

@@ -1,10 +1,7 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import * as argon2 from 'argon2';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from './access/campaign-access.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -68,14 +65,14 @@ export class CampaignInvitationService {
     });
 
     if (result.count === 0) {
-      throw new NotFoundException('Invitation not found');
+      throw this.invitationNotFound();
     }
   }
 
   async accept(userId: string, token: string) {
     const [invitationId, secret, ...extraParts] = token.split('.');
     if (!invitationId || !secret || extraParts.length > 0) {
-      throw new NotFoundException('Invitation not found');
+      throw this.invitationNotFound();
     }
 
     const invitation = await this.prisma.campaignInvitation.findUnique({
@@ -89,7 +86,7 @@ export class CampaignInvitationService {
       invitation.expiresAt <= new Date() ||
       !(await argon2.verify(invitation.tokenHash, secret))
     ) {
-      throw new NotFoundException('Invitation not found');
+      throw this.invitationNotFound();
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -104,10 +101,10 @@ export class CampaignInvitationService {
       });
 
       if (!campaign || campaign.ownerId === userId) {
-        throw new ConflictException('User is already a campaign member');
+        throw this.alreadyMember();
       }
       if (existingMember) {
-        throw new ConflictException('User is already a campaign member');
+        throw this.alreadyMember();
       }
 
       const claimed = await tx.campaignInvitation.updateMany({
@@ -120,7 +117,7 @@ export class CampaignInvitationService {
         data: { acceptedAt: new Date() },
       });
       if (claimed.count === 0) {
-        throw new NotFoundException('Invitation not found');
+        throw this.invitationNotFound();
       }
 
       return tx.campaignMember.create({
@@ -138,6 +135,22 @@ export class CampaignInvitationService {
         },
       });
     });
+  }
+
+  private invitationNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'invitation.not_found',
+      'Invitation not found',
+    );
+  }
+
+  private alreadyMember(): DomainException {
+    return new DomainException(
+      HttpStatus.CONFLICT,
+      'invitation.already_member',
+      'User is already a campaign member',
+    );
   }
 
   private getExpiryDate(): Date {
