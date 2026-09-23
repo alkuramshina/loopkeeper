@@ -64,6 +64,7 @@ textarea {
 }
 .auth-card {
   width: min(100%, 28rem);
+  min-height: 30rem;
   padding: 2rem;
 }
 .auth-card form,

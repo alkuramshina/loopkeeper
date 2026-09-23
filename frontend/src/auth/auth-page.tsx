@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useAuth } from './auth-context';
@@ -9,20 +9,28 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const isSignUp = mode === 'sign-up';
+
+  useEffect(() => {
+    setError(undefined);
+    setPassword('');
+    setSubmitting(false);
+  }, [mode]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError(undefined);
-    const form = new FormData(event.currentTarget);
     try {
       const payload = {
-        email: String(form.get('email')),
-        password: String(form.get('password')),
-        name: isSignUp ? String(form.get('name') || '') : undefined,
+        email,
+        password,
+        name: isSignUp ? name : undefined,
       };
       if (isSignUp) await signUp(payload);
       else await signIn(payload);
@@ -50,24 +58,40 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         <p className="kicker">{t('appName')}</p>
         <h1>{t(isSignUp ? 'auth.signUpTitle' : 'auth.signInTitle')}</h1>
         <p>{t('appTagline')}</p>
-        <form onSubmit={submit}>
+        <form key={mode} onSubmit={submit}>
           {isSignUp && (
             <label>
               {t('auth.name')}
-              <input name="name" autoComplete="name" />
+              <input
+                autoComplete="name"
+                name="name"
+                onChange={(event) => setName(event.target.value)}
+                required
+                value={name}
+              />
             </label>
           )}
           <label>
             {t('auth.email')}
-            <input name="email" type="email" autoComplete="email" required />
+            <input
+              autoComplete="email"
+              name="email"
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              type="email"
+              value={email}
+            />
           </label>
           <label>
             {t('auth.password')}
             <input
-              name="password"
-              type="password"
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
+              minLength={8}
+              name="password"
+              onChange={(event) => setPassword(event.target.value)}
               required
+              type="password"
+              value={password}
             />
           </label>
           {error && (
@@ -80,7 +104,13 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
           </button>
         </form>
         <p>
-          <Link to={isSignUp ? '/sign-in' : '/sign-up'}>
+          <Link
+            onClick={() => {
+              setError(undefined);
+              setPassword('');
+            }}
+            to={isSignUp ? '/sign-in' : '/sign-up'}
+          >
             {t(isSignUp ? 'auth.signIn' : 'auth.signUp')}
           </Link>
         </p>

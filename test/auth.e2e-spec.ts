@@ -56,6 +56,20 @@ describe('Auth (e2e)', () => {
     expect(await getTestPrisma().authSession.count()).toBe(1);
   });
 
+  it('requires a name and an eight-character password to register', async () => {
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ ...credentials, name: '' })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({ ...credentials, password: '1234567' })
+      .expect(400);
+
+    expect(await getTestPrisma().user.count()).toBe(0);
+  });
+
   it('updates only the authenticated user profile', async () => {
     const registerResponse = await request(app.getHttpServer())
       .post('/auth/register')
