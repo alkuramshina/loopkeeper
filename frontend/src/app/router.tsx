@@ -34,6 +34,10 @@ const BackgroundSettingsPage = lazy(async () => ({
 const LocationsPage = lazy(async () => ({
   default: (await import('../features/campaigns/locations-page')).LocationsPage,
 }));
+const LocationViewerPage = lazy(async () => ({
+  default: (await import('../features/campaigns/location-viewer-page'))
+    .LocationViewerPage,
+}));
 const CampaignSettingsPage = lazy(async () => ({
   default: (await import('../features/campaigns/campaign-settings-page'))
     .CampaignSettingsPage,
@@ -94,6 +98,10 @@ export function AppRouter() {
           <Route
             path="/campaigns/:campaignId/locations"
             element={<LocationsPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/locations/:locationId"
+            element={<LocationViewerPage />}
           />
           <Route
             path="/campaigns/:campaignId/settings"

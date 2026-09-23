@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Campaign, Location } from '../../api/client';
@@ -147,6 +147,14 @@ export function LocationsPage() {
             )}
           </section>
           <section className="panel location-detail">
+            {selected && (
+              <Link
+                className="button-link"
+                to={`/campaigns/${campaignId}/locations/${selected.locationId}`}
+              >
+                {t('locations.openViewer')}
+              </Link>
+            )}
             {isOwner ? (
               <form onSubmit={submit}>
                 <div className="section-heading">
