@@ -72,3 +72,38 @@ export type Board = {
   boardId: string;
   cards: Array<{ cardId: string; title: string; content?: string | null; tags: string[]; color?: string | null }>;
 };
+
+export type CharacterField = {
+  key: string;
+  label: string;
+  section?: string;
+  type: 'string' | 'number' | 'boolean' | 'select';
+  required?: boolean;
+  min?: number;
+  max?: number;
+  maxLength?: number;
+  options?: string[];
+};
+
+export type CharacterTemplate = {
+  templateId: string;
+  name: string;
+  schema: {
+    title?: string;
+    sections?: Array<{ key: string; label: string }>;
+    fields: CharacterField[];
+  };
+};
+
+export type Character = {
+  characterId: string;
+  campaignId: string;
+  ownerId: string;
+  templateId: string;
+  name: string;
+  description?: string | null;
+  avatarUrl?: string | null;
+  data: Record<string, unknown>;
+  isNPC: boolean;
+  isActive: boolean;
+};

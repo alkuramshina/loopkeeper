@@ -11,7 +11,8 @@ body {
 }
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 button {
@@ -35,7 +36,8 @@ label {
   color: #504d46;
 }
 input,
-textarea {
+textarea,
+select {
   border: 1px solid #bdb8ad;
   border-radius: 6px;
   padding: 0.65rem;
@@ -205,6 +207,78 @@ textarea {
   padding: 0.9rem;
   border-left: 5px solid #74716a;
 }
+.character-page-header,
+.section-heading,
+.action-row,
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.character-page-header,
+.section-heading {
+  justify-content: space-between;
+}
+.character-page-header h2,
+.section-heading h2 {
+  margin: 0;
+}
+.filter-row {
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+.character-list {
+  display: grid;
+  gap: 0.75rem;
+}
+.character-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fffdf7;
+  border: 1px solid #d4cfc4;
+  border-radius: 10px;
+}
+.character-card h3,
+.character-card p {
+  margin: 0.25rem 0;
+}
+.character-card .action-row {
+  align-self: start;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+.character-editor {
+  margin-bottom: 1.5rem;
+}
+.character-editor form {
+  display: grid;
+  gap: 1rem;
+}
+.character-fieldset {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid #d4cfc4;
+  border-radius: 7px;
+}
+.character-fieldset legend {
+  padding: 0 0.25rem;
+  color: #504d46;
+  font-weight: 700;
+}
+.checkbox-field {
+  display: flex;
+  align-items: center;
+}
+.button-danger {
+  background: #9e2028;
+}
+.empty-state {
+  margin-top: 1rem;
+}
 .board-preview p {
   margin: 0.25rem 0;
 }
@@ -225,5 +299,13 @@ textarea {
   }
   .workspace-nav {
     overflow-x: auto;
+  }
+  .character-page-header,
+  .character-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .character-card .action-row {
+    justify-content: start;
   }
 }

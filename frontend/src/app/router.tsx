@@ -1,28 +1,33 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/auth-context';
 import {
   CampaignListPage,
   CampaignWorkspacePage,
 } from '../features/campaigns/pages';
 import { InvitationPage } from '../features/campaigns/invitation-page';
+import { CharactersPage } from '../features/campaigns/characters-page';
 import { AuthPage } from '../auth/auth-page';
 
 function ProtectedRoute() {
   const { profile, loading } = useAuth();
-  if (loading) return <main className="page-state">Загрузка…</main>;
+  const { t } = useTranslation();
+  if (loading) return <main className="page-state">{t('common.loading')}</main>;
   return profile ? <Outlet /> : <Navigate to="/sign-in" replace />;
 }
 
 function PublicOnlyRoute() {
   const { profile, loading } = useAuth();
-  if (loading) return <main className="page-state">Загрузка…</main>;
+  const { t } = useTranslation();
+  if (loading) return <main className="page-state">{t('common.loading')}</main>;
   return profile ? <Navigate to="/campaigns" replace /> : <Outlet />;
 }
 
 function InvitationEntry() {
   const { profile, loading } = useAuth();
+  const { t } = useTranslation();
   const token = window.location.pathname.split('/').pop();
-  if (loading) return <main className="page-state">Загрузка…</main>;
+  if (loading) return <main className="page-state">{t('common.loading')}</main>;
   return profile ? (
     <InvitationPage />
   ) : (
@@ -49,6 +54,10 @@ export function AppRouter() {
         <Route
           path="/campaigns/:campaignId/board"
           element={<CampaignWorkspacePage section="board" />}
+        />
+        <Route
+          path="/campaigns/:campaignId/characters"
+          element={<CharactersPage />}
         />
       </Route>
       <Route path="/invitations/:token" element={<InvitationEntry />} />
