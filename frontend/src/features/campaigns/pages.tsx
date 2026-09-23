@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Board, Campaign } from '../../api/client';
@@ -9,6 +9,7 @@ import {
   CampaignBackgroundLayer,
   useCampaignBackground,
 } from './use-campaign-background';
+import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -21,6 +22,7 @@ export function CampaignListPage() {
   const { api, profile, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
+  const [isCreating, setCreating] = useState(false);
   const campaigns = useQuery({
     queryKey: ['campaigns'],
     queryFn: () => api.request<Campaign[]>('/campaigns'),
@@ -42,64 +44,111 @@ export function CampaignListPage() {
         campaign,
         ...items,
       ]);
-      event.currentTarget.reset();
+      setCreating(false);
     } catch (cause) {
       setError(apiErrorMessage(cause, t));
     }
   }
 
+  const openCreate = () => {
+    setError(undefined);
+    setCreating(true);
+  };
+
   return (
-    <main className="app-page">
-      <header className="topbar">
-        <strong>Loopkeeper</strong>
-        <span>{profile?.name ?? profile?.email}</span>
-        <button className="button-ghost" onClick={() => void signOut()}>
-          {t('auth.signOut')}
-        </button>
+    <main className="campaign-page">
+      <header className="campaign-topbar">
+        <Link className="brand-lock" to="/campaigns">
+          <span className="brand-mark" aria-hidden="true" />
+          {t('appName')}
+        </Link>
+        <div className="campaign-account">
+          <span>{profile?.name ?? profile?.email}</span>
+          <button className="button-ghost" onClick={() => void signOut()}>
+            {t('auth.signOut')}
+          </button>
+        </div>
       </header>
-      <section className="page-header">
-        <p className="kicker">{t('appName')}</p>
-        <h1>{t('campaigns.title')}</h1>
-      </section>
-      <div className="campaign-layout">
-        <section className="campaign-list" aria-live="polite">
-          {campaigns.isLoading ? (
-            <p>{t('common.loading')}</p>
-          ) : campaigns.data?.length ? (
-            campaigns.data.map((campaign) => (
-              <article className="campaign-card" key={campaign.campaignId}>
-                <h2>{campaign.title}</h2>
-                <p>{campaign.description}</p>
-                <p className="role-badge">
-                  {t(`workspace.roles.${campaign.currentUserRole}`)}
+      <section className="campaigns-bg">
+        <header className="campaigns-top">
+          <div>
+            <p className="kicker">{t('campaigns.kicker')}</p>
+            <h1>{t('campaigns.chooseWorkspace')}</h1>
+            <p className="campaigns-intro">{t('campaigns.intro')}</p>
+          </div>
+          <button onClick={openCreate}>{t('campaigns.newCampaign')}</button>
+        </header>
+        {isCreating ? (
+          <section className="campaign-create-wrap">
+            <form className="campaign-create-card" onSubmit={create}>
+              <div className="section-heading">
+                <h2>{t('campaigns.newCampaign')}</h2>
+                <button
+                  className="button-ghost"
+                  onClick={() => {
+                    setCreating(false);
+                    setError(undefined);
+                  }}
+                  type="button"
+                >
+                  {t('common.cancel')}
+                </button>
+              </div>
+              <label>
+                {t('campaigns.campaignTitle')}
+                <input name="title" required />
+              </label>
+              <label>
+                {t('campaigns.description')}
+                <textarea name="description" />
+              </label>
+              {error && (
+                <p className="form-error" role="alert">
+                  {error}
                 </p>
-                <Link to={`/campaigns/${campaign.campaignId}`}>
-                  {t('campaigns.open')}
-                </Link>
+              )}
+              <button>{t('campaigns.create')}</button>
+            </form>
+          </section>
+        ) : campaigns.isLoading ? (
+          <section className="campaign-page-state" aria-live="polite">
+            <p>{t('common.loading')}</p>
+          </section>
+        ) : campaigns.data?.length ? (
+          <section className="campaign-grid" aria-live="polite">
+            {campaigns.data.map((campaign) => (
+              <article className="campaign-card" key={campaign.campaignId}>
+                <p className="campaign-system">
+                  {campaign.system ?? t('campaigns.systemFallback')}
+                </p>
+                <h2>{campaign.title}</h2>
+                <p>
+                  {campaign.description || t('campaigns.descriptionFallback')}
+                </p>
+                <footer>
+                  <span
+                    className={`campaign-role campaign-role-${campaign.currentUserRole.toLowerCase()}`}
+                  >
+                    {t(`workspace.roles.${campaign.currentUserRole}`)}
+                  </span>
+                  <Link to={`/campaigns/${campaign.campaignId}`}>
+                    {t('campaigns.open')}
+                  </Link>
+                </footer>
               </article>
-            ))
-          ) : (
+            ))}
+          </section>
+        ) : (
+          <section className="campaign-empty-state" aria-live="polite">
+            <div className="campaign-empty-symbol" aria-hidden="true">
+              +
+            </div>
+            <h2>{t('campaigns.emptyTitle')}</h2>
             <p>{t('campaigns.empty')}</p>
-          )}
-        </section>
-        <form className="panel" onSubmit={create}>
-          <h2>{t('campaigns.newCampaign')}</h2>
-          <label>
-            {t('campaigns.campaignTitle')}
-            <input name="title" required />
-          </label>
-          <label>
-            {t('campaigns.description')}
-            <textarea name="description" />
-          </label>
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          <button>{t('campaigns.create')}</button>
-        </form>
-      </div>
+            <button onClick={openCreate}>{t('campaigns.firstCampaign')}</button>
+          </section>
+        )}
+      </section>
     </main>
   );
 }
@@ -141,55 +190,7 @@ export function CampaignWorkspacePage({
   const basePath = `/campaigns/${campaignId}`;
 
   return (
-    <main className="app-page">
-      <header className="topbar">
-        <Link to="/campaigns">Loopkeeper</Link>
-        <span>{profile?.name ?? profile?.email}</span>
-        <button className="button-ghost" onClick={() => void signOut()}>
-          {t('auth.signOut')}
-        </button>
-      </header>
-      <section className="workspace-heading">
-        <Link className="back-link" to="/campaigns">
-          ← {t('workspace.backToCampaigns')}
-        </Link>
-        <div>
-          <p className="kicker">
-            {data ? t(`workspace.roles.${data.currentUserRole}`) : '…'}
-          </p>
-          <h1>{data?.title ?? '…'}</h1>
-        </div>
-        <p className="role-badge">
-          {t('workspace.role')}:{' '}
-          {data && t(`workspace.roles.${data.currentUserRole}`)}
-        </p>
-      </section>
-      <nav className="workspace-nav" aria-label={t('campaigns.title')}>
-        <NavLink end to={basePath}>
-          {t('workspace.overview')}
-        </NavLink>
-        <NavLink to={`${basePath}/board`}>{t('workspace.board')}</NavLink>
-        <NavLink to={`${basePath}/characters`}>
-          {t('workspace.characters')}
-        </NavLink>
-        <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
-        {(data?.currentUserRole === 'OWNER' ||
-          data?.currentUserRole === 'PLAYER') && (
-          <NavLink to={`${basePath}/locations`}>
-            {t('workspace.locations')}
-          </NavLink>
-        )}
-        {data?.currentUserRole === 'OWNER' && (
-          <>
-            <NavLink to={`${basePath}/members`}>
-              {t('workspace.members')}
-            </NavLink>
-            <NavLink to={`${basePath}/settings/backgrounds`}>
-              {t('workspace.backgroundSettings')}
-            </NavLink>
-          </>
-        )}
-      </nav>
+    <CampaignWorkspaceShell campaign={data}>
       {section === 'overview' ? (
         <section className="workspace-overview panel">
           {(data?.currentUserRole === 'OWNER' ||
@@ -231,6 +232,6 @@ export function CampaignWorkspacePage({
           )}
         </section>
       )}
-    </main>
+    </CampaignWorkspaceShell>
   );
 }

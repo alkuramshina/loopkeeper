@@ -18,7 +18,7 @@ import {
   useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import {
@@ -33,6 +33,7 @@ import {
   CampaignBackgroundLayer,
   useCampaignBackground,
 } from './use-campaign-background';
+import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 
 type NodeDimensions = {
   x: number;
@@ -91,7 +92,7 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
   return (
     <article
       className={`flow-card ${selected ? 'selected' : ''}`}
-      style={{ borderTopColor: card.color ?? undefined }}
+      style={{ borderLeftColor: card.color ?? undefined }}
     >
       <NodeResizer
         isVisible={selected}
@@ -427,112 +428,76 @@ export function BoardPage() {
   const basePath = `/campaigns/${campaignId}`;
 
   return (
-    <main className="app-page board-page">
-      <header className="topbar">
-        <Link to="/campaigns">Loopkeeper</Link>
-        <span>{profile?.name ?? profile?.email}</span>
-        <button className="button-ghost" onClick={() => void signOut()}>
-          {t('auth.signOut')}
-        </button>
-      </header>
-      <section className="workspace-heading">
-        <Link className="back-link" to={basePath}>
-          ← {t('workspace.backToCampaign')}
-        </Link>
-        <div>
-          <p className="kicker">
-            {data ? t(`workspace.roles.${data.currentUserRole}`) : '…'}
-          </p>
-          <h1>{data?.title ?? '…'}</h1>
-        </div>
-      </section>
-      <nav className="workspace-nav" aria-label={t('campaigns.title')}>
-        <NavLink end to={basePath}>
-          {t('workspace.overview')}
-        </NavLink>
-        <NavLink to={`${basePath}/board`}>{t('workspace.board')}</NavLink>
-        <NavLink to={`${basePath}/characters`}>
-          {t('workspace.characters')}
-        </NavLink>
-        <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
-        {(data?.currentUserRole === 'OWNER' ||
-          data?.currentUserRole === 'PLAYER') && (
-          <NavLink to={`${basePath}/locations`}>
-            {t('workspace.locations')}
-          </NavLink>
-        )}
-        {data?.currentUserRole === 'OWNER' && (
-          <>
-            <NavLink to={`${basePath}/members`}>
-              {t('workspace.members')}
-            </NavLink>
-            <NavLink to={`${basePath}/settings/backgrounds`}>
-              {t('workspace.backgroundSettings')}
-            </NavLink>
-          </>
-        )}
-      </nav>
-      <section className="board-toolbar">
-        <div>
-          <h2>{t('board.title')}</h2>
-          <p className="muted">{t('board.restNotice')}</p>
-        </div>
-        <div className="action-row">
-          <button className="button-ghost" onClick={() => void board.refetch()}>
-            {t('board.refresh')}
-          </button>
-          <button onClick={() => setEditor({ type: 'new-card' })}>
-            {t('board.newCard')}
-          </button>
-        </div>
-      </section>
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
-      {board.isLoading || campaign.isLoading ? (
-        <section className="board-loading" aria-label={t('common.loading')}>
-          <span />
-          <span />
-          <span />
-        </section>
-      ) : (
-        <section className="board-workspace">
-          <div className="board-canvas">
-            {(data?.currentUserRole === 'OWNER' ||
-              data?.currentUserRole === 'PLAYER') && (
-              <CampaignBackgroundLayer background={background} />
-            )}
-            <ReactFlow
-              edges={edges}
-              fitView
-              nodes={nodes}
-              nodeTypes={nodeTypes}
-              onConnect={onConnect}
-              onEdgesChange={onEdgesChange}
-              onEdgeClick={(_event, edge) => {
-                const link = board.data?.links.find(
-                  (item) => item.linkId === edge.id,
-                );
-                if (link) setEditor({ type: 'link', link });
-              }}
-              onNodeClick={(_event, node) =>
-                setEditor({ type: 'card', card: node.data.card })
-              }
-              onNodeDragStop={onNodeDragStop}
-              onNodesChange={onNodesChange}
-            >
-              <Background gap={20} />
-              <Controls />
-              <MiniMap />
-            </ReactFlow>
+    <CampaignWorkspaceShell campaign={data}>
+      <div className="board-page">
+        <section className="board-toolbar">
+          <div>
+            <h2>{t('board.title')}</h2>
+            <p className="muted">{t('board.restNotice')}</p>
           </div>
-          {editor && (
-            <CardEditor target={editor} onClose={() => setEditor(undefined)} />
-          )}
+          <div className="action-row">
+            <button
+              className="button-ghost"
+              onClick={() => void board.refetch()}
+            >
+              {t('board.refresh')}
+            </button>
+            <button onClick={() => setEditor({ type: 'new-card' })}>
+              {t('board.newCard')}
+            </button>
+          </div>
         </section>
-      )}
-    </main>
+        {error && (
+          <p className="form-error" role="alert">
+            {error}
+          </p>
+        )}
+        {board.isLoading || campaign.isLoading ? (
+          <section className="board-loading" aria-label={t('common.loading')}>
+            <span />
+            <span />
+            <span />
+          </section>
+        ) : (
+          <section className="board-workspace">
+            <div className="board-canvas">
+              {(data?.currentUserRole === 'OWNER' ||
+                data?.currentUserRole === 'PLAYER') && (
+                <CampaignBackgroundLayer background={background} />
+              )}
+              <ReactFlow
+                edges={edges}
+                fitView
+                nodes={nodes}
+                nodeTypes={nodeTypes}
+                onConnect={onConnect}
+                onEdgesChange={onEdgesChange}
+                onEdgeClick={(_event, edge) => {
+                  const link = board.data?.links.find(
+                    (item) => item.linkId === edge.id,
+                  );
+                  if (link) setEditor({ type: 'link', link });
+                }}
+                onNodeClick={(_event, node) =>
+                  setEditor({ type: 'card', card: node.data.card })
+                }
+                onNodeDragStop={onNodeDragStop}
+                onNodesChange={onNodesChange}
+              >
+                <Background gap={20} />
+                <Controls />
+                <MiniMap />
+              </ReactFlow>
+            </div>
+            {editor && (
+              <CardEditor
+                target={editor}
+                onClose={() => setEditor(undefined)}
+              />
+            )}
+          </section>
+        )}
+      </div>
+    </CampaignWorkspaceShell>
   );
 }

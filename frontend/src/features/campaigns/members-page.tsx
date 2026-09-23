@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import {
@@ -11,6 +11,7 @@ import {
   CreatedCampaignInvitation,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 
 const roles = ['PLAYER', 'VIEWER'] as const;
 
@@ -31,7 +32,7 @@ function invitationStatus(
 
 export function MembersPage() {
   const { campaignId } = useParams();
-  const { api, profile, signOut } = useAuth();
+  const { api } = useAuth();
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
@@ -166,47 +167,13 @@ export function MembersPage() {
   }
 
   const data = campaign.data;
-  const basePath = `/campaigns/${campaignId}`;
   const dateFormat = new Intl.DateTimeFormat(i18n.language, {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
 
   return (
-    <main className="app-page">
-      <header className="topbar">
-        <Link to="/campaigns">Loopkeeper</Link>
-        <span>{profile?.name ?? profile?.email}</span>
-        <button className="button-ghost" onClick={() => void signOut()}>
-          {t('auth.signOut')}
-        </button>
-      </header>
-      <section className="workspace-heading">
-        <Link className="back-link" to={basePath}>
-          ← {t('workspace.backToCampaign')}
-        </Link>
-        <div>
-          <p className="kicker">{data ? t('workspace.roles.OWNER') : '…'}</p>
-          <h1>{data?.title ?? '…'}</h1>
-        </div>
-      </section>
-      <nav className="workspace-nav" aria-label={t('campaigns.title')}>
-        <NavLink end to={basePath}>
-          {t('workspace.overview')}
-        </NavLink>
-        <NavLink to={`${basePath}/board`}>{t('workspace.board')}</NavLink>
-        <NavLink to={`${basePath}/characters`}>
-          {t('workspace.characters')}
-        </NavLink>
-        <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
-        <NavLink to={`${basePath}/locations`}>
-          {t('workspace.locations')}
-        </NavLink>
-        <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
-        <NavLink to={`${basePath}/settings/backgrounds`}>
-          {t('workspace.backgroundSettings')}
-        </NavLink>
-      </nav>
+    <CampaignWorkspaceShell campaign={data}>
       <section className="page-header">
         <p className="kicker">{t('workspace.members')}</p>
         <h2>{t('members.title')}</h2>
@@ -361,7 +328,7 @@ export function MembersPage() {
           </section>
         </div>
       )}
-    </main>
+    </CampaignWorkspaceShell>
   );
 }
 

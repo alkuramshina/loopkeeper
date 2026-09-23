@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Campaign, CampaignBackgroundConfig } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -18,7 +19,7 @@ function newBackgroundId() {
 
 export function BackgroundSettingsPage() {
   const { campaignId } = useParams();
-  const { api, profile, signOut } = useAuth();
+  const { api } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [config, setConfig] = useState<CampaignBackgroundConfig>();
@@ -71,7 +72,6 @@ export function BackgroundSettingsPage() {
     );
   }
 
-  const basePath = `/campaigns/${campaignId}`;
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     save.mutate();
@@ -98,40 +98,7 @@ export function BackgroundSettingsPage() {
   };
 
   return (
-    <main className="app-page">
-      <header className="topbar">
-        <Link to="/campaigns">Loopkeeper</Link>
-        <span>{profile?.name ?? profile?.email}</span>
-        <button className="button-ghost" onClick={() => void signOut()}>
-          {t('auth.signOut')}
-        </button>
-      </header>
-      <section className="workspace-heading">
-        <Link className="back-link" to={basePath}>
-          ← {t('workspace.backToCampaign')}
-        </Link>
-        <div>
-          <p className="kicker">{t('workspace.roles.OWNER')}</p>
-          <h1>{campaign.data?.title ?? '…'}</h1>
-        </div>
-      </section>
-      <nav className="workspace-nav" aria-label={t('campaigns.title')}>
-        <NavLink end to={basePath}>
-          {t('workspace.overview')}
-        </NavLink>
-        <NavLink to={`${basePath}/board`}>{t('workspace.board')}</NavLink>
-        <NavLink to={`${basePath}/characters`}>
-          {t('workspace.characters')}
-        </NavLink>
-        <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
-        <NavLink to={`${basePath}/locations`}>
-          {t('workspace.locations')}
-        </NavLink>
-        <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
-        <NavLink to={`${basePath}/settings/backgrounds`}>
-          {t('workspace.backgroundSettings')}
-        </NavLink>
-      </nav>
+    <CampaignWorkspaceShell campaign={campaign.data}>
       <section className="page-header">
         <p className="kicker">{t('workspace.backgroundSettings')}</p>
         <h2>{t('backgrounds.title')}</h2>
@@ -284,6 +251,6 @@ export function BackgroundSettingsPage() {
           <button disabled={save.isPending}>{t('common.save')}</button>
         </form>
       )}
-    </main>
+    </CampaignWorkspaceShell>
   );
 }

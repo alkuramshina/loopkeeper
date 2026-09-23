@@ -1,10 +1,11 @@
 import { FormEvent, Fragment, useMemo, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Campaign, Note, NoteVisibility } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 
 type EditorTarget = Note | 'new';
 
@@ -268,48 +269,7 @@ export function NotesPage() {
     role !== 'VIEWER';
 
   return (
-    <main className="app-page">
-      <header className="topbar">
-        <Link to="/campaigns">Loopkeeper</Link>
-        <span>{profile?.name ?? profile?.email}</span>
-        <button className="button-ghost" onClick={() => void signOut()}>
-          {t('auth.signOut')}
-        </button>
-      </header>
-      <section className="workspace-heading">
-        <Link className="back-link" to={basePath}>
-          ← {t('workspace.backToCampaign')}
-        </Link>
-        <div>
-          <p className="kicker">{data ? t(`workspace.roles.${role}`) : '…'}</p>
-          <h1>{data?.title ?? '…'}</h1>
-        </div>
-      </section>
-      <nav className="workspace-nav" aria-label={t('campaigns.title')}>
-        <NavLink end to={basePath}>
-          {t('workspace.overview')}
-        </NavLink>
-        <NavLink to={`${basePath}/board`}>{t('workspace.board')}</NavLink>
-        <NavLink to={`${basePath}/characters`}>
-          {t('workspace.characters')}
-        </NavLink>
-        <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
-        {(role === 'OWNER' || role === 'PLAYER') && (
-          <NavLink to={`${basePath}/locations`}>
-            {t('workspace.locations')}
-          </NavLink>
-        )}
-        {role === 'OWNER' && (
-          <>
-            <NavLink to={`${basePath}/members`}>
-              {t('workspace.members')}
-            </NavLink>
-            <NavLink to={`${basePath}/settings/backgrounds`}>
-              {t('workspace.backgroundSettings')}
-            </NavLink>
-          </>
-        )}
-      </nav>
+    <CampaignWorkspaceShell campaign={data}>
       <section className="page-header note-page-header">
         <div>
           <p className="kicker">{t('workspace.notes')}</p>
@@ -408,6 +368,6 @@ export function NotesPage() {
           <p>{t('notes.empty')}</p>
         </section>
       )}
-    </main>
+    </CampaignWorkspaceShell>
   );
 }
