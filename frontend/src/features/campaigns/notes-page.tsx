@@ -205,9 +205,10 @@ function NoteEditor({
 export function NotesPage() {
   const { campaignId } = useParams();
   const { api, profile, signOut } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string>();
+  const [search, setSearch] = useState('');
   const [editor, setEditor] = useState<EditorTarget>();
   const [error, setError] = useState<string>();
   const campaign = useQuery({
@@ -245,11 +246,24 @@ export function NotesPage() {
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });
 
+  const visibleNotes = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase(i18n.language);
+    if (!query) return notes.data;
+    return notes.data?.filter((note) =>
+      `${note.title} ${note.content}`
+        .toLocaleLowerCase(i18n.language)
+        .includes(query),
+    );
+  }, [i18n.language, notes.data, search]);
   const selected = useMemo(
     () =>
-      notes.data?.find((note) => note.noteId === selectedId) ?? notes.data?.[0],
-    [notes.data, selectedId],
+      visibleNotes?.find((note) => note.noteId === selectedId) ??
+      visibleNotes?.[0],
+    [selectedId, visibleNotes],
   );
+  const dateFormat = new Intl.DateTimeFormat(i18n.language, {
+    dateStyle: 'medium',
+  });
 
   if (campaign.isError || notes.isError) {
     return (
@@ -296,21 +310,37 @@ export function NotesPage() {
       ) : notes.data?.length ? (
         <section className="notes-layout">
           <div className="note-list" aria-label={t('notes.title')}>
-            {notes.data.map((note) => (
+            <label className="note-search">
+              <span className="visually-hidden">{t('notes.search')}</span>
+              <input
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t('notes.search')}
+                type="search"
+                value={search}
+              />
+            </label>
+            {visibleNotes?.map((note) => (
               <button
                 className={`note-list-item ${selected?.noteId === note.noteId ? 'selected' : ''}`}
                 key={note.noteId}
                 onClick={() => setSelectedId(note.noteId)}
                 type="button"
               >
-                <span>{note.title}</span>
-                <small
-                  className={`visibility-badge visibility-${note.visibility.toLowerCase()}`}
-                >
-                  {t(`notes.visibilities.${note.visibility}`)}
-                </small>
+                <strong>{note.title}</strong>
+                <small className="note-list-excerpt">{note.content}</small>
+                <span className="note-list-meta">
+                  <small>{dateFormat.format(new Date(note.updatedAt))}</small>
+                  <small
+                    className={`visibility-badge visibility-${note.visibility.toLowerCase()}`}
+                  >
+                    {t(`notes.visibilities.${note.visibility}`)}
+                  </small>
+                </span>
               </button>
             ))}
+            {visibleNotes?.length === 0 && (
+              <p className="note-list-empty">{t('notes.noSearchResults')}</p>
+            )}
           </div>
           {selected && (
             <article className="panel note-detail">

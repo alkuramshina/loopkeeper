@@ -696,6 +696,42 @@ textarea {
   background: #f6f3eb;
   border-right: 1px solid #d4cfc4;
 }
+.note-search {
+  display: block;
+  padding: 0.75rem;
+  border-bottom: 1px solid #ded7c8;
+}
+.note-search input {
+  width: 100%;
+}
+.note-list-excerpt {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #726d63;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.note-list-meta {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: #726d63;
+}
+.note-list-empty {
+  padding: 1rem;
+  color: #726d63;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 .note-list-item {
   display: grid;
   justify-items: start;
@@ -768,8 +804,24 @@ textarea {
 }
 .members-layout {
   display: grid;
+  grid-template-areas:
+    'current current'
+    'invitations invitations'
+    'direct invite';
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+.members-layout > :nth-child(1) {
+  grid-area: direct;
+}
+.members-layout > :nth-child(2) {
+  grid-area: invite;
+}
+.members-layout > :nth-child(3) {
+  grid-area: current;
+}
+.members-layout > :nth-child(4) {
+  grid-area: invitations;
 }
 .members-layout .panel form {
   display: grid;
@@ -780,7 +832,11 @@ textarea {
 }
 .member-list {
   display: grid;
-  gap: 0.75rem;
+  overflow: hidden;
+  gap: 0;
+  border: 1px solid #d4cfc4;
+  border-radius: 10px;
+  background: #fffdf7;
 }
 .member-row {
   display: flex;
@@ -789,8 +845,11 @@ textarea {
   gap: 1rem;
   padding: 1rem;
   background: #fffdf7;
-  border: 1px solid #d4cfc4;
-  border-radius: 10px;
+  border: 0;
+  border-bottom: 1px solid #ded7c8;
+}
+.member-row:last-child {
+  border-bottom: 0;
 }
 .member-row p {
   margin: 0.25rem 0;
