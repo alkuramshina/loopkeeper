@@ -359,6 +359,63 @@ textarea {
   align-items: start;
   margin-bottom: 1rem;
 }
+.members-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.members-layout .panel form {
+  display: grid;
+  gap: 1rem;
+}
+.member-section {
+  grid-column: 1 / -1;
+}
+.member-list {
+  display: grid;
+  gap: 0.75rem;
+}
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fffdf7;
+  border: 1px solid #d4cfc4;
+  border-radius: 10px;
+}
+.member-row p {
+  margin: 0.25rem 0;
+  color: #625e56;
+}
+.created-invitation {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #d4cfc4;
+}
+.created-invitation p {
+  margin: 0;
+}
+.created-invitation code {
+  overflow-wrap: anywhere;
+  padding: 0.5rem;
+  background: #e4dfd4;
+  border-radius: 4px;
+}
+.invitation-status {
+  display: inline-block;
+  color: #625e56;
+}
+.invitation-active {
+  color: #3f5424;
+}
+.invitation-revoked,
+.invitation-expired {
+  color: #6d1f25;
+}
 .board-preview p {
   margin: 0.25rem 0;
 }
@@ -386,8 +443,16 @@ textarea {
     align-items: stretch;
     flex-direction: column;
   }
-  .notes-layout {
+  .notes-layout,
+  .members-layout {
     grid-template-columns: 1fr;
+  }
+  .member-section {
+    grid-column: auto;
+  }
+  .member-row {
+    align-items: stretch;
+    flex-direction: column;
   }
   .character-card .action-row {
     justify-content: start;

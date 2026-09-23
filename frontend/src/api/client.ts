@@ -119,3 +119,23 @@ export type Note = {
   visibility: NoteVisibility;
   updatedAt: string;
 };
+
+export type CampaignMember = {
+  memberId: string;
+  campaignId: string;
+  campaignRole: 'PLAYER' | 'VIEWER';
+  user: { userId: string; email: string; name?: string | null; avatarUrl?: string | null };
+};
+
+export type CampaignInvitation = {
+  invitationId: string;
+  campaignId: string;
+  role: 'PLAYER' | 'VIEWER';
+  expiresAt: string;
+  acceptedAt?: string | null;
+  revokedAt?: string | null;
+  createdAt: string;
+  createdById: string;
+};
+
+export type CreatedCampaignInvitation = CampaignInvitation & { token: string };

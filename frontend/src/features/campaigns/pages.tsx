@@ -165,7 +165,7 @@ export function CampaignWorkspacePage({
         </NavLink>
         <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
         {data?.currentUserRole === 'OWNER' && (
-          <span>{t('workspace.members')}</span>
+          <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
         )}
       </nav>
       {section === 'overview' ? (

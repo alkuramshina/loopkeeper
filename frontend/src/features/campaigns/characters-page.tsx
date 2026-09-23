@@ -363,7 +363,7 @@ export function CharactersPage() {
         </NavLink>
         <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
         {data?.currentUserRole === 'OWNER' && (
-          <span>{t('workspace.members')}</span>
+          <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
         )}
       </nav>
       <section className="page-header character-page-header">

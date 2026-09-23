@@ -294,7 +294,9 @@ export function NotesPage() {
           {t('workspace.characters')}
         </NavLink>
         <NavLink to={`${basePath}/notes`}>{t('workspace.notes')}</NavLink>
-        {role === 'OWNER' && <span>{t('workspace.members')}</span>}
+        {role === 'OWNER' && (
+          <NavLink to={`${basePath}/members`}>{t('workspace.members')}</NavLink>
+        )}
       </nav>
       <section className="page-header note-page-header">
         <div>
