@@ -102,16 +102,17 @@ model CampaignInvitation {
 }
 
 model Note {
-  noteId     String         @id @default(uuid())
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  title      String
-  content    String
-  visibility NoteVisibility @default(PRIVATE)
-  campaign   Campaign       @relation(fields: [campaignId], references: [campaignId])
-  campaignId String
-  author     User           @relation(fields: [authorId], references: [userId])
-  authorId   String
+  noteId             String              @id @default(uuid())
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  title              String
+  content            String
+  visibility         NoteVisibility      @default(PRIVATE)
+  campaign           Campaign            @relation(fields: [campaignId], references: [campaignId])
+  campaignId         String
+  author             User                @relation(fields: [authorId], references: [userId])
+  authorId           String
+  investigationCards InvestigationCard[] @relation("InvestigationCardNote")
 
   @@index([campaignId, visibility])
   @@index([campaignId, authorId])
@@ -134,11 +135,16 @@ model InvestigationCard {
   cardId      String                  @id @default(uuid())
   createdAt   DateTime                @default(now())
   updatedAt   DateTime                @updatedAt
-  title       String
+  cardKind    InvestigationCardKind   @default(FREE)
+  title       String?
   content     String?
   tags        String[]
   color       String?
   icon        String?
+  note        Note?                   @relation("InvestigationCardNote", fields: [noteId], references: [noteId], onDelete: Cascade)
+  noteId      String?
+  character   Character?              @relation("InvestigationCardCharacter", fields: [characterId], references: [characterId], onDelete: Cascade)
+  characterId String?
   board       InvestigationBoard      @relation(fields: [boardId], references: [boardId], onDelete: Cascade)
   boardId     String
   campaign    Campaign                @relation(fields: [campaignId], references: [campaignId])
@@ -150,6 +156,8 @@ model InvestigationCard {
   linksTo     InvestigationLink[]     @relation("InvestigationLinkTo")
 
   @@index([campaignId])
+  @@index([noteId])
+  @@index([characterId])
   @@map("investigation_cards")
 }
 
@@ -217,25 +225,32 @@ model CharacterTemplate {
 }
 
 model Character {
-  characterId String            @id @default(uuid())
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  name        String
-  description String?
-  avatarUrl   String?
-  data        Json              @default("{}")
-  isNPC       Boolean           @default(false)
-  isActive    Boolean           @default(true)
-  campaign    Campaign          @relation(fields: [campaignId], references: [campaignId])
-  campaignId  String
-  owner       User              @relation(fields: [ownerId], references: [userId])
-  ownerId     String
-  template    CharacterTemplate @relation(fields: [templateId], references: [templateId])
-  templateId  String
+  characterId        String              @id @default(uuid())
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  name               String
+  description        String?
+  avatarUrl          String?
+  data               Json                @default("{}")
+  isNPC              Boolean             @default(false)
+  isActive           Boolean             @default(true)
+  campaign           Campaign            @relation(fields: [campaignId], references: [campaignId])
+  campaignId         String
+  owner              User                @relation(fields: [ownerId], references: [userId])
+  ownerId            String
+  template           CharacterTemplate   @relation(fields: [templateId], references: [templateId])
+  templateId         String
+  investigationCards InvestigationCard[] @relation("InvestigationCardCharacter")
 
   @@index([campaignId])
   @@index([ownerId])
   @@map("characters")
+}
+
+enum InvestigationCardKind {
+  FREE
+  NOTE_REFERENCE
+  CHARACTER_REFERENCE
 }
 
 enum CampaignRole {

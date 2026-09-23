@@ -64,9 +64,20 @@ export class NoteService {
       this.assertCanCreate(access, updateDto.visibility);
     }
 
-    return this.prisma.note.update({
-      where: { noteId },
-      data: updateDto,
+    return this.prisma.$transaction(async (transaction) => {
+      const updatedNote = await transaction.note.update({
+        where: { noteId },
+        data: updateDto,
+      });
+
+      if (
+        updateDto.visibility === NoteVisibility.PRIVATE ||
+        updateDto.visibility === NoteVisibility.MASTER_ONLY
+      ) {
+        await transaction.investigationCard.deleteMany({ where: { noteId } });
+      }
+
+      return updatedNote;
     });
   }
 

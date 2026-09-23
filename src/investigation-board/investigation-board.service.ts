@@ -1,5 +1,9 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { DomainException } from '../common/exceptions/domain.exception';
+import { InvestigationCardKind, NoteVisibility, Prisma } from '@prisma/client';
+import {
+  DomainException,
+  ErrorViolation,
+} from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from '../campaign/access/campaign-access.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -12,6 +16,26 @@ import {
 } from './dto/link.dto';
 import { UpdateInvestigationBoardNodeDto } from './dto/node.dto';
 
+const cardInclude = {
+  node: true,
+  note: {
+    select: { noteId: true, title: true, content: true },
+  },
+  character: {
+    select: {
+      characterId: true,
+      name: true,
+      description: true,
+      avatarUrl: true,
+      isNPC: true,
+    },
+  },
+} satisfies Prisma.InvestigationCardInclude;
+
+type CardWithReference = Prisma.InvestigationCardGetPayload<{
+  include: typeof cardInclude;
+}>;
+
 @Injectable()
 export class InvestigationBoardService {
   constructor(
@@ -22,13 +46,15 @@ export class InvestigationBoardService {
   async getBoard(userId: string, campaignId: string) {
     await this.access.requireBoardContributor(userId, campaignId);
     const board = await this.getOrCreate(campaignId);
-    return this.prisma.investigationBoard.findUniqueOrThrow({
+    const result = await this.prisma.investigationBoard.findUniqueOrThrow({
       where: { boardId: board.boardId },
       include: {
-        cards: { include: { node: true }, orderBy: { createdAt: 'asc' } },
+        cards: { include: cardInclude, orderBy: { createdAt: 'asc' } },
         links: { orderBy: { createdAt: 'asc' } },
       },
     });
+
+    return { ...result, cards: result.cards.map((card) => this.presentCard(card)) };
   }
 
   async createCard(
@@ -38,17 +64,28 @@ export class InvestigationBoardService {
   ) {
     await this.access.requireBoardContributor(userId, campaignId);
     const board = await this.getOrCreate(campaignId);
-    return this.prisma.investigationCard.create({
+    const cardKind = dto.cardKind ?? InvestigationCardKind.FREE;
+
+    const source = await this.resolveCardSource(campaignId, board.boardId, cardKind, dto);
+    const card = await this.prisma.investigationCard.create({
       data: {
-        ...dto,
+        cardKind,
+        title: cardKind === InvestigationCardKind.FREE ? dto.title : null,
+        content: cardKind === InvestigationCardKind.FREE ? dto.content : null,
         tags: dto.tags ?? [],
+        color: dto.color,
+        icon: dto.icon,
+        noteId: source.noteId,
+        characterId: source.characterId,
         campaignId,
         boardId: board.boardId,
         createdById: userId,
         node: { create: {} },
       },
-      include: { node: true },
+      include: cardInclude,
     });
+
+    return this.presentCard(card);
   }
 
   async updateCard(
@@ -57,11 +94,20 @@ export class InvestigationBoardService {
     dto: UpdateInvestigationCardDto,
   ) {
     const card = await this.requireCard(userId, cardId);
-    return this.prisma.investigationCard.update({
+    if (
+      card.cardKind !== InvestigationCardKind.FREE &&
+      (dto.title !== undefined || dto.content !== undefined)
+    ) {
+      throw this.invalidCardUpdate();
+    }
+
+    const updatedCard = await this.prisma.investigationCard.update({
       where: { cardId: card.cardId },
       data: dto,
-      include: { node: true },
+      include: cardInclude,
     });
+
+    return this.presentCard(updatedCard);
   }
 
   async deleteCard(userId: string, cardId: string) {
@@ -137,6 +183,122 @@ export class InvestigationBoardService {
     });
   }
 
+  private async resolveCardSource(
+    campaignId: string,
+    boardId: string,
+    cardKind: InvestigationCardKind,
+    dto: CreateInvestigationCardDto,
+  ): Promise<{ noteId?: string; characterId?: string }> {
+    if (cardKind === InvestigationCardKind.FREE) {
+      if (!dto.title || dto.noteId || dto.characterId) {
+        throw this.invalidCardPayload();
+      }
+      return {};
+    }
+
+    if (cardKind === InvestigationCardKind.NOTE_REFERENCE) {
+      if (!dto.noteId || dto.characterId || dto.title || dto.content) {
+        throw this.invalidCardPayload();
+      }
+      const note = await this.prisma.note.findFirst({
+        where: {
+          noteId: dto.noteId,
+          campaignId,
+          visibility: { in: [NoteVisibility.PLAYERS, NoteVisibility.PUBLIC] },
+        },
+        select: { noteId: true },
+      });
+      if (!note) {
+        throw this.cardNotFound();
+      }
+      await this.assertNoReference(boardId, { noteId: note.noteId });
+      return { noteId: note.noteId };
+    }
+
+    if (!dto.characterId || dto.noteId || dto.title || dto.content) {
+      throw this.invalidCardPayload();
+    }
+    const character = await this.prisma.character.findFirst({
+      where: { characterId: dto.characterId, campaignId },
+      select: { characterId: true },
+    });
+    if (!character) {
+      throw this.cardNotFound();
+    }
+    await this.assertNoReference(boardId, { characterId: character.characterId });
+    return { characterId: character.characterId };
+  }
+
+  private async assertNoReference(
+    boardId: string,
+    source: { noteId?: string; characterId?: string },
+  ): Promise<void> {
+    const existing = await this.prisma.investigationCard.findFirst({
+      where: { boardId, ...source },
+      select: { cardId: true },
+    });
+    if (existing) {
+      throw new DomainException(
+        HttpStatus.CONFLICT,
+        'resource.conflict',
+        'The resource conflicts with existing data',
+      );
+    }
+  }
+
+  private presentCard(card: CardWithReference) {
+    const { note, character, ...cardData } = card;
+    if (card.cardKind === InvestigationCardKind.NOTE_REFERENCE && note) {
+      return {
+        ...cardData,
+        title: note.title,
+        content: this.preview(note.content),
+        reference: { kind: 'NOTE', noteId: note.noteId },
+      };
+    }
+    if (card.cardKind === InvestigationCardKind.CHARACTER_REFERENCE && character) {
+      return {
+        ...cardData,
+        title: character.name,
+        content: this.preview(character.description),
+        reference: {
+          kind: 'CHARACTER',
+          characterId: character.characterId,
+          avatarUrl: character.avatarUrl,
+          isNPC: character.isNPC,
+        },
+      };
+    }
+    return cardData;
+  }
+
+  private preview(content?: string | null): string | null {
+    if (!content) {
+      return null;
+    }
+    return content.length > 500 ? `${content.slice(0, 497)}...` : content;
+  }
+
+  private invalidCardPayload(): DomainException {
+    const violations: ErrorViolation[] = [
+      { field: 'cardKind', code: 'validation.invalid_value' },
+    ];
+    return new DomainException(
+      HttpStatus.BAD_REQUEST,
+      'validation.failed',
+      'Request validation failed',
+      violations,
+    );
+  }
+
+  private invalidCardUpdate(): DomainException {
+    return new DomainException(
+      HttpStatus.BAD_REQUEST,
+      'validation.invalid_value',
+      'Referenced card content is managed by its source',
+    );
+  }
+
   private cardNotFound(): DomainException {
     return new DomainException(
       HttpStatus.NOT_FOUND,
@@ -169,7 +331,7 @@ export class InvestigationBoardService {
           OR: [{ ownerId: userId }, { members: { some: { userId } } }],
         },
       },
-      select: { cardId: true, campaignId: true },
+      select: { cardId: true, campaignId: true, cardKind: true },
     });
     if (!card) throw this.cardNotFound();
     await this.access.requireBoardContributor(userId, card.campaignId);

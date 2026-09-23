@@ -29,21 +29,21 @@ export class InvestigationBoardController {
   ) {
     return this.boards.getBoard(req.user.userId, campaignId);
   }
-  @Post('campaigns/:campaignId/investigation-cards') createCard(
+  @Post('campaigns/:campaignId/cards') createCard(
     @Param('campaignId') campaignId: string,
     @Body() dto: CreateInvestigationCardDto,
     @Request() req: { user: TokenPayloadDto },
   ) {
     return this.boards.createCard(req.user.userId, campaignId, dto);
   }
-  @Patch('investigation-cards/:cardId') updateCard(
+  @Patch('cards/:cardId') updateCard(
     @Param('cardId') cardId: string,
     @Body() dto: UpdateInvestigationCardDto,
     @Request() req: { user: TokenPayloadDto },
   ) {
     return this.boards.updateCard(req.user.userId, cardId, dto);
   }
-  @Delete('investigation-cards/:cardId') deleteCard(
+  @Delete('cards/:cardId') deleteCard(
     @Param('cardId') cardId: string,
     @Request() req: { user: TokenPayloadDto },
   ) {
