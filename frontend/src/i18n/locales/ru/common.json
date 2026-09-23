@@ -1,0 +1,41 @@
+{
+  "appName": "Loopkeeper",
+  "appTagline": "Локальное пространство для игровых кампаний",
+  "auth": {
+    "signIn": "Войти",
+    "signUp": "Создать аккаунт",
+    "signOut": "Выйти",
+    "email": "Электронная почта",
+    "password": "Пароль",
+    "name": "Имя",
+    "signInTitle": "Вход",
+    "signUpTitle": "Новый аккаунт"
+  },
+  "campaigns": {
+    "title": "Кампании",
+    "newCampaign": "Новая кампания",
+    "campaignTitle": "Название",
+    "description": "Описание",
+    "create": "Создать кампанию",
+    "empty": "У вас пока нет кампаний.",
+    "open": "Открыть"
+  },
+  "workspace": {
+    "overview": "Обзор",
+    "board": "Доска расследования",
+    "characters": "Персонажи",
+    "notes": "Заметки",
+    "members": "Участники",
+    "boardEmpty": "На доске пока нет карточек.",
+    "boardUnavailable": "Этот ресурс недоступен."
+  },
+  "errors": {
+    "validation.failed": "Проверьте заполнение полей.",
+    "resource.conflict": "Невозможно сохранить изменения из-за конфликта данных.",
+    "campaign.not_found": "Кампания недоступна.",
+    "resource.not_found": "Ресурс недоступен.",
+    "auth.invalid_credentials": "Не удалось войти. Проверьте почту и пароль.",
+    "auth.invalid_token": "Сессия завершена. Войдите снова.",
+    "unexpected": "Произошла непредвиденная ошибка."
+  }
+}
