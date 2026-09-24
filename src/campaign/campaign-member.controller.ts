@@ -5,13 +5,12 @@ import {
   Get,
   Param,
   Patch,
-  Post,
+
   Request,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
-  ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -19,7 +18,7 @@ import {
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { CampaignMemberService } from './campaign-member.service';
 import { CampaignMemberResponseDto } from './dto/campaign-member-response.dto';
-import { CreateMemberDto } from './dto/create-member.dto';
+
 import { UpdateMemberDto } from './dto/update-member.dto';
 
 @ApiTags('Campaign members')
@@ -28,17 +27,6 @@ import { UpdateMemberDto } from './dto/update-member.dto';
 export class CampaignMemberController {
   constructor(private readonly members: CampaignMemberService) {}
 
-  @ApiOperation({ summary: 'Add a member to an owned campaign' })
-  @ApiBody({ type: CreateMemberDto })
-  @ApiCreatedResponse({ type: CampaignMemberResponseDto })
-  @Post()
-  create(
-    @Param('campaignId') campaignId: string,
-    @Body() createDto: CreateMemberDto,
-    @Request() request: { user: TokenPayloadDto },
-  ) {
-    return this.members.create(request.user.userId, campaignId, createDto);
-  }
 
   @ApiOperation({ summary: 'List members of an owned campaign' })
   @ApiOkResponse({ type: CampaignMemberResponseDto, isArray: true })

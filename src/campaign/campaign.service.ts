@@ -39,7 +39,7 @@ export class CampaignService {
       data: {
         title: createDto.title,
         description: createDto.description,
-        system: 'TALES_FROM_THE_LOOP',
+        system: createDto.system,
         coverUrl: createDto.coverUrl,
         ownerId: userId,
       },

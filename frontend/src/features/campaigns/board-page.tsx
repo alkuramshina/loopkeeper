@@ -116,6 +116,60 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
 
 const nodeTypes = { card: InvestigationCard };
 
+const cardColors = ['#6d1f25', '#c36b3d', '#39726a', '#436b9c', '#6e5a92'];
+const cardIcons = ['clue', 'person', 'place', 'question', 'warning'];
+
+function TagComposer({ initialTags }: { initialTags: string[] }) {
+  const { t } = useTranslation();
+  const [tags, setTags] = useState(initialTags);
+  const [draft, setDraft] = useState('');
+
+  function addTag() {
+    const tag = draft.trim().replace(/^#/, '');
+    if (!tag || tags.includes(tag) || tags.length >= 30 || tag.length > 50)
+      return;
+    setTags([...tags, tag]);
+    setDraft('');
+  }
+
+  return (
+    <fieldset className="tag-composer">
+      <legend>{t('board.tags')}</legend>
+      <input name="tags" type="hidden" value={tags.join(',')} readOnly />
+      <div className="tag-composer-list">
+        {tags.map((tag) => (
+          <button
+            key={tag}
+            className="tag-chip"
+            onClick={() => setTags(tags.filter((item) => item !== tag))}
+            type="button"
+          >
+            #{tag} ×
+          </button>
+        ))}
+      </div>
+      <div className="tag-composer-input">
+        <input
+          aria-label={t('board.newTag')}
+          maxLength={50}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              addTag();
+            }
+          }}
+          placeholder={t('board.newTag')}
+          value={draft}
+        />
+        <button onClick={addTag} type="button">
+          {t('board.addTag')}
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
 function CardEditor({
   target,
   onClose,
@@ -176,15 +230,19 @@ function CardEditor({
         const current = queryClient.getQueryData<Board>(['board', campaignId]);
         const index = current?.cards.length ?? 0;
         const newCard = result as BoardCard;
-        await api.request(`/investigation-board/nodes/${newCard.cardId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            x: 80 + (index % 4) * 280,
-            y: 80 + Math.floor(index / 4) * 210,
-            width: 240,
-            height: 160,
-          }),
-        });
+        try {
+          await api.request(`/investigation-board/nodes/${newCard.cardId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              x: 80 + (index % 4) * 280,
+              y: 80 + Math.floor(index / 4) * 210,
+              width: 240,
+              height: 160,
+            }),
+          });
+        } catch {
+          // The card itself was created. It remains usable with the board's default position.
+        }
       }
       await queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
       onClose();
@@ -230,7 +288,7 @@ function CardEditor({
         ) : (
           <>
             <label>
-              {t('board.title')}
+              {t('board.cardTitle')}
               <input
                 name="title"
                 defaultValue={card?.title ?? ''}
@@ -251,30 +309,31 @@ function CardEditor({
             {card && card.cardKind !== 'FREE' && (
               <p className="muted">{t('board.referenceContent')}</p>
             )}
-            <label>
-              {t('board.tags')}
-              <input
-                name="tags"
-                defaultValue={card?.tags.join(', ') ?? ''}
-                maxLength={1529}
-              />
-            </label>
+            <TagComposer
+              key={card?.cardId ?? 'new-card'}
+              initialTags={card?.tags ?? []}
+            />
             <label>
               {t('board.color')}
-              <input
-                name="color"
-                defaultValue={card?.color ?? ''}
-                pattern="#[0-9a-fA-F]{3,8}"
-                placeholder="#6d1f25"
-              />
+              <select name="color" defaultValue={card?.color ?? ''}>
+                <option value="">{t('board.notSelected')}</option>
+                {cardColors.map((color) => (
+                  <option key={color} value={color}>
+                    {color}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               {t('board.icon')}
-              <input
-                name="icon"
-                defaultValue={card?.icon ?? ''}
-                pattern="[a-z0-9-]{1,40}"
-              />
+              <select name="icon" defaultValue={card?.icon ?? ''}>
+                <option value="">{t('board.notSelected')}</option>
+                {cardIcons.map((icon) => (
+                  <option key={icon} value={icon}>
+                    {t(`board.icons.${icon}`)}
+                  </option>
+                ))}
+              </select>
             </label>
           </>
         )}

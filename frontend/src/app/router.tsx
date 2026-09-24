@@ -7,9 +7,7 @@ import { AuthPage } from '../auth/auth-page';
 const CampaignListPage = lazy(async () => ({
   default: (await import('../features/campaigns/pages')).CampaignListPage,
 }));
-const CampaignWorkspacePage = lazy(async () => ({
-  default: (await import('../features/campaigns/pages')).CampaignWorkspacePage,
-}));
+
 const InvitationPage = lazy(async () => ({
   default: (await import('../features/campaigns/invitation-page'))
     .InvitationPage,
@@ -92,7 +90,7 @@ export function AppRouter() {
           <Route path="/settings/account" element={<AccountSettingsPage />} />
           <Route
             path="/campaigns/:campaignId"
-            element={<CampaignWorkspacePage section="overview" />}
+            element={<Navigate to="characters" replace />}
           />
           <Route path="/campaigns/:campaignId/board" element={<BoardPage />} />
           <Route

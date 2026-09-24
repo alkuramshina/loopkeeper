@@ -26,6 +26,25 @@ function authenticate(user: AuthenticatedUser) {
   return { Authorization: `Bearer ${user.accessToken}` };
 }
 
+async function inviteAndAccept(
+  app: INestApplication,
+  owner: AuthenticatedUser,
+  invitedUser: AuthenticatedUser,
+  campaignId: string,
+  role: 'PLAYER' | 'VIEWER',
+) {
+  const invitation = await request(app.getHttpServer())
+    .post(`/campaigns/${campaignId}/invitations`)
+    .set(authenticate(owner))
+    .send({ role })
+    .expect(201);
+
+  await request(app.getHttpServer())
+    .post(`/invitations/${invitation.body.token}/accept`)
+    .set(authenticate(invitedUser))
+    .expect(201);
+}
+
 function settings(selectionMode: 'FIXED' | 'RANDOM' = 'FIXED') {
   return {
     selectionMode,
@@ -83,16 +102,8 @@ describe('Campaign background settings (e2e)', () => {
       .expect(200);
     expect(saved.body).toEqual(settings());
 
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaignId}/members`)
-      .set(authenticate(owner))
-      .send({ email: player.email, role: 'PLAYER' })
-      .expect(201);
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaignId}/members`)
-      .set(authenticate(owner))
-      .send({ email: viewer.email, role: 'VIEWER' })
-      .expect(201);
+    await inviteAndAccept(app, owner, player, campaignId, 'PLAYER');
+    await inviteAndAccept(app, owner, viewer, campaignId, 'VIEWER');
 
     await request(app.getHttpServer())
       .get(`/campaigns/${campaignId}`)

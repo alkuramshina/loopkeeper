@@ -6,6 +6,7 @@ import { TFunction } from 'i18next';
 import { ApiError, Campaign, Location } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { ModalDialog } from '../../components/modal-dialog';
 
 type LocationDraft = {
   title: string;
@@ -36,6 +37,7 @@ export function LocationsPage() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string>();
   const [draft, setDraft] = useState<LocationDraft>(draftFromLocation());
+  const [isEditing, setEditing] = useState(false);
   const [error, setError] = useState<string>();
   const campaign = useQuery({
     queryKey: ['campaign', campaignId],
@@ -71,6 +73,7 @@ export function LocationsPage() {
     onSuccess: (location) => {
       setSelectedId(location.locationId);
       setDraft(draftFromLocation(location));
+      setEditing(false);
       setError(undefined);
       void queryClient.invalidateQueries({
         queryKey: ['locations', campaignId],
@@ -84,6 +87,7 @@ export function LocationsPage() {
     onSuccess: () => {
       setSelectedId(undefined);
       setDraft(draftFromLocation());
+      setEditing(false);
       setError(undefined);
       void queryClient.invalidateQueries({
         queryKey: ['locations', campaignId],
@@ -95,6 +99,7 @@ export function LocationsPage() {
   function selectLocation(location: Location) {
     setSelectedId(location.locationId);
     setDraft(draftFromLocation(location));
+    setEditing(false);
     setError(undefined);
   }
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -112,8 +117,23 @@ export function LocationsPage() {
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
       <section className="page-header">
-        <p className="kicker">{t('workspace.locations')}</p>
-        <h2>{t('locations.title')}</h2>
+        <div>
+          <p className="kicker">{t('workspace.locations')}</p>
+          <h2>{t('locations.title')}</h2>
+        </div>
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedId(undefined);
+              setDraft(draftFromLocation());
+              setError(undefined);
+              setEditing(true);
+            }}
+          >
+            {t('locations.new')}
+          </button>
+        )}
       </section>
       {error && (
         <p className="form-error" role="alert">
@@ -155,94 +175,100 @@ export function LocationsPage() {
                 {t('locations.openViewer')}
               </Link>
             )}
-            {isOwner ? (
-              <form onSubmit={submit}>
-                <div className="section-heading">
-                  <h2>{selected ? t('locations.edit') : t('locations.new')}</h2>
+            {isOwner && isEditing ? (
+              <ModalDialog
+                onClose={() => {
+                  setEditing(false);
+                  setDraft(draftFromLocation(selected));
+                }}
+                title={t(selected ? 'locations.edit' : 'locations.new')}
+              >
+                <form onSubmit={submit}>
+                  <label>
+                    {t('locations.name')}
+                    <input
+                      value={draft.title}
+                      required
+                      maxLength={200}
+                      onChange={(event) =>
+                        setDraft({ ...draft, title: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    {t('locations.description')}
+                    <textarea
+                      value={draft.description}
+                      maxLength={10000}
+                      onChange={(event) =>
+                        setDraft({ ...draft, description: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    {t('locations.imageUrl')}
+                    <input
+                      type="url"
+                      value={draft.imageUrl}
+                      maxLength={2048}
+                      pattern="https://.*"
+                      placeholder="https://"
+                      onChange={(event) =>
+                        setDraft({ ...draft, imageUrl: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label>
+                    {t('locations.order')}
+                    <input
+                      type="number"
+                      min={0}
+                      value={draft.sortOrder}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          sortOrder: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <button disabled={save.isPending}>{t('common.save')}</button>
                   {selected && (
                     <button
                       type="button"
-                      className="button-ghost"
+                      className="button-danger"
+                      disabled={remove.isPending}
                       onClick={() => {
-                        setSelectedId(undefined);
-                        setDraft(draftFromLocation());
+                        if (
+                          window.confirm(
+                            t('locations.deleteConfirmation', {
+                              title: selected.title,
+                            }),
+                          )
+                        )
+                          remove.mutate();
                       }}
                     >
-                      {t('locations.new')}
+                      {t('common.delete')}
                     </button>
                   )}
-                </div>
-                <label>
-                  {t('locations.name')}
-                  <input
-                    value={draft.title}
-                    required
-                    maxLength={200}
-                    onChange={(event) =>
-                      setDraft({ ...draft, title: event.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  {t('locations.description')}
-                  <textarea
-                    value={draft.description}
-                    maxLength={10000}
-                    onChange={(event) =>
-                      setDraft({ ...draft, description: event.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  {t('locations.imageUrl')}
-                  <input
-                    type="url"
-                    value={draft.imageUrl}
-                    maxLength={2048}
-                    pattern="https://.*"
-                    placeholder="https://"
-                    onChange={(event) =>
-                      setDraft({ ...draft, imageUrl: event.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  {t('locations.order')}
-                  <input
-                    type="number"
-                    min={0}
-                    value={draft.sortOrder}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        sortOrder: Number(event.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <button disabled={save.isPending}>{t('common.save')}</button>
-                {selected && (
+                </form>
+              </ModalDialog>
+            ) : selected ? (
+              <>
+                <LocationView location={selected} />
+                {isOwner && (
                   <button
                     type="button"
-                    className="button-danger"
-                    disabled={remove.isPending}
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          t('locations.deleteConfirmation', {
-                            title: selected.title,
-                          }),
-                        )
-                      )
-                        remove.mutate();
+                      setDraft(draftFromLocation(selected));
+                      setEditing(true);
                     }}
                   >
-                    {t('common.delete')}
+                    {t('common.edit')}
                   </button>
                 )}
-              </form>
-            ) : selected ? (
-              <LocationView location={selected} />
+              </>
             ) : (
               <p className="muted">{t('locations.select')}</p>
             )}

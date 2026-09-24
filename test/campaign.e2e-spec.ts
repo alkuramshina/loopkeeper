@@ -30,6 +30,25 @@ function authenticate(user: AuthenticatedUser) {
   return { Authorization: `Bearer ${user.accessToken}` };
 }
 
+async function inviteAndAccept(
+  app: INestApplication,
+  owner: AuthenticatedUser,
+  invitedUser: AuthenticatedUser,
+  campaignId: string,
+  role: 'PLAYER' | 'VIEWER',
+) {
+  const invitation = await request(app.getHttpServer())
+    .post(`/campaigns/${campaignId}/invitations`)
+    .set(authenticate(owner))
+    .send({ role })
+    .expect(201);
+
+  await request(app.getHttpServer())
+    .post(`/invitations/${invitation.body.token}/accept`)
+    .set(authenticate(invitedUser))
+    .expect(201);
+}
+
 describe('Campaign tenant access (e2e)', () => {
   let app: INestApplication;
 
@@ -78,15 +97,7 @@ describe('Campaign tenant access (e2e)', () => {
       await testRequest.expect(404);
     }
 
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaignId}/members`)
-      .set(authenticate(owner))
-      .send({ email: player.email, role: 'PLAYER' })
-      .expect(201)
-      .expect((response) => {
-        expect(response.body.user).toMatchObject({ email: player.email });
-        expect(response.body.user).not.toHaveProperty('passwordHash');
-      });
+    await inviteAndAccept(app, owner, player, campaignId, 'PLAYER');
 
     await request(app.getHttpServer())
       .get(`/campaigns/${campaignId}`)

@@ -67,7 +67,7 @@ describe('CampaignWorkspaceShell', () => {
       screen.getAllByRole('link', { name: 'Настройки кампании' }).length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByRole('link', { name: 'Фоны' }).length,
-    ).toBeGreaterThan(0);
+      screen.queryByRole('link', { name: 'Фоны' }),
+    ).not.toBeInTheDocument();
   });
 });

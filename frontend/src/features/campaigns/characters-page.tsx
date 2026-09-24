@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { Avatar } from '../../components/avatar';
+import { ModalDialog } from '../../components/modal-dialog';
 
 type Filter = 'all' | 'players' | 'npcs';
 
@@ -112,35 +113,27 @@ function CharacterEditor({
 
   if (!template) {
     return (
-      <section className="panel" role="alert">
-        <p>{t('characters.templateUnavailable')}</p>
-        <button type="button" className="button-ghost" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-      </section>
+      <ModalDialog onClose={onClose} title={t('characters.new')}>
+        <p className="modal-dialog-message" role="alert">
+          {t('characters.templateUnavailable')}
+        </p>
+      </ModalDialog>
     );
   }
 
-  const sections = template.schema.sections ?? [];
+  const sections = target.isNPC ? [] : (template.schema.sections ?? []);
   const fieldsForSection = (section?: string) =>
     template.schema.fields.filter((field) => field.section === section);
 
   return (
-    <section className="panel character-editor">
-      <div className="section-heading">
-        <div>
-          <p className="kicker">
-            {target.isNPC
-              ? t('characters.npc')
-              : t('characters.playerCharacter')}
-          </p>
-          <h2>{t(target.character ? 'characters.edit' : 'characters.new')}</h2>
-        </div>
-        <button type="button" className="button-ghost" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-      </div>
-      <form onSubmit={(event) => save.mutate(event)}>
+    <ModalDialog
+      onClose={onClose}
+      title={t(target.character ? 'characters.edit' : 'characters.new')}
+    >
+      <form
+        className="character-editor"
+        onSubmit={(event) => save.mutate(event)}
+      >
         {!target.character && (
           <label>
             {t('characters.template')}
@@ -207,7 +200,7 @@ function CharacterEditor({
           {t(target.character ? 'common.save' : 'characters.create')}
         </button>
       </form>
-    </section>
+    </ModalDialog>
   );
 }
 

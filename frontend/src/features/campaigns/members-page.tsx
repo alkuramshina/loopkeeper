@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { Avatar } from '../../components/avatar';
+import { ModalDialog } from '../../components/modal-dialog';
 
 const roles = ['PLAYER', 'VIEWER'] as const;
 
@@ -39,6 +40,7 @@ export function MembersPage() {
   const [error, setError] = useState<string>();
   const [createdInvitation, setCreatedInvitation] =
     useState<CreatedCampaignInvitation>();
+  const [isCreatingInvitation, setCreatingInvitation] = useState(false);
   const campaign = useQuery({
     queryKey: ['campaign', campaignId],
     queryFn: () => api.request<Campaign>(`/campaigns/${campaignId}`),
@@ -60,18 +62,7 @@ export function MembersPage() {
     enabled: Boolean(campaignId) && isOwner,
     retry: false,
   });
-  const addMember = useMutation({
-    mutationFn: (payload: { email: string; role: string }) =>
-      api.request<CampaignMember>(`/campaigns/${campaignId}/members`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['members', campaignId] });
-      setError(undefined);
-    },
-    onError: (cause) => setError(apiErrorMessage(cause, t)),
-  });
+
   const updateMember = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: string }) =>
       api.request<CampaignMember>(
@@ -109,6 +100,7 @@ export function MembersPage() {
       ),
     onSuccess: (invitation) => {
       setCreatedInvitation(invitation);
+      setCreatingInvitation(false);
       setError(undefined);
       void queryClient.invalidateQueries({
         queryKey: ['invitations', campaignId],
@@ -130,16 +122,6 @@ export function MembersPage() {
     },
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });
-
-  function submitMember(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    addMember.mutate({
-      email: String(form.get('email') ?? ''),
-      role: String(form.get('role') ?? 'PLAYER'),
-    });
-    event.currentTarget.reset();
-  }
 
   function submitInvitation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -188,46 +170,10 @@ export function MembersPage() {
         <p>{t('common.loading')}</p>
       ) : (
         <div className="members-layout">
-          <section className="panel">
-            <h2>{t('members.directAdd')}</h2>
-            <form onSubmit={submitMember}>
-              <label>
-                {t('auth.email')}
-                <input
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                />
-              </label>
-              <RoleSelect />
-              <button disabled={addMember.isPending}>{t('members.add')}</button>
-            </form>
-          </section>
-          <section className="panel">
-            <h2>{t('members.createInvitation')}</h2>
-            <form onSubmit={submitInvitation}>
-              <RoleSelect />
-              <button disabled={createInvitation.isPending}>
-                {t('members.createInvitation')}
-              </button>
-            </form>
-            {createdInvitation && (
-              <div className="created-invitation" role="status">
-                <p>{t('members.invitationCreated')}</p>
-                <code>{`${window.location.origin}/invitations/${createdInvitation.token}`}</code>
-                <button
-                  className="button-ghost"
-                  type="button"
-                  onClick={() => void copyInvitation()}
-                >
-                  {t('members.copyInvitation')}
-                </button>
-              </div>
-            )}
-          </section>
           <section className="member-section">
-            <h2>{t('members.currentMembers')}</h2>
+            <div className="section-heading">
+              <h2>{t('members.currentMembers')}</h2>
+            </div>
             {members.data?.length ? (
               <div className="member-list">
                 {members.data.map((member) => (
@@ -288,7 +234,45 @@ export function MembersPage() {
             )}
           </section>
           <section className="member-section">
-            <h2>{t('members.invitations')}</h2>
+            <div className="section-heading">
+              <h2>{t('members.invitations')}</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setError(undefined);
+                  setCreatedInvitation(undefined);
+                  setCreatingInvitation(true);
+                }}
+              >
+                {t('members.createInvitation')}
+              </button>
+            </div>
+            {isCreatingInvitation && (
+              <ModalDialog
+                onClose={() => setCreatingInvitation(false)}
+                title={t('members.createInvitation')}
+              >
+                <form onSubmit={submitInvitation}>
+                  <RoleSelect />
+                  <button disabled={createInvitation.isPending}>
+                    {t('members.createInvitation')}
+                  </button>
+                </form>
+              </ModalDialog>
+            )}
+            {createdInvitation && (
+              <div className="created-invitation" role="status">
+                <p>{t('members.invitationCreated')}</p>
+                <code>{`${window.location.origin}/invitations/${createdInvitation.token}`}</code>
+                <button
+                  className="button-ghost"
+                  type="button"
+                  onClick={() => void copyInvitation()}
+                >
+                  {t('members.copyInvitation')}
+                </button>
+              </div>
+            )}
             {invitations.data?.length ? (
               <div className="member-list">
                 {invitations.data.map((invitation) => {

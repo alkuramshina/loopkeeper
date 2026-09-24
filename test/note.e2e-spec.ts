@@ -24,6 +24,25 @@ function authenticate(user: AuthenticatedUser) {
   return { Authorization: `Bearer ${user.accessToken}` };
 }
 
+async function inviteAndAccept(
+  app: INestApplication,
+  owner: AuthenticatedUser,
+  invitedUser: AuthenticatedUser,
+  campaignId: string,
+  role: 'PLAYER' | 'VIEWER',
+) {
+  const invitation = await request(app.getHttpServer())
+    .post(`/campaigns/${campaignId}/invitations`)
+    .set(authenticate(owner))
+    .send({ role })
+    .expect(201);
+
+  await request(app.getHttpServer())
+    .post(`/invitations/${invitation.body.token}/accept`)
+    .set(authenticate(invitedUser))
+    .expect(201);
+}
+
 function createNote(
   app: INestApplication,
   user: AuthenticatedUser,
@@ -80,11 +99,7 @@ describe('Notes visibility (e2e)', () => {
       [anotherPlayer, 'PLAYER'],
       [viewer, 'VIEWER'],
     ] as const) {
-      await request(app.getHttpServer())
-        .post(`/campaigns/${campaignId}/members`)
-        .set(authenticate(owner))
-        .send({ email: user.email, role })
-        .expect(201);
+      await inviteAndAccept(app, owner, user, campaignId, role);
     }
 
     const ownerPrivate = await createNote(
@@ -169,11 +184,7 @@ describe('Notes visibility (e2e)', () => {
       [player, 'PLAYER'],
       [viewer, 'VIEWER'],
     ] as const) {
-      await request(app.getHttpServer())
-        .post(`/campaigns/${campaignId}/members`)
-        .set(authenticate(owner))
-        .send({ email: user.email, role })
-        .expect(201);
+      await inviteAndAccept(app, owner, user, campaignId, role);
     }
 
     const ownerPublic = await createNote(

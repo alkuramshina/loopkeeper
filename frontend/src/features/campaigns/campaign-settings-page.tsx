@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Campaign } from '../../api/client';
@@ -68,7 +68,11 @@ export function CampaignSettingsPage() {
   }, [campaignId]);
 
   if (campaign.isError || (campaign.data && !isOwner)) {
-    return <main className="page-state" role="alert">{t('errors.resource.not_found')}</main>;
+    return (
+      <main className="page-state" role="alert">
+        {t('errors.resource.not_found')}
+      </main>
+    );
   }
 
   return (
@@ -84,19 +88,47 @@ export function CampaignSettingsPage() {
           <form className="panel" onSubmit={(event) => update.mutate(event)}>
             <div className="section-heading">
               <h2>{t('campaignSettings.details')}</h2>
-              {saved && <small className="success-message">{t('campaignSettings.saved')}</small>}
+              {saved && (
+                <small className="success-message">
+                  {t('campaignSettings.saved')}
+                </small>
+              )}
             </div>
             <label>
               {t('campaigns.campaignTitle')}
-              <input defaultValue={campaign.data?.title} maxLength={100} name="title" required />
+              <input
+                defaultValue={campaign.data?.title}
+                maxLength={100}
+                name="title"
+                required
+              />
             </label>
             <label>
               {t('campaigns.description')}
-              <textarea defaultValue={campaign.data?.description ?? ''} maxLength={1000} name="description" required />
+              <textarea
+                defaultValue={campaign.data?.description ?? ''}
+                maxLength={1000}
+                name="description"
+                required
+              />
             </label>
-            {error && <p className="form-error" role="alert">{error}</p>}
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
             <button disabled={update.isPending}>{t('common.save')}</button>
           </form>
+          <section className="panel">
+            <h2>{t('backgrounds.title')}</h2>
+            <p>{t('campaignSettings.backgroundsDescription')}</p>
+            <Link
+              className="button-link"
+              to={`/campaigns/${campaignId}/settings/backgrounds`}
+            >
+              {t('workspace.backgroundSettings')}
+            </Link>
+          </section>
           <section className="panel settings-danger-zone">
             <h2>{t('campaignSettings.dangerTitle')}</h2>
             <p>{t('campaignSettings.dangerDescription')}</p>
@@ -104,7 +136,13 @@ export function CampaignSettingsPage() {
               className="button-danger"
               disabled={remove.isPending}
               onClick={() => {
-                if (window.confirm(t('campaignSettings.deleteConfirmation', { title: campaign.data?.title }))) {
+                if (
+                  window.confirm(
+                    t('campaignSettings.deleteConfirmation', {
+                      title: campaign.data?.title,
+                    }),
+                  )
+                ) {
                   remove.mutate();
                 }
               }}

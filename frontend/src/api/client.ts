@@ -75,6 +75,12 @@ export type CampaignBackgroundConfig = {
   backgrounds: CampaignBackground[];
 };
 
+export type GameSystem = {
+  slug: string;
+  name: string;
+  description?: string | null;
+};
+
 export type Campaign = {
   campaignId: string;
   title: string;

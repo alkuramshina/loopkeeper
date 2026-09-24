@@ -1,11 +1,11 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CampaignRole } from '@prisma/client';
-import { DomainException } from '../common/exceptions/domain.exception';
+
 import { CampaignAccessService } from './access/campaign-access.service';
-import { CreateMemberDto } from './dto/create-member.dto';
+
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserService } from '../user/user.service';
+
 
 const memberSelect = {
   memberId: true,
@@ -27,35 +27,9 @@ const memberSelect = {
 export class CampaignMemberService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly users: UserService,
     private readonly campaignAccess: CampaignAccessService,
   ) {}
 
-  async create(
-    ownerId: string,
-    campaignId: string,
-    createDto: CreateMemberDto,
-  ) {
-    await this.campaignAccess.requireOwner(ownerId, campaignId);
-
-    const user = await this.users.findByEmail(createDto.email);
-    if (!user || user.userId === ownerId) {
-      throw new DomainException(
-        HttpStatus.NOT_FOUND,
-        'resource.not_found',
-        'The requested user is unavailable',
-      );
-    }
-
-    return this.prisma.campaignMember.create({
-      data: {
-        campaignId,
-        userId: user.userId,
-        campaignRole: createDto.role,
-      },
-      select: memberSelect,
-    });
-  }
 
   async findAll(ownerId: string, campaignId: string) {
     await this.campaignAccess.requireOwner(ownerId, campaignId);

@@ -52,6 +52,25 @@ function authenticate(user: AuthenticatedUser) {
   return { Authorization: `Bearer ${user.accessToken}` };
 }
 
+async function inviteAndAccept(
+  app: INestApplication,
+  owner: AuthenticatedUser,
+  invitedUser: AuthenticatedUser,
+  campaignId: string,
+  role: 'PLAYER' | 'VIEWER',
+) {
+  const invitation = await request(app.getHttpServer())
+    .post(`/campaigns/${campaignId}/invitations`)
+    .set(authenticate(owner))
+    .send({ role })
+    .expect(201);
+
+  await request(app.getHttpServer())
+    .post(`/invitations/${invitation.body.token}/accept`)
+    .set(authenticate(invitedUser))
+    .expect(201);
+}
+
 async function createCampaign(app: INestApplication, owner: AuthenticatedUser) {
   const response = await request(app.getHttpServer())
     .post('/campaigns')
@@ -89,16 +108,20 @@ describe('Characters (e2e)', () => {
     );
     const campaign = await createCampaign(app, owner);
 
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaign.campaignId}/members`)
-      .set(authenticate(owner))
-      .send({ email: player.email, role: 'PLAYER' })
-      .expect(201);
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaign.campaignId}/members`)
-      .set(authenticate(owner))
-      .send({ email: viewer.email, role: 'VIEWER' })
-      .expect(201);
+    await inviteAndAccept(
+      app,
+      owner,
+      player,
+      campaign.campaignId,
+      'PLAYER',
+    );
+    await inviteAndAccept(
+      app,
+      owner,
+      viewer,
+      campaign.campaignId,
+      'VIEWER',
+    );
 
     const templates = await request(app.getHttpServer())
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
@@ -185,11 +208,13 @@ describe('Characters (e2e)', () => {
     const player = await registerUser(app, 'player@loopkeeper.dev', 'Player');
     const campaign = await createCampaign(app, owner);
 
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaign.campaignId}/members`)
-      .set(authenticate(owner))
-      .send({ email: player.email, role: 'PLAYER' })
-      .expect(201);
+    await inviteAndAccept(
+      app,
+      owner,
+      player,
+      campaign.campaignId,
+      'PLAYER',
+    );
 
     const templates = await request(app.getHttpServer())
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')

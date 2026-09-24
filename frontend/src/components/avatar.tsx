@@ -17,7 +17,7 @@ export function Avatar({ alt, imageUrl, seed, size = 'medium' }: AvatarProps) {
     {
       backgroundColor: ['e7edf0', 'dce4d1', 'e9d8d9'],
       radius: 50,
-      seed,
+      seed: alt || seed,
     },
   ).toDataUri();
 

@@ -1,15 +1,11 @@
 import { FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
-import { ApiError, Board, Campaign } from '../../api/client';
+import { ApiError, Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
-import {
-  CampaignBackgroundLayer,
-  useCampaignBackground,
-} from './use-campaign-background';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { ModalDialog } from '../../components/modal-dialog';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -27,6 +23,10 @@ export function CampaignListPage() {
     queryKey: ['campaigns'],
     queryFn: () => api.request<Campaign[]>('/campaigns'),
   });
+  const gameSystems = useQuery({
+    queryKey: ['game-systems'],
+    queryFn: () => api.request<GameSystem[]>('/game-systems'),
+  });
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -38,6 +38,7 @@ export function CampaignListPage() {
         body: JSON.stringify({
           title: form.get('title'),
           description: form.get('description'),
+          system: form.get('system'),
         }),
       });
       queryClient.setQueryData<Campaign[]>(['campaigns'], (items = []) => [
@@ -63,7 +64,7 @@ export function CampaignListPage() {
           {t('appName')}
         </Link>
         <div className="campaign-account">
-          <span>{profile?.name ?? profile?.email}</span>
+          <Link to="/settings/account">{profile?.name ?? profile?.email}</Link>
           <button className="button-ghost" onClick={() => void signOut()}>
             {t('auth.signOut')}
           </button>
@@ -76,31 +77,39 @@ export function CampaignListPage() {
             <h1>{t('campaigns.chooseWorkspace')}</h1>
             <p className="campaigns-intro">{t('campaigns.intro')}</p>
           </div>
-          <button onClick={openCreate}>{t('campaigns.newCampaign')}</button>
+          {campaigns.data?.length ? (
+            <button onClick={openCreate}>{t('campaigns.newCampaign')}</button>
+          ) : null}
         </header>
         {isCreating ? (
-          <section className="campaign-create-wrap">
+          <ModalDialog
+            onClose={() => {
+              setCreating(false);
+              setError(undefined);
+            }}
+            title={t('campaigns.newCampaign')}
+          >
             <form className="campaign-create-card" onSubmit={create}>
-              <div className="section-heading">
-                <h2>{t('campaigns.newCampaign')}</h2>
-                <button
-                  className="button-ghost"
-                  onClick={() => {
-                    setCreating(false);
-                    setError(undefined);
-                  }}
-                  type="button"
-                >
-                  {t('common.cancel')}
-                </button>
-              </div>
               <label>
                 {t('campaigns.campaignTitle')}
                 <input name="title" required />
               </label>
               <label>
+                {t('campaigns.system')}
+                <select name="system" required defaultValue="">
+                  <option disabled value="">
+                    {t('campaigns.selectSystem')}
+                  </option>
+                  {gameSystems.data?.map((system) => (
+                    <option key={system.slug} value={system.slug}>
+                      {system.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 {t('campaigns.description')}
-                <textarea name="description" />
+                <textarea name="description" required />
               </label>
               {error && (
                 <p className="form-error" role="alert">
@@ -109,7 +118,7 @@ export function CampaignListPage() {
               )}
               <button>{t('campaigns.create')}</button>
             </form>
-          </section>
+          </ModalDialog>
         ) : campaigns.isLoading ? (
           <section className="campaign-page-state" aria-live="polite">
             <p>{t('common.loading')}</p>
@@ -117,7 +126,11 @@ export function CampaignListPage() {
         ) : campaigns.data?.length ? (
           <section className="campaign-grid" aria-live="polite">
             {campaigns.data.map((campaign) => (
-              <article className="campaign-card" key={campaign.campaignId}>
+              <Link
+                className="campaign-card"
+                key={campaign.campaignId}
+                to={`/campaigns/${campaign.campaignId}`}
+              >
                 <p className="campaign-system">
                   {campaign.system ?? t('campaigns.systemFallback')}
                 </p>
@@ -131,11 +144,9 @@ export function CampaignListPage() {
                   >
                     {t(`workspace.roles.${campaign.currentUserRole}`)}
                   </span>
-                  <Link to={`/campaigns/${campaign.campaignId}`}>
-                    {t('campaigns.open')}
-                  </Link>
+                  <span>{t('campaigns.open')}</span>
                 </footer>
-              </article>
+              </Link>
             ))}
           </section>
         ) : (
@@ -150,88 +161,5 @@ export function CampaignListPage() {
         )}
       </section>
     </main>
-  );
-}
-
-export function CampaignWorkspacePage({
-  section,
-}: {
-  section: 'overview' | 'board';
-}) {
-  const { campaignId } = useParams();
-  const { api, profile, signOut } = useAuth();
-  const { t } = useTranslation();
-  const campaign = useQuery({
-    queryKey: ['campaign', campaignId],
-    queryFn: () => api.request<Campaign>(`/campaigns/${campaignId}`),
-    enabled: Boolean(campaignId),
-    retry: false,
-  });
-  const board = useQuery({
-    queryKey: ['board', campaignId],
-    queryFn: () =>
-      api.request<Board>(`/campaigns/${campaignId}/investigation-board`),
-    enabled: Boolean(campaignId) && section === 'board',
-    retry: false,
-  });
-
-  const data = campaign.data;
-  const background = useCampaignBackground(
-    campaignId,
-    data?.backgroundConfig,
-    data?.currentUserRole,
-  );
-  if (campaign.isError)
-    return (
-      <main className="page-state" role="alert">
-        {t('errors.resource.not_found')}
-      </main>
-    );
-  const basePath = `/campaigns/${campaignId}`;
-
-  return (
-    <CampaignWorkspaceShell campaign={data}>
-      {section === 'overview' ? (
-        <section className="workspace-overview panel">
-          {(data?.currentUserRole === 'OWNER' ||
-            data?.currentUserRole === 'PLAYER') && (
-            <CampaignBackgroundLayer background={background} />
-          )}
-          <div className="workspace-overview-content">
-            <h2>{t('workspace.summary')}</h2>
-            <p>{data?.description || '—'}</p>
-            <dl>
-              <dt>{t('workspace.system')}</dt>
-              <dd>{data?.system ?? '—'}</dd>
-            </dl>
-            <Link className="button-link" to={`${basePath}/board`}>
-              {t('workspace.openBoard')}
-            </Link>
-            <p className="muted">{t('workspace.comingSoon')}</p>
-          </div>
-        </section>
-      ) : (
-        <section className="board-preview">
-          {board.isError ? (
-            <p>{t('workspace.boardUnavailable')}</p>
-          ) : board.isLoading ? (
-            <p>{t('common.loading')}</p>
-          ) : board.data?.cards.length ? (
-            board.data.cards.map((card) => (
-              <article
-                key={card.cardId}
-                style={{ borderLeftColor: card.color ?? undefined }}
-              >
-                <strong>{card.title}</strong>
-                <p>{card.content}</p>
-                <small>{card.tags.join(', ')}</small>
-              </article>
-            ))
-          ) : (
-            <p>{t('workspace.boardEmpty')}</p>
-          )}
-        </section>
-      )}
-    </CampaignWorkspaceShell>
   );
 }

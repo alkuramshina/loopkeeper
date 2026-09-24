@@ -7,6 +7,7 @@ import { ApiError, Campaign, Note, NoteVisibility } from '../../api/client';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { ModalDialog } from '../../components/modal-dialog';
 
 type EditorTarget = Note | 'new';
 
@@ -101,16 +102,10 @@ function NoteEditor({
   });
 
   return (
-    <section className="panel note-editor">
-      <div className="section-heading">
-        <div>
-          <p className="kicker">{t('workspace.notes')}</p>
-          <h2>{t(existing ? 'notes.edit' : 'notes.new')}</h2>
-        </div>
-        <button className="button-ghost" type="button" onClick={onClose}>
-          {t('common.cancel')}
-        </button>
-      </div>
+    <ModalDialog
+      onClose={onClose}
+      title={t(existing ? 'notes.edit' : 'notes.new')}
+    >
       <form onSubmit={(event) => save.mutate(event)}>
         <label>
           {t('notes.title')}
@@ -161,7 +156,7 @@ function NoteEditor({
           {t(existing ? 'common.save' : 'notes.create')}
         </button>
       </form>
-    </section>
+    </ModalDialog>
   );
 }
 

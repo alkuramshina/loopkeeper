@@ -1,5 +1,6 @@
+import { System } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
 
 export class CreateCampaignDto {
   @ApiProperty({ maxLength: 100 })
@@ -11,6 +12,11 @@ export class CreateCampaignDto {
   @IsString()
   @MaxLength(1000)
   description!: string;
+
+  @ApiPropertyOptional({ enum: System })
+  @IsOptional()
+  @IsEnum(System)
+  system?: System;
 
   @ApiPropertyOptional({ format: 'uri' })
   @IsOptional()

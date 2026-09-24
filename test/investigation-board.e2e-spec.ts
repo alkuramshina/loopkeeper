@@ -19,6 +19,25 @@ async function register(app: INestApplication, email: string): Promise<User> {
 }
 const auth = (user: User) => ({ Authorization: `Bearer ${user.accessToken}` });
 
+async function inviteAndAccept(
+  app: INestApplication,
+  owner: User,
+  invitedUser: User,
+  campaignId: string,
+  role: 'PLAYER' | 'VIEWER',
+) {
+  const invitation = await request(app.getHttpServer())
+    .post(`/campaigns/${campaignId}/invitations`)
+    .set(auth(owner))
+    .send({ role })
+    .expect(201);
+
+  await request(app.getHttpServer())
+    .post(`/invitations/${invitation.body.token}/accept`)
+    .set(auth(invitedUser))
+    .expect(201);
+}
+
 async function campaign(app: INestApplication, owner: User, title: string) {
   const response = await request(app.getHttpServer())
     .post('/campaigns')
@@ -49,11 +68,7 @@ describe('Investigation board (e2e)', () => {
       [player, 'PLAYER'],
       [viewer, 'VIEWER'],
     ] as const) {
-      await request(app.getHttpServer())
-        .post(`/campaigns/${campaignId}/members`)
-        .set(auth(owner))
-        .send({ email: user.email, role })
-        .expect(201);
+      await inviteAndAccept(app, owner, user, campaignId, role);
     }
 
     await request(app.getHttpServer())
@@ -174,11 +189,7 @@ describe('Investigation board (e2e)', () => {
     const campaignId = await campaign(app, owner, 'Mystery');
     const otherCampaignId = await campaign(app, owner, 'Other mystery');
 
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaignId}/members`)
-      .set(auth(owner))
-      .send({ email: player.email, role: 'PLAYER' })
-      .expect(201);
+    await inviteAndAccept(app, owner, player, campaignId, 'PLAYER');
 
     const sharedNote = await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/notes`)
