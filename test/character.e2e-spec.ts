@@ -75,7 +75,11 @@ async function createCampaign(app: INestApplication, owner: AuthenticatedUser) {
   const response = await request(app.getHttpServer())
     .post('/campaigns')
     .set(authenticate(owner))
-    .send({ title: 'The Loop', description: 'A mystery in the 1980s' })
+    .send({
+          title: 'The Loop',
+          description: 'A mystery in the 1980s',
+          system: 'TALES_FROM_THE_LOOP',
+        })
     .expect(201);
 
   return response.body;
