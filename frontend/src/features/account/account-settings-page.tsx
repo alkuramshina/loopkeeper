@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import { Avatar } from '../../components/avatar';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -20,6 +21,8 @@ export function AccountSettingsPage() {
   const [profileSaved, setProfileSaved] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [avatarError, setAvatarError] = useState<string>();
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,6 +37,36 @@ export function AccountSettingsPage() {
       setProfileError(apiErrorMessage(cause, t));
     } finally {
       setSavingProfile(false);
+    }
+  }
+
+  async function uploadAvatar(file: File) {
+    if (file.size === 0) return;
+
+    setAvatarError(undefined);
+    setUploadingAvatar(true);
+    try {
+      const body = new FormData();
+      body.set('file', file);
+      await api.request('/users/me/avatar', { method: 'POST', body });
+      await updateProfile({ name: profile?.name ?? '' });
+    } catch (cause) {
+      setAvatarError(apiErrorMessage(cause, t));
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  async function deleteAvatar() {
+    setAvatarError(undefined);
+    setUploadingAvatar(true);
+    try {
+      await api.request<void>('/users/me/avatar', { method: 'DELETE' });
+      await updateProfile({ name: profile?.name ?? '' });
+    } catch (cause) {
+      setAvatarError(apiErrorMessage(cause, t));
+    } finally {
+      setUploadingAvatar(false);
     }
   }
 
@@ -80,7 +113,49 @@ export function AccountSettingsPage() {
         <form className="panel" onSubmit={saveProfile}>
           <div className="section-heading">
             <h2>{t('account.profile')}</h2>
-            {profileSaved && <small className="success-message">{t('account.saved')}</small>}
+            {profileSaved && (
+              <small className="success-message">{t('account.saved')}</small>
+            )}
+          </div>
+          <div className="account-avatar">
+            <Avatar
+              alt={profile?.name ?? profile?.email ?? ''}
+              imageUrl={profile?.avatarUrl}
+              seed={profile?.userId ?? ''}
+              size="large"
+            />
+            <div>
+              <label>
+                {t('account.avatar')}
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadAvatar(file);
+                    event.target.value = '';
+                  }}
+                  type="file"
+                />
+              </label>
+              <p className="muted">{t('account.avatarNotice')}</p>
+              {avatarError && (
+                <p className="form-error" role="alert">
+                  {avatarError}
+                </p>
+              )}
+              <div className="action-row">
+                {profile?.avatarUrl?.startsWith('/media/') && (
+                  <button
+                    className="button-ghost"
+                    disabled={uploadingAvatar}
+                    onClick={() => void deleteAvatar()}
+                    type="button"
+                  >
+                    {t('account.deleteAvatar')}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
           <label>
             {t('auth.email')}
@@ -88,9 +163,18 @@ export function AccountSettingsPage() {
           </label>
           <label>
             {t('auth.name')}
-            <input defaultValue={profile?.name ?? ''} maxLength={100} name="name" required />
+            <input
+              defaultValue={profile?.name ?? ''}
+              maxLength={100}
+              name="name"
+              required
+            />
           </label>
-          {profileError && <p className="form-error" role="alert">{profileError}</p>}
+          {profileError && (
+            <p className="form-error" role="alert">
+              {profileError}
+            </p>
+          )}
           <button disabled={savingProfile}>{t('common.save')}</button>
         </form>
         <form className="panel" onSubmit={changePassword}>
@@ -100,18 +184,41 @@ export function AccountSettingsPage() {
           <p className="muted">{t('account.passwordNotice')}</p>
           <label>
             {t('account.currentPassword')}
-            <input autoComplete="current-password" name="currentPassword" required type="password" />
+            <input
+              autoComplete="current-password"
+              name="currentPassword"
+              required
+              type="password"
+            />
           </label>
           <label>
             {t('account.newPassword')}
-            <input autoComplete="new-password" minLength={8} name="newPassword" required type="password" />
+            <input
+              autoComplete="new-password"
+              minLength={8}
+              name="newPassword"
+              required
+              type="password"
+            />
           </label>
           <label>
             {t('account.confirmPassword')}
-            <input autoComplete="new-password" minLength={8} name="confirmation" required type="password" />
+            <input
+              autoComplete="new-password"
+              minLength={8}
+              name="confirmation"
+              required
+              type="password"
+            />
           </label>
-          {passwordError && <p className="form-error" role="alert">{passwordError}</p>}
-          <button disabled={changingPassword}>{t('account.changePassword')}</button>
+          {passwordError && (
+            <p className="form-error" role="alert">
+              {passwordError}
+            </p>
+          )}
+          <button disabled={changingPassword}>
+            {t('account.changePassword')}
+          </button>
         </form>
       </div>
     </main>

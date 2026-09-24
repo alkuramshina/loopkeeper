@@ -3,6 +3,7 @@ import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { MediaService } from '../media/media.service';
 
 const publicUserSelect = {
   userId: true,
@@ -16,7 +17,10 @@ const publicUserSelect = {
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mediaService: MediaService,
+  ) {}
 
   async create(createUserDto: CreateUserDto) {
     const passwordHash = await this.hashPassword(createUserDto.password);
@@ -69,15 +73,36 @@ export class UserService {
     });
   }
 
-  update(userId: string, updateUserDto: UpdateUserDto) {
-    return this.prisma.user.update({
+  async update(userId: string, updateUserDto: UpdateUserDto) {
+    const replacesManagedAvatar = updateUserDto.avatarUrl !== undefined;
+    const user = replacesManagedAvatar
+      ? await this.prisma.user.findUnique({
+          where: { userId },
+          select: {
+            avatarAssetId: true,
+            avatarAsset: { select: { storageKey: true } },
+          },
+        })
+      : null;
+
+    const updatedUser = await this.prisma.user.update({
       where: { userId },
       data: {
         name: updateUserDto.name,
         avatarUrl: updateUserDto.avatarUrl,
+        ...(replacesManagedAvatar ? { avatarAssetId: null } : {}),
       },
       select: publicUserSelect,
     });
+
+    if (user?.avatarAssetId) {
+      await this.prisma.mediaAsset.delete({
+        where: { assetId: user.avatarAssetId },
+      });
+      await this.mediaService.removeStorageFile(user.avatarAsset!.storageKey);
+    }
+
+    return updatedUser;
   }
 
   async remove(userId: string) {

@@ -65,6 +65,9 @@ services:
       REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-refresh_token}
       REFRESH_COOKIE_SECURE: ${REFRESH_COOKIE_SECURE:-false}
       REFRESH_COOKIE_SAMESITE: ${REFRESH_COOKIE_SAMESITE:-lax}
+      MEDIA_STORAGE_PATH: /data/media
+    volumes:
+      - media_data:/data
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -86,3 +89,4 @@ services:
 volumes:
   postgres_data:
   postgres_test_data:
+  media_data:

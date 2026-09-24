@@ -14,6 +14,7 @@ import { CharacterModule } from './character/character.module';
 import { GameSystemModule } from './game-system/game-system.module';
 import { NoteModule } from './note/note.module';
 import { LocationModule } from './location/location.module';
+import { MediaModule } from './media/media.module';
 
 import { InvestigationBoardModule } from './investigation-board/investigation-board.module';
 
@@ -50,6 +51,7 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
     CharacterModule,
     NoteModule,
     LocationModule,
+    MediaModule,
 
     InvestigationBoardModule,
   ],

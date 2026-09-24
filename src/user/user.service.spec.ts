@@ -1,10 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
 jest.mock('../prisma/prisma.service', () => ({
-  PrismaService: class PrismaService { },
+  PrismaService: class PrismaService {},
 }));
 
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { UserService } from './user.service';
 
 describe('UserService', () => {
@@ -23,6 +24,10 @@ describe('UserService', () => {
               findMany: jest.fn(),
             },
           },
+        },
+        {
+          provide: MediaService,
+          useValue: { removeStorageFile: jest.fn() },
         },
       ],
     }).compile();
@@ -47,7 +52,7 @@ describe('UserService', () => {
       },
     };
 
-    const serviceWithPrisma = new UserService(mockPrisma as never);
+    const serviceWithPrisma = new UserService(mockPrisma as never, {} as never);
     const user = await serviceWithPrisma.findOne('admin@example.com');
 
     expect(user?.email).toBe('admin@example.com');

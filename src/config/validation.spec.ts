@@ -17,10 +17,20 @@ describe('validationSchema', () => {
       FRONTEND_URL: 'http://localhost:3000',
       THROTTLE_TTL: 60_000,
       THROTTLE_LIMIT: 100,
+      MEDIA_STORAGE_PATH: 'data/media',
       REFRESH_COOKIE_NAME: 'refresh_token',
       REFRESH_COOKIE_SECURE: false,
       REFRESH_COOKIE_SAMESITE: 'lax',
     });
+  });
+
+  it('rejects a public media storage path', () => {
+    const { error } = validationSchema.validate({
+      ...validEnvironment,
+      MEDIA_STORAGE_PATH: 'public/media',
+    });
+
+    expect(error?.message).toContain('MEDIA_STORAGE_PATH');
   });
 
   it('requires secure cookies when SameSite is none', () => {

@@ -27,12 +27,46 @@ export class ApiClient {
     private readonly refreshAccessToken: RefreshAccessToken,
   ) {}
 
+  async requestBlob(
+    path: string,
+    init: RequestInit = {},
+    retried = false,
+  ): Promise<Blob> {
+    const response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      credentials: 'include',
+      headers: {
+        ...(this.getToken() ? { Authorization: `Bearer ${this.getToken()}` } : {}),
+        ...init.headers,
+      },
+    });
+
+    if (response.status === 401 && !retried && path !== '/auth/refresh') {
+      const token = await this.refreshAccessToken();
+      if (token) return this.requestBlob(path, init, true);
+    }
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
+      throw new ApiError(
+        response.status,
+        body?.code ?? 'internal.error',
+        body?.message ?? 'An unexpected error occurred',
+        body?.violations,
+      );
+    }
+
+    return response.blob();
+  }
+
   async request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
       ...init,
       credentials: 'include',
       headers: {
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init.body && !(init.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         ...(this.getToken() ? { Authorization: `Bearer ${this.getToken()}` } : {}),
         ...init.headers,
       },
@@ -59,7 +93,12 @@ export class ApiClient {
   }
 }
 
-export type Profile = { userId: string; email: string; name?: string };
+export type Profile = {
+  userId: string;
+  email: string;
+  name?: string;
+  avatarUrl?: string | null;
+};
 export type AuthResponse = { accessToken: string };
 export type CampaignBackground = {
   backgroundId: string;

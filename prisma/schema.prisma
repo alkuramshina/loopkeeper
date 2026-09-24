@@ -14,6 +14,8 @@ model User {
   passwordHash               String
   name                       String?
   avatarUrl                  String?
+  avatarAsset                MediaAsset?          @relation("UserAvatar", fields: [avatarAssetId], references: [assetId], onDelete: SetNull)
+  avatarAssetId              String?               @unique
   applicationRole            ApplicationRole      @default(USER)
   isDeleted                  Boolean              @default(false)
   ownedCampaigns             Campaign[]           @relation("GameMaster")
@@ -28,6 +30,22 @@ model User {
   investigationLinks InvestigationLink[] @relation("InvestigationLinkCreator")
 
   @@map("users")
+}
+
+model MediaAsset {
+  assetId     String                @id @default(uuid())
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  storageKey  String                @unique
+  contentType MediaAssetContentType @default(IMAGE_WEBP)
+  purpose     MediaAssetPurpose
+  byteSize    Int
+  width       Int
+  height      Int
+  avatarOwner User?                 @relation("UserAvatar")
+
+  @@index([purpose])
+  @@map("media_assets")
 }
 
 model AuthSession {
@@ -268,6 +286,14 @@ model Character {
   @@index([campaignId])
   @@index([ownerId])
   @@map("characters")
+}
+
+enum MediaAssetContentType {
+  IMAGE_WEBP
+}
+
+enum MediaAssetPurpose {
+  AVATAR
 }
 
 enum CharacterTemplateKind {
