@@ -110,8 +110,8 @@ describe('Media (e2e)', () => {
     await expect(
       sharp(deliveryResponse.body).metadata(),
     ).resolves.toMatchObject({
-      width: 256,
-      height: 256,
+      width: 512,
+      height: 512,
       format: 'webp',
     });
   });
@@ -128,14 +128,21 @@ describe('Media (e2e)', () => {
         expect(response.body.code).toBe('media.unsupported_type'),
       );
 
-    await request(app.getHttpServer())
+    const rectangularUpload = await request(app.getHttpServer())
       .post('/users/me/avatar')
       .set(authenticate(user))
       .attach('file', await createImage(256, 512), 'rectangle.png')
-      .expect(400)
-      .expect((response) =>
-        expect(response.body.code).toBe('media.invalid_dimensions'),
-      );
+      .expect(201);
+
+    const rectangularAvatar = await request(app.getHttpServer())
+      .get(rectangularUpload.body.avatarUrl)
+      .set(authenticate(user))
+      .expect(200);
+    await expect(sharp(rectangularAvatar.body).metadata()).resolves.toMatchObject({
+      width: 512,
+      height: 512,
+      format: 'webp',
+    });
 
     await request(app.getHttpServer())
       .post('/users/me/avatar')

@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const MIN_AVATAR_DIMENSION = 256;
 const MAX_AVATAR_DIMENSION = 2048;
+const NORMALIZED_AVATAR_DIMENSION = 512;
 const ACCEPTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const importFileType = Function('return import("file-type")') as () => Promise<
   typeof import('file-type')
@@ -197,20 +198,25 @@ export class MediaService {
       if (
         !width ||
         !height ||
-        width !== height ||
-        width < MIN_AVATAR_DIMENSION ||
-        width > MAX_AVATAR_DIMENSION
+        Math.min(width, height) < MIN_AVATAR_DIMENSION ||
+        Math.max(width, height) > MAX_AVATAR_DIMENSION
       ) {
         throw this.invalidMedia(
           'media.invalid_dimensions',
-          'The image must be square and between 256 and 2048 pixels',
+          'Each image side must be between 256 and 2048 pixels',
         );
       }
 
       return {
-        content: await image.webp().toBuffer(),
-        width,
-        height,
+        content: await image
+          .resize(NORMALIZED_AVATAR_DIMENSION, NORMALIZED_AVATAR_DIMENSION, {
+            fit: 'cover',
+            position: 'centre',
+          })
+          .webp()
+          .toBuffer(),
+        width: NORMALIZED_AVATAR_DIMENSION,
+        height: NORMALIZED_AVATAR_DIMENSION,
       };
     } catch (error) {
       if (error instanceof DomainException) {
