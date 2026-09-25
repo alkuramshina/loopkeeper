@@ -6,6 +6,8 @@ import { TFunction } from 'i18next';
 import { ApiError, Campaign } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { MediaUpload } from '../../components/media-upload';
+import { ProtectedImage } from '../../components/protected-image';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -119,6 +121,29 @@ export function CampaignSettingsPage() {
             )}
             <button disabled={update.isPending}>{t('common.save')}</button>
           </form>
+          <section className="panel">
+            <h2>{t('campaignSettings.cover')}</h2>
+            {campaign.data?.coverUrl && (
+              <ProtectedImage
+                alt={campaign.data.title}
+                className="campaign-cover-preview"
+                imageUrl={campaign.data.coverUrl}
+              />
+            )}
+            <MediaUpload
+              endpoint={`/campaigns/${campaignId}/cover`}
+              hasImage={Boolean(campaign.data?.coverUrl?.startsWith('/media/'))}
+              label={t('campaignSettings.cover')}
+              onChanged={async () => {
+                await Promise.all([
+                  queryClient.invalidateQueries({
+                    queryKey: ['campaign', campaignId],
+                  }),
+                  queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
+                ]);
+              }}
+            />
+          </section>
           <section className="panel">
             <h2>{t('backgrounds.title')}</h2>
             <p>{t('campaignSettings.backgroundsDescription')}</p>

@@ -3,35 +3,38 @@ import { CampaignRole, Prisma } from '@prisma/client';
 import { CampaignBackgroundDto } from './dto/campaign-background-settings.dto';
 import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { CampaignAccessService } from './access/campaign-access.service';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 
 type CurrentUserRole = 'OWNER' | CampaignRole;
 
-const campaignForCurrentUser = (userId: string) => ({
-  campaignId: true,
-  createdAt: true,
-  updatedAt: true,
-  title: true,
-  system: true,
-  description: true,
-  coverUrl: true,
-  backgroundSelectionMode: true,
-  fixedBackgroundId: true,
-  backgrounds: true,
-  ownerId: true,
-  members: {
-    where: { userId },
-    select: { campaignRole: true },
-  },
-}) satisfies Prisma.CampaignSelect;
+const campaignForCurrentUser = (userId: string) =>
+  ({
+    campaignId: true,
+    createdAt: true,
+    updatedAt: true,
+    title: true,
+    system: true,
+    description: true,
+    coverUrl: true,
+    backgroundSelectionMode: true,
+    fixedBackgroundId: true,
+    backgrounds: true,
+    ownerId: true,
+    members: {
+      where: { userId },
+      select: { campaignRole: true },
+    },
+  }) satisfies Prisma.CampaignSelect;
 
 @Injectable()
 export class CampaignService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly campaignAccess: CampaignAccessService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async create(userId: string, createDto: CreateCampaignDto) {
@@ -88,12 +91,37 @@ export class CampaignService {
   ) {
     await this.campaignAccess.requireOwner(userId, campaignId);
 
-    const campaign = await this.prisma.campaign.update({
-      where: { campaignId },
-      data: updateDto,
-      select: campaignForCurrentUser(userId),
-    });
-
+    const { campaign, oldStorageKey } = await this.prisma.$transaction(
+      async (tx) => {
+        const current =
+          updateDto.coverUrl !== undefined
+            ? await tx.campaign.findUniqueOrThrow({
+                where: { campaignId },
+                select: {
+                  coverAssetId: true,
+                  coverAsset: { select: { storageKey: true } },
+                },
+              })
+            : null;
+        const campaign = await tx.campaign.update({
+          where: { campaignId },
+          data: {
+            ...updateDto,
+            ...(current ? { coverAssetId: null } : {}),
+          },
+          select: campaignForCurrentUser(userId),
+        });
+        if (current?.coverAssetId) {
+          await tx.mediaAsset.delete({
+            where: { assetId: current.coverAssetId },
+          });
+        }
+        return { campaign, oldStorageKey: current?.coverAsset?.storageKey };
+      },
+    );
+    if (oldStorageKey) {
+      await this.mediaService.removeStorageFile(oldStorageKey);
+    }
     return this.presentCampaign(campaign, userId);
   }
 
@@ -103,7 +131,9 @@ export class CampaignService {
   }
 
   private presentCampaign(
-    campaign: Prisma.CampaignGetPayload<{ select: ReturnType<typeof campaignForCurrentUser> }>,
+    campaign: Prisma.CampaignGetPayload<{
+      select: ReturnType<typeof campaignForCurrentUser>;
+    }>,
     userId: string,
   ) {
     const {
@@ -119,15 +149,18 @@ export class CampaignService {
 
     const response = { ...campaignData, currentUserRole };
 
-    if (currentUserRole === 'OWNER' || currentUserRole === CampaignRole.PLAYER) {
+    if (
+      currentUserRole === 'OWNER' ||
+      currentUserRole === CampaignRole.PLAYER
+    ) {
       return {
         ...response,
         backgroundConfig: {
           selectionMode: backgroundSelectionMode,
           fixedBackgroundId,
-          backgrounds: (backgrounds as unknown as CampaignBackgroundDto[]).filter(
-            (background) => background.isEnabled,
-          ),
+          backgrounds: (
+            backgrounds as unknown as CampaignBackgroundDto[]
+          ).filter((background) => background.isEnabled),
         },
       };
     }

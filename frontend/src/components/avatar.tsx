@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react';
 import { createAvatar } from '@dicebear/core';
 import {
   create as createInitials,
   meta as initialsMeta,
 } from '@dicebear/initials';
-import { useAuth } from '../auth/auth-context';
+import { ProtectedImage } from './protected-image';
 
 type AvatarProps = {
   alt: string;
@@ -14,8 +13,6 @@ type AvatarProps = {
 };
 
 export function Avatar({ alt, imageUrl, seed, size = 'medium' }: AvatarProps) {
-  const { api } = useAuth();
-  const [localImageUrl, setLocalImageUrl] = useState<string>();
   const fallback = createAvatar(
     { create: createInitials, meta: initialsMeta },
     {
@@ -25,40 +22,12 @@ export function Avatar({ alt, imageUrl, seed, size = 'medium' }: AvatarProps) {
     },
   ).toDataUri();
 
-  useEffect(() => {
-    if (!imageUrl?.startsWith('/media/')) {
-      setLocalImageUrl(undefined);
-      return;
-    }
-
-    let objectUrl: string | undefined;
-    let active = true;
-    void api
-      .requestBlob(imageUrl)
-      .then((blob) => {
-        objectUrl = URL.createObjectURL(blob);
-        if (active) setLocalImageUrl(objectUrl);
-      })
-      .catch(() => {
-        if (active) setLocalImageUrl(undefined);
-      });
-
-    return () => {
-      active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [api, imageUrl]);
-
   return (
-    <img
+    <ProtectedImage
       alt={alt}
       className={`avatar avatar-${size}`}
-      referrerPolicy="no-referrer"
-      src={
-        localImageUrl ||
-        (imageUrl?.startsWith('/media/') ? fallback : imageUrl) ||
-        fallback
-      }
+      fallback={fallback}
+      imageUrl={imageUrl}
     />
   );
 }

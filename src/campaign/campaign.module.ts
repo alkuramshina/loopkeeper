@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
+import { MediaModule } from '../media/media.module';
 
 import { CampaignAccessService } from './access/campaign-access.service';
 import { CampaignBackgroundSettingsController } from './campaign-background-settings.controller';
@@ -12,7 +13,7 @@ import { CampaignMemberService } from './campaign-member.service';
 import { CampaignService } from './campaign.service';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, MediaModule],
   controllers: [
     CampaignController,
     CampaignBackgroundSettingsController,

@@ -127,6 +127,7 @@ export type Campaign = {
   system?: string | null;
   currentUserRole: 'OWNER' | 'PLAYER' | 'VIEWER';
   backgroundConfig?: CampaignBackgroundConfig;
+  coverUrl?: string | null;
 };
 
 export type Location = {

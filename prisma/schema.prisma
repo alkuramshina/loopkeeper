@@ -15,7 +15,7 @@ model User {
   name                       String?
   avatarUrl                  String?
   avatarAsset                MediaAsset?          @relation("UserAvatar", fields: [avatarAssetId], references: [assetId], onDelete: SetNull)
-  avatarAssetId              String?               @unique
+  avatarAssetId              String?              @unique
   applicationRole            ApplicationRole      @default(USER)
   isDeleted                  Boolean              @default(false)
   ownedCampaigns             Campaign[]           @relation("GameMaster")
@@ -33,16 +33,18 @@ model User {
 }
 
 model MediaAsset {
-  assetId     String                @id @default(uuid())
-  createdAt   DateTime              @default(now())
-  updatedAt   DateTime              @updatedAt
-  storageKey  String                @unique
-  contentType MediaAssetContentType @default(IMAGE_WEBP)
-  purpose     MediaAssetPurpose
-  byteSize    Int
-  width       Int
-  height      Int
-  avatarOwner User?                 @relation("UserAvatar")
+  assetId         String                @id @default(uuid())
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  storageKey      String                @unique
+  contentType     MediaAssetContentType @default(IMAGE_WEBP)
+  purpose         MediaAssetPurpose
+  byteSize        Int
+  width           Int
+  height          Int
+  avatarOwner     User?                 @relation("UserAvatar")
+  characterAvatar Character?            @relation("CharacterAvatar")
+  campaignCover   Campaign?             @relation("CampaignCover")
 
   @@index([purpose])
   @@map("media_assets")
@@ -64,24 +66,26 @@ model AuthSession {
 }
 
 model Campaign {
-  campaignId  String               @id @default(uuid())
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  title       String
-  system      System?
-  description String?
-  coverUrl    String?
-  owner       User                 @relation("GameMaster", fields: [ownerId], references: [userId])
-  ownerId     String
-  gameSystem  GameSystem?          @relation(fields: [system], references: [slug])
-  characters  Character[]
-  members     CampaignMember[]     @relation("CampaignMembers")
-  invitations CampaignInvitation[]
-  notes       Note[]
-  locations   CampaignLocation[]
-  backgrounds Json                   @default("[]")
+  campaignId              String                          @id @default(uuid())
+  createdAt               DateTime                        @default(now())
+  updatedAt               DateTime                        @updatedAt
+  title                   String
+  system                  System?
+  description             String?
+  coverUrl                String?
+  coverAsset              MediaAsset?                     @relation("CampaignCover", fields: [coverAssetId], references: [assetId], onDelete: SetNull)
+  coverAssetId            String?                         @unique
+  owner                   User                            @relation("GameMaster", fields: [ownerId], references: [userId])
+  ownerId                 String
+  gameSystem              GameSystem?                     @relation(fields: [system], references: [slug])
+  characters              Character[]
+  members                 CampaignMember[]                @relation("CampaignMembers")
+  invitations             CampaignInvitation[]
+  notes                   Note[]
+  locations               CampaignLocation[]
+  backgrounds             Json                            @default("[]")
   backgroundSelectionMode CampaignBackgroundSelectionMode @default(FIXED)
-  fixedBackgroundId String?
+  fixedBackgroundId       String?
 
   investigationBoard InvestigationBoard?
   investigationCards InvestigationCard[]
@@ -248,17 +252,17 @@ model GameSystem {
 }
 
 model CharacterTemplate {
-  templateId String      @id @default(uuid())
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  name       String
-  schema     Json
+  templateId    String                @id @default(uuid())
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  name          String
+  schema        Json
   version       Int                   @default(1)
   characterKind CharacterTemplateKind @default(PLAYER_CHARACTER)
   isActive      Boolean               @default(true)
-  system     GameSystem  @relation(fields: [systemSlug], references: [slug])
-  systemSlug System
-  characters Character[]
+  system        GameSystem            @relation(fields: [systemSlug], references: [slug])
+  systemSlug    System
+  characters    Character[]
 
   @@unique([systemSlug, name, version])
   @@index([systemSlug, isActive])
@@ -272,6 +276,8 @@ model Character {
   name               String
   description        String?
   avatarUrl          String?
+  avatarAsset        MediaAsset?         @relation("CharacterAvatar", fields: [avatarAssetId], references: [assetId], onDelete: SetNull)
+  avatarAssetId      String?             @unique
   data               Json                @default("{}")
   isNPC              Boolean             @default(false)
   isActive           Boolean             @default(true)
@@ -294,6 +300,8 @@ enum MediaAssetContentType {
 
 enum MediaAssetPurpose {
   AVATAR
+  CHARACTER_AVATAR
+  CAMPAIGN_COVER
 }
 
 enum CharacterTemplateKind {

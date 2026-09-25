@@ -14,6 +14,7 @@ import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
+import { MediaUpload } from '../../components/media-upload';
 
 type Filter = 'all' | 'players' | 'npcs';
 
@@ -414,6 +415,20 @@ export function CharactersPage() {
                     {character.description && <p>{character.description}</p>}
                   </div>
                 </div>
+                {editable && (
+                  <MediaUpload
+                    endpoint={`/characters/${character.characterId}/avatar`}
+                    hasImage={Boolean(
+                      character.avatarUrl?.startsWith('/media/'),
+                    )}
+                    label={t('characters.avatar')}
+                    onChanged={() =>
+                      queryClient.invalidateQueries({
+                        queryKey: ['characters', campaignId],
+                      })
+                    }
+                  />
+                )}
                 <div className="action-row">
                   {canAddToBoard && (
                     <button

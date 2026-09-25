@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { DomainException } from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from '../campaign/access/campaign-access.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { CharacterService } from './character.service';
 
 type CharacterServiceWithValidator = {
@@ -12,6 +13,7 @@ describe('CharacterService', () => {
   const service = new CharacterService(
     {} as PrismaService,
     {} as CampaignAccessService,
+    {} as MediaService,
   );
   const validator = service as unknown as CharacterServiceWithValidator;
   const schema = {

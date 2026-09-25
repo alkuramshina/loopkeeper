@@ -6,6 +6,7 @@ import {
 } from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from '../campaign/access/campaign-access.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { MediaService } from '../media/media.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 
@@ -26,6 +27,7 @@ export class CharacterService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly campaignAccess: CampaignAccessService,
+    private readonly mediaService: MediaService,
   ) {}
 
   async create(
@@ -127,16 +129,41 @@ export class CharacterService {
       this.validateData(updateDto.data, template.schema);
     }
 
-    return this.prisma.character.update({
-      where: { characterId },
-      data: {
-        name: updateDto.name,
-        description: updateDto.description,
-        avatarUrl: updateDto.avatarUrl,
-        data: updateDto.data as Prisma.InputJsonValue | undefined,
-        isActive: updateDto.isActive,
+    const { updated, oldStorageKey } = await this.prisma.$transaction(
+      async (tx) => {
+        const current =
+          updateDto.avatarUrl !== undefined
+            ? await tx.character.findUniqueOrThrow({
+                where: { characterId },
+                select: {
+                  avatarAssetId: true,
+                  avatarAsset: { select: { storageKey: true } },
+                },
+              })
+            : null;
+        const updated = await tx.character.update({
+          where: { characterId },
+          data: {
+            name: updateDto.name,
+            description: updateDto.description,
+            avatarUrl: updateDto.avatarUrl,
+            ...(current ? { avatarAssetId: null } : {}),
+            data: updateDto.data as Prisma.InputJsonValue | undefined,
+            isActive: updateDto.isActive,
+          },
+        });
+        if (current?.avatarAssetId) {
+          await tx.mediaAsset.delete({
+            where: { assetId: current.avatarAssetId },
+          });
+        }
+        return { updated, oldStorageKey: current?.avatarAsset?.storageKey };
       },
-    });
+    );
+    if (oldStorageKey) {
+      await this.mediaService.removeStorageFile(oldStorageKey);
+    }
+    return updated;
   }
 
   async remove(userId: string, characterId: string) {
@@ -179,7 +206,10 @@ export class CharacterService {
 
     for (const key of Object.keys(data)) {
       if (!fieldsByKey.has(key)) {
-        violations.push({ field: `data.${key}`, code: 'validation.invalid_value' });
+        violations.push({
+          field: `data.${key}`,
+          code: 'validation.invalid_value',
+        });
       }
     }
 
@@ -195,25 +225,43 @@ export class CharacterService {
 
       if (field.type === 'string' || field.type === 'select') {
         if (typeof value !== 'string') {
-          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
+          violations.push({
+            field: fieldPath,
+            code: 'validation.invalid_value',
+          });
           continue;
         }
         if (field.maxLength !== undefined && value.length > field.maxLength) {
-          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
+          violations.push({
+            field: fieldPath,
+            code: 'validation.invalid_value',
+          });
         }
         if (field.options && !field.options.includes(value)) {
-          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
+          violations.push({
+            field: fieldPath,
+            code: 'validation.invalid_value',
+          });
         }
       } else if (field.type === 'number') {
         if (typeof value !== 'number' || !Number.isFinite(value)) {
-          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
+          violations.push({
+            field: fieldPath,
+            code: 'validation.invalid_value',
+          });
           continue;
         }
         if (field.min !== undefined && value < field.min) {
-          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
+          violations.push({
+            field: fieldPath,
+            code: 'validation.invalid_value',
+          });
         }
         if (field.max !== undefined && value > field.max) {
-          violations.push({ field: fieldPath, code: 'validation.invalid_value' });
+          violations.push({
+            field: fieldPath,
+            code: 'validation.invalid_value',
+          });
         }
       } else if (field.type === 'boolean' && typeof value !== 'boolean') {
         violations.push({ field: fieldPath, code: 'validation.invalid_value' });

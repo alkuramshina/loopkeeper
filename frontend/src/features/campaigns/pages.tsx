@@ -6,6 +6,7 @@ import { TFunction } from 'i18next';
 import { ApiError, Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ModalDialog } from '../../components/modal-dialog';
+import { ProtectedImage } from '../../components/protected-image';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -131,6 +132,13 @@ export function CampaignListPage() {
                 key={campaign.campaignId}
                 to={`/campaigns/${campaign.campaignId}`}
               >
+                {campaign.coverUrl && (
+                  <ProtectedImage
+                    alt=""
+                    className="campaign-cover"
+                    imageUrl={campaign.coverUrl}
+                  />
+                )}
                 <p className="campaign-system">
                   {campaign.system ?? t('campaigns.systemFallback')}
                 </p>

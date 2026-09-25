@@ -702,6 +702,21 @@ textarea {
   border: 1px solid #d4cfc4;
   border-radius: 10px;
 }
+.campaign-cover,
+.campaign-cover-preview {
+  display: block;
+  width: 100%;
+  max-height: 16rem;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.media-upload {
+  display: grid;
+  gap: 0.5rem;
+}
+.media-upload .muted {
+  margin: 0;
+}
 .avatar {
   display: block;
   flex: none;
