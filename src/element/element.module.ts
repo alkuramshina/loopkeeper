@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { CampaignModule } from '../campaign/campaign.module';
 import { PrismaModule } from '../prisma/prisma.module';
-import { LocationController } from './location.controller';
-import { LocationService } from './location.service';
+import { ElementController } from './element.controller';
+import { ElementService } from './element.service';
 
 @Module({
   imports: [PrismaModule, CampaignModule],
-  controllers: [LocationController],
-  providers: [LocationService],
+  controllers: [ElementController],
+  providers: [ElementService],
 })
-export class LocationModule {}
+export class ElementModule {}

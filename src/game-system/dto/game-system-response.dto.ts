@@ -1,4 +1,3 @@
-import { CharacterTemplateKind } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class GameSystemResponseDto {
@@ -36,9 +35,6 @@ export class CharacterTemplateResponseDto {
 
   @ApiProperty({ minimum: 1 })
   version!: number;
-
-  @ApiProperty({ enum: CharacterTemplateKind })
-  characterKind!: CharacterTemplateKind;
 
   @ApiProperty()
   isActive!: boolean;

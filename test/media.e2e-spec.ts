@@ -12,7 +12,31 @@ import {
 
 const password = 'test-password-123';
 const mediaStoragePath = 'data/test-media';
-
+const playerCharacterData = {
+  age: 15,
+  type: 'COMPUTER_GEEK',
+  body: 3,
+  tech: 4,
+  heart: 2,
+  mind: 3,
+  force: 1,
+  move: 2,
+  sneak: 2,
+  tinker: 3,
+  program: 3,
+  calculate: 2,
+  contact: 1,
+  charm: 1,
+  lead: 0,
+  investigate: 2,
+  comprehend: 2,
+  empathize: 1,
+  drive: 'Drive',
+  pride: 'Pride',
+  problem: 'Problem',
+  anchor: 'Anchor',
+  iconicItem: 'Item',
+};
 
 type AuthenticatedUser = {
   accessToken: string;
@@ -186,23 +210,22 @@ describe('Media (e2e)', () => {
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
       .set(authenticate(owner))
       .expect(200);
-    const npcTemplateId = templates.body.find(
-      (template: { characterKind: string }) => template.characterKind === 'NPC',
-    ).templateId;
-    const npc = await request(app.getHttpServer())
+    const playerTemplateId = templates.body[0].templateId;
+    const player = await registerUser(app, 'limits-player@loopkeeper.dev');
+    await inviteAndAccept(app, owner, player, campaign.body.campaignId, 'PLAYER');
+    const character = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.body.campaignId}/characters`)
-      .set(authenticate(owner))
+      .set(authenticate(player))
       .send({
-        name: 'Guide',
-        templateId: npcTemplateId,
-        data: { role: 'Guide', secret: 'Secret' },
-        isNPC: true,
+        name: 'Player character',
+        templateId: playerTemplateId,
+        data: playerCharacterData,
       })
       .expect(201);
     const oversized = Buffer.alloc(5 * 1024 * 1024 + 1, 1);
     for (const url of [
       '/users/me/avatar',
-      `/characters/${npc.body.characterId}/avatar`,
+      `/characters/${character.body.characterId}/avatar`,
       `/campaigns/${campaign.body.campaignId}/cover`,
     ]) {
       await request(app.getHttpServer())
@@ -229,6 +252,7 @@ describe('Media (e2e)', () => {
     expect(await getTestPrisma().mediaAsset.count()).toBe(0);
   });
 
+
   it('requires authentication and allows authenticated users to read avatars', async () => {
     const owner = await registerUser(app, 'owner-media@loopkeeper.dev');
     const otherUser = await registerUser(app, 'other-media@loopkeeper.dev');
@@ -246,6 +270,239 @@ describe('Media (e2e)', () => {
       .get(uploadResponse.body.avatarUrl)
       .set(authenticate(otherUser))
       .expect(200);
+  });
+
+  it('stores only attached local backgrounds and delivers them to owners and players', async () => {
+    const owner = await registerUser(app, 'background-owner@loopkeeper.dev');
+    const player = await registerUser(app, 'background-player@loopkeeper.dev');
+    const viewer = await registerUser(app, 'background-viewer@loopkeeper.dev');
+    const outsider = await registerUser(
+      app,
+      'background-outsider@loopkeeper.dev',
+    );
+    const campaign = await request(app.getHttpServer())
+      .post('/campaigns')
+      .set(authenticate(owner))
+      .send({
+        title: 'Backgrounds',
+        description: 'Test',
+        system: 'TALES_FROM_THE_LOOP',
+      })
+      .expect(201);
+    const otherCampaign = await request(app.getHttpServer())
+      .post('/campaigns')
+      .set(authenticate(outsider))
+      .send({
+        title: 'Other',
+        description: 'Test',
+        system: 'TALES_FROM_THE_LOOP',
+      })
+      .expect(201);
+    const base = `/campaigns/${campaign.body.campaignId}`;
+    await inviteAndAccept(
+      app,
+      owner,
+      player,
+      campaign.body.campaignId,
+      'PLAYER',
+    );
+    await inviteAndAccept(
+      app,
+      owner,
+      viewer,
+      campaign.body.campaignId,
+      'VIEWER',
+    );
+
+    for (const user of [player, viewer, outsider]) {
+      await request(app.getHttpServer())
+        .post(`${base}/backgrounds`)
+        .set(authenticate(user))
+        .attach('file', await createImage(1600, 900), 'background.png')
+        .expect(404);
+    }
+    for (const [width, height, format] of [
+      [1600, 900, 'png'],
+      [1920, 1080, 'jpeg'],
+      [2560, 1440, 'webp'],
+    ] as const) {
+      const response = await request(app.getHttpServer())
+        .post(`${base}/backgrounds`)
+        .set(authenticate(owner))
+        .attach(
+          'file',
+          await createImage(width, height, format),
+          `background.${format}`,
+        )
+        .expect(201);
+      expect(response.body).toMatchObject({
+        backgroundId: expect.any(String),
+        imageUrl: `/media/${response.body.backgroundId}`,
+        isEnabled: true,
+      });
+      const delivered = await request(app.getHttpServer())
+        .get(response.body.imageUrl)
+        .set(authenticate(player))
+        .expect(200);
+      await expect(sharp(delivered.body).metadata()).resolves.toMatchObject({
+        width,
+        height,
+        format: 'webp',
+      });
+      for (const user of [viewer, outsider]) {
+        await request(app.getHttpServer())
+          .get(response.body.imageUrl)
+          .set(authenticate(user))
+          .expect(404);
+      }
+      await request(app.getHttpServer())
+        .get(response.body.imageUrl)
+        .expect(401);
+      await request(app.getHttpServer())
+        .get(response.body.imageUrl)
+        .set(authenticate(owner))
+        .expect(200);
+      await request(app.getHttpServer())
+        .delete(
+          `/campaigns/${otherCampaign.body.campaignId}/backgrounds/${response.body.backgroundId}`,
+        )
+        .set(authenticate(outsider))
+        .expect(404);
+    }
+    const settings = await request(app.getHttpServer())
+      .get(`${base}/background-settings`)
+      .set(authenticate(owner))
+      .expect(200);
+    const first = settings.body.backgrounds[0];
+    const forged = {
+      ...first,
+      backgroundId: '11111111-1111-4111-8111-111111111111',
+      imageUrl: '/media/11111111-1111-4111-8111-111111111111',
+    };
+    await request(app.getHttpServer())
+      .patch(`${base}/background-settings`)
+      .set(authenticate(owner))
+      .send({
+        ...settings.body,
+        backgrounds: [...settings.body.backgrounds, forged],
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch(`${base}/background-settings`)
+      .set(authenticate(owner))
+      .send({
+        ...settings.body,
+        backgrounds: settings.body.backgrounds.slice(1),
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch(`/campaigns/${otherCampaign.body.campaignId}/background-settings`)
+      .set(authenticate(outsider))
+      .send({ ...settings.body, backgrounds: [first] })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch(`${base}/background-settings`)
+      .set(authenticate(owner))
+      .send({
+        ...settings.body,
+        selectionMode: 'RANDOM',
+        backgrounds: settings.body.backgrounds.map(
+          (background: { backgroundId: string }) => ({
+            ...background,
+            isEnabled: background.backgroundId !== first.backgroundId,
+          }),
+        ),
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .delete(`${base}/backgrounds/${first.backgroundId}`)
+      .set(authenticate(player))
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`${base}/backgrounds/${first.backgroundId}`)
+      .set(authenticate(owner))
+      .expect(204);
+    await request(app.getHttpServer())
+      .get(first.imageUrl)
+      .set(authenticate(owner))
+      .expect(404);
+    expect(
+      await getTestPrisma().mediaAsset.findUnique({
+        where: { assetId: first.backgroundId },
+      }),
+    ).toBeNull();
+    await request(app.getHttpServer())
+      .delete(`${base}/backgrounds/${first.backgroundId}`)
+      .set(authenticate(owner))
+      .expect(404);
+  });
+
+  it('removes local background files when an empty campaign is deleted', async () => {
+    const owner = await registerUser(app, 'background-cleanup@loopkeeper.dev');
+    const campaign = await request(app.getHttpServer())
+      .post('/campaigns')
+      .set(authenticate(owner))
+      .send({
+        title: 'Cleanup',
+        description: 'Test',
+        system: 'TALES_FROM_THE_LOOP',
+      })
+      .expect(201);
+    const uploaded = await request(app.getHttpServer())
+      .post(`/campaigns/${campaign.body.campaignId}/backgrounds`)
+      .set(authenticate(owner))
+      .attach('file', await createImage(1600, 900), 'background.png')
+      .expect(201);
+    const asset = await getTestPrisma().mediaAsset.findUniqueOrThrow({
+      where: { assetId: uploaded.body.backgroundId },
+    });
+    await request(app.getHttpServer())
+      .delete(`/campaigns/${campaign.body.campaignId}`)
+      .set(authenticate(owner))
+      .expect(200);
+    expect(
+      await getTestPrisma().mediaAsset.findUnique({
+        where: { assetId: asset.assetId },
+      }),
+    ).toBeNull();
+    await expect(
+      access(join(mediaStoragePath, asset.storageKey)),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('rejects invalid background uploads without attaching assets', async () => {
+    const owner = await registerUser(
+      app,
+      'background-validation@loopkeeper.dev',
+    );
+    const campaign = await request(app.getHttpServer())
+      .post('/campaigns')
+      .set(authenticate(owner))
+      .send({
+        title: 'Validation',
+        description: 'Test',
+        system: 'TALES_FROM_THE_LOOP',
+      })
+      .expect(201);
+    const url = `/campaigns/${campaign.body.campaignId}/backgrounds`;
+    for (const [image, code] of [
+      [await createImage(1280, 720), 'media.invalid_background_dimensions'],
+      [await createImage(900, 1600), 'media.invalid_background_dimensions'],
+      [Buffer.from('GIF89a'), 'media.unsupported_type'],
+    ] as const) {
+      await request(app.getHttpServer())
+        .post(url)
+        .set(authenticate(owner))
+        .attach('file', image, 'background.png')
+        .expect(400)
+        .expect((response) => expect(response.body.code).toBe(code));
+    }
+    await request(app.getHttpServer())
+      .post(url)
+      .set(authenticate(owner))
+      .attach('file', Buffer.alloc(5 * 1024 * 1024 + 1), 'large.png')
+      .expect(413);
+    expect(await getTestPrisma().mediaAsset.count()).toBe(0);
   });
 
   it('authorizes character avatars and campaign covers and removes replaced assets', async () => {
@@ -294,65 +551,20 @@ describe('Media (e2e)', () => {
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
       .set(authenticate(owner))
       .expect(200);
-    const playerTemplateId = templates.body.find(
-      (template: { characterKind: string }) =>
-        template.characterKind === 'PLAYER_CHARACTER',
-    ).templateId;
-    const npcTemplateId = templates.body.find(
-      (template: { characterKind: string }) => template.characterKind === 'NPC',
-    ).templateId;
+    const playerTemplateId = templates.body[0].templateId;
     const playerCharacter = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.body.campaignId}/characters`)
       .set(authenticate(player))
       .send({
         name: 'Player character',
         templateId: playerTemplateId,
-        data: {
-          age: 15,
-          type: 'COMPUTER_GEEK',
-          body: 3,
-          tech: 4,
-          heart: 2,
-          mind: 3,
-          force: 1,
-          move: 2,
-          sneak: 2,
-          tinker: 3,
-          program: 3,
-          calculate: 2,
-          contact: 1,
-          charm: 1,
-          lead: 0,
-          investigate: 2,
-          comprehend: 2,
-          empathize: 1,
-          drive: 'Drive',
-          pride: 'Pride',
-          problem: 'Problem',
-          anchor: 'Anchor',
-          iconicItem: 'Item',
-        },
-      })
-      .expect(201);
-    const npc = await request(app.getHttpServer())
-      .post(`/campaigns/${campaign.body.campaignId}/characters`)
-      .set(authenticate(owner))
-      .send({
-        name: 'NPC',
-        templateId: npcTemplateId,
-        data: { role: 'Guide', secret: 'Secret' },
-        isNPC: true,
+        data: playerCharacterData,
       })
       .expect(201);
 
     await request(app.getHttpServer())
       .post(`/characters/${playerCharacter.body.characterId}/avatar`)
       .set(authenticate(viewer))
-      .attach('file', await createImage(256, 256), 'avatar.png')
-      .expect(404);
-    await request(app.getHttpServer())
-      .post(`/characters/${npc.body.characterId}/avatar`)
-      .set(authenticate(player))
       .attach('file', await createImage(256, 256), 'avatar.png')
       .expect(404);
 
@@ -390,7 +602,9 @@ describe('Media (e2e)', () => {
       (member: { campaignRole: string }) => member.campaignRole === 'PLAYER',
     );
     await request(app.getHttpServer())
-      .patch(`/campaigns/${campaign.body.campaignId}/members/${playerMember.user.userId}`)
+      .patch(
+        `/campaigns/${campaign.body.campaignId}/members/${playerMember.user.userId}`,
+      )
       .set(authenticate(owner))
       .send({ role: 'VIEWER' })
       .expect(200);
@@ -404,41 +618,35 @@ describe('Media (e2e)', () => {
       .set(authenticate(player))
       .expect(404);
     await request(app.getHttpServer())
-      .patch(`/campaigns/${campaign.body.campaignId}/members/${playerMember.user.userId}`)
+      .patch(
+        `/campaigns/${campaign.body.campaignId}/members/${playerMember.user.userId}`,
+      )
       .set(authenticate(owner))
       .send({ role: 'PLAYER' })
       .expect(200);
 
-    const npcAvatar = await request(app.getHttpServer())
-      .post(`/characters/${npc.body.characterId}/avatar`)
-      .set(authenticate(owner))
-      .attach('file', await createImage(256, 256), 'avatar.png')
-      .expect(201);
 
     await request(app.getHttpServer())
       .get(firstCharacterAvatar.body.avatarUrl)
       .set(authenticate(player))
       .expect(404);
-    for (const assetUrl of [
-      secondCharacterAvatar.body.avatarUrl,
-      npcAvatar.body.avatarUrl,
-    ]) {
+    for (const user of [owner, player, viewer]) {
       await request(app.getHttpServer())
-        .get(assetUrl)
-        .set(authenticate(viewer))
+        .get(secondCharacterAvatar.body.avatarUrl)
+        .set(authenticate(user))
         .expect(200);
-      await request(app.getHttpServer())
-        .get(assetUrl)
-        .set(authenticate(outsider))
-        .expect(404);
     }
+    await request(app.getHttpServer())
+      .get(secondCharacterAvatar.body.avatarUrl)
+      .set(authenticate(outsider))
+      .expect(404);
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.body.campaignId}/cover`)
       .set(authenticate(player))
       .attach('file', await createImage(1600, 900), 'cover.png')
       .expect(404);
-    expect(await getTestPrisma().mediaAsset.count()).toBe(2);
+    expect(await getTestPrisma().mediaAsset.count()).toBe(1);
     const firstCover = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.body.campaignId}/cover`)
       .set(authenticate(owner))
@@ -498,13 +706,15 @@ describe('Media (e2e)', () => {
       .set(authenticate(owner))
       .expect(404);
     await request(app.getHttpServer())
-      .delete(`/characters/${npc.body.characterId}/avatar`)
+      .delete(`/characters/${playerCharacter.body.characterId}/avatar`)
       .set(authenticate(viewer))
       .expect(404);
-    await request(app.getHttpServer())
-      .delete(`/campaigns/${campaign.body.campaignId}/cover`)
-      .set(authenticate(viewer))
-      .expect(404);
+    for (const user of [player, viewer, outsider]) {
+      await request(app.getHttpServer())
+        .delete(`/campaigns/${campaign.body.campaignId}/cover`)
+        .set(authenticate(user))
+        .expect(404);
+    }
 
     await request(app.getHttpServer())
       .delete(`/characters/${playerCharacter.body.characterId}/avatar`)
@@ -533,11 +743,6 @@ describe('Media (e2e)', () => {
       .set(authenticate(owner))
       .expect(200);
     expect(campaignResponse.body.coverUrl).toBeNull();
-    expect(await getTestPrisma().mediaAsset.count()).toBe(1);
-    await request(app.getHttpServer())
-      .delete(`/characters/${npc.body.characterId}/avatar`)
-      .set(authenticate(owner))
-      .expect(204);
     expect(await getTestPrisma().mediaAsset.count()).toBe(0);
   });
 
@@ -552,26 +757,25 @@ describe('Media (e2e)', () => {
         system: 'TALES_FROM_THE_LOOP',
       })
       .expect(201);
-    const npcTemplate = await request(app.getHttpServer())
+    const player = await registerUser(app, 'legacy-player@loopkeeper.dev');
+    await inviteAndAccept(app, owner, player, campaign.body.campaignId, 'PLAYER');
+    const templates = await request(app.getHttpServer())
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
       .set(authenticate(owner))
       .expect(200);
-    const npcTemplateId = npcTemplate.body.find(
-      (template: { characterKind: string }) => template.characterKind === 'NPC',
-    ).templateId;
-    const npc = await request(app.getHttpServer())
+    const playerTemplateId = templates.body[0].templateId;
+    const character = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.body.campaignId}/characters`)
-      .set(authenticate(owner))
+      .set(authenticate(player))
       .send({
-        name: 'Guide',
-        templateId: npcTemplateId,
-        data: { role: 'Guide', secret: 'Secret' },
-        isNPC: true,
+        name: 'Player character',
+        templateId: playerTemplateId,
+        data: playerCharacterData,
       })
       .expect(201);
     const avatar = await request(app.getHttpServer())
-      .post(`/characters/${npc.body.characterId}/avatar`)
-      .set(authenticate(owner))
+      .post(`/characters/${character.body.characterId}/avatar`)
+      .set(authenticate(player))
       .attach('file', await createImage(256, 256), 'avatar.png')
       .expect(201);
     const cover = await request(app.getHttpServer())
@@ -589,8 +793,8 @@ describe('Media (e2e)', () => {
       select: { storageKey: true },
     });
     await request(app.getHttpServer())
-      .patch(`/characters/${npc.body.characterId}`)
-      .set(authenticate(owner))
+      .patch(`/characters/${character.body.characterId}`)
+      .set(authenticate(player))
       .send({ avatarUrl: 'https://example.com/character.png' })
       .expect(200)
       .expect((response) =>

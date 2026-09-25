@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CharacterTemplateKind, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import {
   DomainException,
   ErrorViolation,
@@ -35,12 +35,7 @@ export class CharacterService {
     campaignId: string,
     createDto: CreateCharacterDto,
   ) {
-    const isNPC = createDto.isNPC === true;
-    if (isNPC) {
-      await this.campaignAccess.requireOwner(userId, campaignId);
-    } else {
-      await this.campaignAccess.requirePlayer(userId, campaignId);
-    }
+    await this.campaignAccess.requirePlayer(userId, campaignId);
 
     const campaign = await this.prisma.campaign.findUnique({
       where: { campaignId },
@@ -57,7 +52,7 @@ export class CharacterService {
         isActive: true,
       },
     });
-    if (!template || template.characterKind !== this.templateKindFor(isNPC)) {
+    if (!template) {
       throw this.templateNotFound();
     }
 
@@ -72,7 +67,6 @@ export class CharacterService {
         description: createDto.description,
         avatarUrl: createDto.avatarUrl,
         data: createDto.data as Prisma.InputJsonValue,
-        isNPC,
       },
     });
   }
@@ -82,7 +76,7 @@ export class CharacterService {
 
     return this.prisma.character.findMany({
       where: { campaignId },
-      orderBy: [{ isNPC: 'asc' }, { name: 'asc' }],
+      orderBy: { name: 'asc' },
     });
   }
 
@@ -110,13 +104,10 @@ export class CharacterService {
   ) {
     const character = await this.findOne(userId, characterId);
 
-    if (character.isNPC) {
-      await this.campaignAccess.requireOwner(userId, character.campaignId);
-    } else if (character.ownerId !== userId) {
+    if (character.ownerId !== userId) {
       throw this.characterNotFound();
-    } else {
-      await this.campaignAccess.requirePlayer(userId, character.campaignId);
     }
+    await this.campaignAccess.requirePlayer(userId, character.campaignId);
 
     if (updateDto.data) {
       const template = await this.prisma.characterTemplate.findUnique({
@@ -169,21 +160,12 @@ export class CharacterService {
   async remove(userId: string, characterId: string) {
     const character = await this.findOne(userId, characterId);
 
-    if (character.isNPC) {
-      await this.campaignAccess.requireOwner(userId, character.campaignId);
-    } else if (character.ownerId !== userId) {
+    if (character.ownerId !== userId) {
       throw this.characterNotFound();
-    } else {
-      await this.campaignAccess.requirePlayer(userId, character.campaignId);
     }
+    await this.campaignAccess.requirePlayer(userId, character.campaignId);
 
     await this.prisma.character.delete({ where: { characterId } });
-  }
-
-  private templateKindFor(isNPC: boolean): CharacterTemplateKind {
-    return isNPC
-      ? CharacterTemplateKind.NPC
-      : CharacterTemplateKind.PLAYER_CHARACTER;
   }
 
   private validateData(

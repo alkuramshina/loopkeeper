@@ -18,6 +18,7 @@ import {
   ApiConsumes,
   ApiNoContentResponse,
   ApiOkResponse,
+  ApiParam,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
@@ -28,6 +29,8 @@ import {
   MediaUploadExceptionFilter,
 } from './media-upload-exception.filter';
 import { MediaService } from './media.service';
+import { ApiCommonErrors } from '../common/swagger/api-errors.decorator';
+import { CampaignBackgroundDto } from '../campaign/dto/campaign-background-settings.dto';
 
 const uploadOptions = {
   limits: { fileSize: MAX_MEDIA_BYTES, files: 1, fields: 0 },
@@ -151,6 +154,54 @@ export class MediaController {
     await this.mediaService.deleteCampaignCover(
       request.user.userId,
       campaignId,
+    );
+  }
+
+  @ApiOperation({
+    summary:
+      'Add a local campaign background (1600×900, 1920×1080 or 2560×1440 JPEG/PNG/WebP, at most 5 MiB)',
+  })
+  @ApiParam({ name: 'campaignId', format: 'uuid' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+      required: ['file'],
+    },
+  })
+  @ApiOkResponse({ type: CampaignBackgroundDto })
+  @ApiCommonErrors()
+  @Post('campaigns/:campaignId/backgrounds')
+  @UseInterceptors(FileInterceptor('file', uploadOptions))
+  uploadCampaignBackground(
+    @Request() request: { user: TokenPayloadDto },
+    @Param('campaignId') campaignId: string,
+    @UploadedFile() file: { buffer: Buffer },
+  ) {
+    return this.mediaService.addCampaignBackground(
+      request.user.userId,
+      campaignId,
+      file,
+    );
+  }
+
+  @ApiOperation({ summary: 'Delete a local campaign background' })
+  @ApiParam({ name: 'campaignId', format: 'uuid' })
+  @ApiParam({ name: 'backgroundId', format: 'uuid' })
+  @ApiNoContentResponse()
+  @ApiCommonErrors({ badRequest: false })
+  @Delete('campaigns/:campaignId/backgrounds/:backgroundId')
+  @HttpCode(204)
+  async deleteCampaignBackground(
+    @Request() request: { user: TokenPayloadDto },
+    @Param('campaignId') campaignId: string,
+    @Param('backgroundId') backgroundId: string,
+  ): Promise<void> {
+    await this.mediaService.deleteCampaignBackground(
+      request.user.userId,
+      campaignId,
+      backgroundId,
     );
   }
 

@@ -16,8 +16,8 @@ const CharactersPage = lazy(async () => ({
   default: (await import('../features/campaigns/characters-page'))
     .CharactersPage,
 }));
-const NotesPage = lazy(async () => ({
-  default: (await import('../features/campaigns/notes-page')).NotesPage,
+const ElementsPage = lazy(async () => ({
+  default: (await import('../features/campaigns/elements-page')).ElementsPage,
 }));
 const MembersPage = lazy(async () => ({
   default: (await import('../features/campaigns/members-page')).MembersPage,
@@ -29,13 +29,7 @@ const BackgroundSettingsPage = lazy(async () => ({
   default: (await import('../features/campaigns/background-settings-page'))
     .BackgroundSettingsPage,
 }));
-const LocationsPage = lazy(async () => ({
-  default: (await import('../features/campaigns/locations-page')).LocationsPage,
-}));
-const LocationViewerPage = lazy(async () => ({
-  default: (await import('../features/campaigns/location-viewer-page'))
-    .LocationViewerPage,
-}));
+
 const CampaignSettingsPage = lazy(async () => ({
   default: (await import('../features/campaigns/campaign-settings-page'))
     .CampaignSettingsPage,
@@ -94,13 +88,14 @@ export function AppRouter() {
           />
           <Route path="/campaigns/:campaignId/board" element={<BoardPage />} />
           <Route
-            path="/campaigns/:campaignId/locations"
-            element={<LocationsPage />}
+            path="/campaigns/:campaignId/elements"
+            element={<ElementsPage />}
           />
           <Route
-            path="/campaigns/:campaignId/locations/:locationId"
-            element={<LocationViewerPage />}
+            path="/campaigns/:campaignId/elements/:elementId"
+            element={<ElementsPage />}
           />
+
           <Route
             path="/campaigns/:campaignId/settings"
             element={<CampaignSettingsPage />}
@@ -113,7 +108,7 @@ export function AppRouter() {
             path="/campaigns/:campaignId/characters"
             element={<CharactersPage />}
           />
-          <Route path="/campaigns/:campaignId/notes" element={<NotesPage />} />
+
           <Route
             path="/campaigns/:campaignId/members"
             element={<MembersPage />}

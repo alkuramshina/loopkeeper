@@ -9,7 +9,8 @@ import {
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import sharp from 'sharp';
-import { CampaignRole } from '@prisma/client';
+import { CampaignRole, Prisma } from '@prisma/client';
+import { CampaignBackgroundDto } from '../campaign/dto/campaign-background-settings.dto';
 
 import { DomainException } from '../common/exceptions/domain.exception';
 import appConfig from '../config/app.config';
@@ -24,13 +25,20 @@ const MIN_COVER_HEIGHT = 360;
 const MAX_COVER_DIMENSION = 2048;
 const MAX_COVER_WIDTH = 1280;
 const MAX_COVER_HEIGHT = 720;
+const BACKGROUND_DIMENSIONS = new Set(['1600x900', '1920x1080', '2560x1440']);
 function hasSupportedImageSignature(buffer: Buffer): boolean {
-  const png = buffer.length >= 8 && buffer.subarray(0, 8).equals(
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  );
-  const jpeg = buffer.length >= 3 && buffer[0] === 0xff &&
-    buffer[1] === 0xd8 && buffer[2] === 0xff;
-  const webp = buffer.length >= 12 &&
+  const png =
+    buffer.length >= 8 &&
+    buffer
+      .subarray(0, 8)
+      .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  const jpeg =
+    buffer.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff;
+  const webp =
+    buffer.length >= 12 &&
     buffer.toString('ascii', 0, 4) === 'RIFF' &&
     buffer.toString('ascii', 8, 12) === 'WEBP';
   return png || jpeg || webp;
@@ -334,6 +342,116 @@ export class MediaService {
     await this.removeStorageFile(asset.storageKey);
   }
 
+  async addCampaignBackground(
+    userId: string,
+    campaignId: string,
+    file: UploadedFile,
+  ) {
+    await this.requireCampaignOwner(userId, campaignId);
+    const image = await this.normalizeBackground(file);
+    const storageKey = `${randomUUID()}.webp`;
+    await this.writeAtomically(storageKey, image.content);
+
+    let background: CampaignBackgroundDto;
+    try {
+      background = await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "campaignId" FROM "campaigns" WHERE "campaignId" = ${campaignId} FOR UPDATE`;
+        const campaign = await tx.campaign.findUniqueOrThrow({
+          where: { campaignId, ownerId: userId },
+          select: { backgrounds: true },
+        });
+        const backgrounds =
+          campaign.backgrounds as unknown as CampaignBackgroundDto[];
+        if (backgrounds.length >= 10) {
+          throw this.invalidMedia(
+            'media.background_limit',
+            'A campaign can have at most 10 backgrounds',
+          );
+        }
+        const asset = await tx.mediaAsset.create({
+          data: {
+            storageKey,
+            purpose: 'CAMPAIGN_BACKGROUND',
+            backgroundCampaignId: campaignId,
+            byteSize: image.content.length,
+            width: image.width,
+            height: image.height,
+          },
+        });
+        const background: CampaignBackgroundDto = {
+          backgroundId: asset.assetId,
+          name: `Background ${backgrounds.length + 1}`,
+          imageUrl: `/media/${asset.assetId}`,
+          isEnabled: true,
+          sortOrder: backgrounds.length,
+        };
+        await tx.campaign.update({
+          where: { campaignId },
+          data: {
+            backgrounds: [
+              ...backgrounds,
+              background,
+            ] as unknown as Prisma.InputJsonValue,
+          },
+        });
+        return background;
+      });
+    } catch (error) {
+      await this.removeStorageFile(storageKey);
+      throw error;
+    }
+    return background;
+  }
+
+  async deleteCampaignBackground(
+    userId: string,
+    campaignId: string,
+    backgroundId: string,
+  ): Promise<void> {
+    await this.requireCampaignOwner(userId, campaignId);
+    const storageKey = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "campaignId" FROM "campaigns" WHERE "campaignId" = ${campaignId} FOR UPDATE`;
+      const campaign = await tx.campaign.findUniqueOrThrow({
+        where: { campaignId, ownerId: userId },
+        select: { backgrounds: true, fixedBackgroundId: true },
+      });
+      const backgrounds =
+        campaign.backgrounds as unknown as CampaignBackgroundDto[];
+      if (
+        !backgrounds.some(
+          (background) =>
+            background.backgroundId === backgroundId &&
+            background.imageUrl === `/media/${backgroundId}`,
+        )
+      ) {
+        throw new NotFoundException();
+      }
+      const asset = await tx.mediaAsset.findFirst({
+        where: {
+          assetId: backgroundId,
+          purpose: 'CAMPAIGN_BACKGROUND',
+          backgroundCampaignId: campaignId,
+        },
+        select: { storageKey: true },
+      });
+      if (!asset) throw new NotFoundException();
+      await tx.campaign.update({
+        where: { campaignId },
+        data: {
+          backgrounds: backgrounds.filter(
+            (background) => background.backgroundId !== backgroundId,
+          ) as unknown as Prisma.InputJsonValue,
+          ...(campaign.fixedBackgroundId === backgroundId
+            ? { fixedBackgroundId: null }
+            : {}),
+        },
+      });
+      await tx.mediaAsset.delete({ where: { assetId: backgroundId } });
+      return asset.storageKey;
+    });
+    await this.removeStorageFile(storageKey);
+  }
+
   async getMediaContent(userId: string, assetId: string): Promise<Buffer> {
     const asset = await this.prisma.mediaAsset.findFirst({
       where: {
@@ -347,6 +465,24 @@ export class MediaService {
               campaign: {
                 OR: [{ ownerId: userId }, { members: { some: { userId } } }],
               },
+            },
+          },
+          {
+            purpose: 'CAMPAIGN_BACKGROUND',
+            backgroundCampaign: {
+              backgrounds: {
+                array_contains: [
+                  { backgroundId: assetId, imageUrl: `/media/${assetId}` },
+                ],
+              },
+              OR: [
+                { ownerId: userId },
+                {
+                  members: {
+                    some: { userId, campaignRole: CampaignRole.PLAYER },
+                  },
+                },
+              ],
             },
           },
           {
@@ -400,29 +536,25 @@ export class MediaService {
       select: {
         characterId: true,
         campaignId: true,
-        isNPC: true,
+
         ownerId: true,
       },
     });
     if (!character) {
       throw new NotFoundException();
     }
-    if (character.isNPC) {
-      await this.requireCampaignOwner(userId, character.campaignId);
-    } else {
-      if (character.ownerId !== userId) {
-        throw new NotFoundException();
-      }
-      const membership = await this.prisma.campaignMember.findFirst({
-        where: {
-          campaignId: character.campaignId,
-          userId,
-          campaignRole: CampaignRole.PLAYER,
-        },
-        select: { memberId: true },
-      });
-      if (!membership) throw new NotFoundException();
+    if (character.ownerId !== userId) {
+      throw new NotFoundException();
     }
+    const membership = await this.prisma.campaignMember.findFirst({
+      where: {
+        campaignId: character.campaignId,
+        userId,
+        campaignRole: CampaignRole.PLAYER,
+      },
+      select: { memberId: true },
+    });
+    if (!membership) throw new NotFoundException();
     return character;
   }
 
@@ -538,6 +670,36 @@ export class MediaService {
       if (error instanceof DomainException) {
         throw error;
       }
+      throw this.invalidMedia(
+        'media.invalid_file',
+        'The image file is invalid',
+      );
+    }
+  }
+
+  private async normalizeBackground(
+    file: UploadedFile,
+  ): Promise<NormalizedAvatar> {
+    await this.validateUpload(file);
+    try {
+      const image = sharp(file.buffer, {
+        limitInputPixels: 2560 * 1440,
+      }).rotate();
+      const { width, height, orientation } = await image.metadata();
+      const rotatedWidth =
+        orientation && orientation >= 5 && orientation <= 8 ? height : width;
+      const rotatedHeight =
+        orientation && orientation >= 5 && orientation <= 8 ? width : height;
+      if (!BACKGROUND_DIMENSIONS.has(`${rotatedWidth}x${rotatedHeight}`)) {
+        throw this.invalidMedia(
+          'media.invalid_background_dimensions',
+          'Background images must be 1600×900, 1920×1080 or 2560×1440 pixels',
+        );
+      }
+      const content = await image.webp().toBuffer();
+      return { content, width: rotatedWidth!, height: rotatedHeight! };
+    } catch (error) {
+      if (error instanceof DomainException) throw error;
       throw this.invalidMedia(
         'media.invalid_file',
         'The image file is invalid',

@@ -76,10 +76,10 @@ async function createCampaign(app: INestApplication, owner: AuthenticatedUser) {
     .post('/campaigns')
     .set(authenticate(owner))
     .send({
-          title: 'The Loop',
-          description: 'A mystery in the 1980s',
-          system: 'TALES_FROM_THE_LOOP',
-        })
+      title: 'The Loop',
+      description: 'A mystery in the 1980s',
+      system: 'TALES_FROM_THE_LOOP',
+    })
     .expect(201);
 
   return response.body;
@@ -112,33 +112,15 @@ describe('Characters (e2e)', () => {
     );
     const campaign = await createCampaign(app, owner);
 
-    await inviteAndAccept(
-      app,
-      owner,
-      player,
-      campaign.campaignId,
-      'PLAYER',
-    );
-    await inviteAndAccept(
-      app,
-      owner,
-      viewer,
-      campaign.campaignId,
-      'VIEWER',
-    );
+    await inviteAndAccept(app, owner, player, campaign.campaignId, 'PLAYER');
+    await inviteAndAccept(app, owner, viewer, campaign.campaignId, 'VIEWER');
 
     const templates = await request(app.getHttpServer())
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
       .set(authenticate(player))
       .expect(200);
-    expect(templates.body).toHaveLength(2);
-    const playerTemplateId = templates.body.find(
-      (template: { characterKind: string }) =>
-        template.characterKind === 'PLAYER_CHARACTER',
-    ).templateId;
-    const npcTemplateId = templates.body.find(
-      (template: { characterKind: string }) => template.characterKind === 'NPC',
-    ).templateId;
+    expect(templates.body).toHaveLength(1);
+    const playerTemplateId = templates.body[0].templateId;
 
     const playerCharacter = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
@@ -149,57 +131,52 @@ describe('Characters (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
-      .send({ name: 'Another Alex', templateId: playerTemplateId, data: characterData })
+      .send({
+        name: 'Another Alex',
+        templateId: playerTemplateId,
+        data: characterData,
+      })
       .expect(409);
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
-      .set(authenticate(player))
+      .set(authenticate(viewer))
       .send({
-        name: 'Not an NPC',
+        name: 'Viewer',
         templateId: playerTemplateId,
         data: characterData,
-        isNPC: true,
       })
       .expect(404);
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
-      .set(authenticate(viewer))
-      .send({ name: 'Viewer', templateId: playerTemplateId, data: characterData })
-      .expect(404);
-
-    const npc = await request(app.getHttpServer())
-      .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(owner))
       .send({
         name: 'Mr. Berg',
-        templateId: npcTemplateId,
-        data: { role: 'Loop technician', secret: 'Knows where the robot came from.' },
-        isNPC: true,
+        templateId: playerTemplateId,
+        data: {
+          role: 'Loop technician',
+          secret: 'Knows where the robot came from.',
+        },
       })
-      .expect(201);
+      .expect(404);
 
     await request(app.getHttpServer())
       .get(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(viewer))
       .expect(200)
-      .expect((response) => expect(response.body).toHaveLength(2));
+      .expect((response) => expect(response.body).toHaveLength(1));
 
-    await request(app.getHttpServer())
-      .patch(`/characters/${npc.body.characterId}`)
-      .set(authenticate(player))
-      .send({ name: 'Changed NPC' })
-      .expect(404);
-
-    await request(app.getHttpServer())
-      .patch(`/characters/${npc.body.characterId}`)
+    const element = await request(app.getHttpServer())
+      .post(`/campaigns/${campaign.campaignId}/elements`)
       .set(authenticate(owner))
-      .send({ name: 'Mr. Berg Updated' })
-      .expect(200)
-      .expect((response) =>
-        expect(response.body).toMatchObject({ name: 'Mr. Berg Updated' }),
-      );
+      .send({
+        type: 'NPC',
+        title: 'Mr. Berg',
+        typeData: { role: 'Loop technician' },
+      })
+      .expect(201);
+    expect(element.body.typeData.role).toBe('Loop technician');
 
     await request(app.getHttpServer())
       .get(`/characters/${playerCharacter.body.characterId}`)
@@ -212,22 +189,13 @@ describe('Characters (e2e)', () => {
     const player = await registerUser(app, 'player@loopkeeper.dev', 'Player');
     const campaign = await createCampaign(app, owner);
 
-    await inviteAndAccept(
-      app,
-      owner,
-      player,
-      campaign.campaignId,
-      'PLAYER',
-    );
+    await inviteAndAccept(app, owner, player, campaign.campaignId, 'PLAYER');
 
     const templates = await request(app.getHttpServer())
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
       .set(authenticate(player))
       .expect(200);
-    const templateId = templates.body.find(
-      (template: { characterKind: string }) =>
-        template.characterKind === 'PLAYER_CHARACTER',
-    ).templateId;
+    const templateId = templates.body[0].templateId;
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)

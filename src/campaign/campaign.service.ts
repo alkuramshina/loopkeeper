@@ -127,7 +127,17 @@ export class CampaignService {
 
   async remove(userId: string, campaignId: string) {
     await this.campaignAccess.requireOwner(userId, campaignId);
-    await this.prisma.campaign.delete({ where: { campaignId } });
+    const storageKeys = await this.prisma.$transaction(async (tx) => {
+      const assets = await tx.mediaAsset.findMany({
+        where: { backgroundCampaignId: campaignId },
+        select: { storageKey: true },
+      });
+      await tx.campaign.delete({ where: { campaignId } });
+      return assets.map((asset) => asset.storageKey);
+    });
+    await Promise.all(
+      storageKeys.map((key) => this.mediaService.removeStorageFile(key)),
+    );
   }
 
   private presentCampaign(

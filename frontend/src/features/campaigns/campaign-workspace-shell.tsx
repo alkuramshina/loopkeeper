@@ -12,7 +12,6 @@ type CampaignWorkspaceShellProps = {
 type NavigationItem = {
   to: string;
   label: string;
-  end?: boolean;
 };
 
 export function CampaignWorkspaceShell({
@@ -31,11 +30,7 @@ export function CampaignWorkspaceShell({
       ? [{ to: `${basePath}/board`, label: t('workspace.board') }]
       : []),
     { to: `${basePath}/characters`, label: t('workspace.characters') },
-    { to: `${basePath}/notes`, label: t('workspace.notes') },
-    ...(campaign.currentUserRole === 'OWNER' ||
-    campaign.currentUserRole === 'PLAYER'
-      ? [{ to: `${basePath}/locations`, label: t('workspace.locations') }]
-      : []),
+    { to: `${basePath}/elements`, label: t('workspace.elements') },
     ...(campaign.currentUserRole === 'OWNER'
       ? [
           { to: `${basePath}/members`, label: t('workspace.members') },
@@ -50,7 +45,7 @@ export function CampaignWorkspaceShell({
   const navigation = (className: string) => (
     <nav className={className} aria-label={t('campaigns.title')}>
       {navigationItems.map((item) => (
-        <NavLink end={item.end} key={item.to} to={item.to}>
+        <NavLink key={item.to} to={item.to}>
           {item.label}
         </NavLink>
       ))}

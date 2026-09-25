@@ -23,9 +23,6 @@ export class CharacterResponseDto {
   data!: Record<string, unknown>;
 
   @ApiProperty()
-  isNPC!: boolean;
-
-  @ApiProperty()
   isActive!: boolean;
 
   @ApiProperty({ format: 'uuid' })

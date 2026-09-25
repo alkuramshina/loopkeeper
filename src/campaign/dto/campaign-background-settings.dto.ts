@@ -8,7 +8,8 @@ import {
   IsEnum,
   IsInt,
   IsString,
-  IsUrl,
+  isURL,
+  ValidateBy,
   IsUUID,
   MaxLength,
   Min,
@@ -29,12 +30,22 @@ export class CampaignBackgroundDto {
   @ApiProperty({
     format: 'uri',
     maxLength: 2048,
-    example: 'https://example.com/background.jpg',
+    example: '/media/00000000-0000-4000-8000-000000000001',
   })
-  @IsUrl({
-    protocols: ['https'],
-    require_protocol: true,
-    require_host: true,
+  @ValidateBy({
+    name: 'campaignBackgroundImageUrl',
+    validator: {
+      validate: (value: unknown) =>
+        typeof value === 'string' &&
+        (/^\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          value,
+        ) ||
+          isURL(value, {
+            protocols: ['https'],
+            require_protocol: true,
+            require_host: true,
+          })),
+    },
   })
   @MaxLength(2048)
   imageUrl!: string;

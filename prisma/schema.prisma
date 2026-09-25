@@ -23,8 +23,8 @@ model User {
   characters                 Character[]
   authSessions               AuthSession[]
   createdCampaignInvitations CampaignInvitation[] @relation("CampaignInvitationCreator")
-  notes                      Note[]
-  createdLocations           CampaignLocation[]
+
+  createdElements            CampaignElement[]
 
   investigationCards InvestigationCard[] @relation("InvestigationCardCreator")
   investigationLinks InvestigationLink[] @relation("InvestigationLinkCreator")
@@ -33,18 +33,22 @@ model User {
 }
 
 model MediaAsset {
-  assetId         String                @id @default(uuid())
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  storageKey      String                @unique
-  contentType     MediaAssetContentType @default(IMAGE_WEBP)
-  purpose         MediaAssetPurpose
-  byteSize        Int
-  width           Int
-  height          Int
-  avatarOwner     User?                 @relation("UserAvatar")
-  characterAvatar Character?            @relation("CharacterAvatar")
-  campaignCover   Campaign?             @relation("CampaignCover")
+  assetId              String                @id @default(uuid())
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  storageKey           String                @unique
+  contentType          MediaAssetContentType @default(IMAGE_WEBP)
+  purpose              MediaAssetPurpose
+  byteSize             Int
+  width                Int
+  height               Int
+  avatarOwner          User?                 @relation("UserAvatar")
+  characterAvatar      Character?            @relation("CharacterAvatar")
+  campaignCover        Campaign?             @relation("CampaignCover")
+  backgroundCampaign   Campaign?             @relation("CampaignBackgroundAssets", fields: [backgroundCampaignId], references: [campaignId], onDelete: Cascade)
+  backgroundCampaignId String?
+
+  @@index([backgroundCampaignId])
 
   @@index([purpose])
   @@map("media_assets")
@@ -81,9 +85,10 @@ model Campaign {
   characters              Character[]
   members                 CampaignMember[]                @relation("CampaignMembers")
   invitations             CampaignInvitation[]
-  notes                   Note[]
-  locations               CampaignLocation[]
+
+  elements                CampaignElement[]
   backgrounds             Json                            @default("[]")
+  backgroundAssets        MediaAsset[]                    @relation("CampaignBackgroundAssets")
   backgroundSelectionMode CampaignBackgroundSelectionMode @default(FIXED)
   fixedBackgroundId       String?
 
@@ -128,40 +133,30 @@ model CampaignInvitation {
   @@map("campaign_invitations")
 }
 
-model CampaignLocation {
-  locationId  String   @id @default(uuid())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  title       String
-  description String?
-  imageUrl    String?
-  sortOrder   Int      @default(0)
-  campaign    Campaign @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
-  campaignId  String
-  createdBy   User     @relation(fields: [createdById], references: [userId])
-  createdById String
 
-  @@index([campaignId, sortOrder])
-  @@map("campaign_locations")
+model CampaignElement {
+  elementId    String                @id @default(uuid())
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  campaign     Campaign              @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
+  campaignId   String
+  createdBy    User                  @relation(fields: [createdById], references: [userId])
+  createdById  String
+  type         CampaignElementType
+  title        String
+  content      String?
+  access       CampaignElementAccess @default(MASTER_ONLY)
+  typeData     Json                  @default("{}")
+  sortOrder    Int                   @default(0)
+  imageUrl     String?
+  coverAssetId String?               @unique
+  mapAssetId   String?               @unique
+  investigationCards InvestigationCard[] @relation("InvestigationCardElement")
+
+  @@index([campaignId, type, access])
+  @@map("campaign_elements")
 }
 
-model Note {
-  noteId             String              @id @default(uuid())
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  title              String
-  content            String
-  visibility         NoteVisibility      @default(PRIVATE)
-  campaign           Campaign            @relation(fields: [campaignId], references: [campaignId])
-  campaignId         String
-  author             User                @relation(fields: [authorId], references: [userId])
-  authorId           String
-  investigationCards InvestigationCard[] @relation("InvestigationCardNote")
-
-  @@index([campaignId, visibility])
-  @@index([campaignId, authorId])
-  @@map("notes")
-}
 
 model InvestigationBoard {
   boardId    String              @id @default(uuid())
@@ -185,8 +180,9 @@ model InvestigationCard {
   tags        String[]
   color       String?
   icon        String?
-  note        Note?                   @relation("InvestigationCardNote", fields: [noteId], references: [noteId], onDelete: Cascade)
-  noteId      String?
+
+  element     CampaignElement?        @relation("InvestigationCardElement", fields: [elementId], references: [elementId], onDelete: Cascade)
+  elementId   String?
   character   Character?              @relation("InvestigationCardCharacter", fields: [characterId], references: [characterId], onDelete: Cascade)
   characterId String?
   board       InvestigationBoard      @relation(fields: [boardId], references: [boardId], onDelete: Cascade)
@@ -200,7 +196,8 @@ model InvestigationCard {
   linksTo     InvestigationLink[]     @relation("InvestigationLinkTo")
 
   @@index([campaignId])
-  @@index([noteId])
+
+  @@index([elementId])
   @@index([characterId])
   @@map("investigation_cards")
 }
@@ -258,7 +255,7 @@ model CharacterTemplate {
   name          String
   schema        Json
   version       Int                   @default(1)
-  characterKind CharacterTemplateKind @default(PLAYER_CHARACTER)
+
   isActive      Boolean               @default(true)
   system        GameSystem            @relation(fields: [systemSlug], references: [slug])
   systemSlug    System
@@ -279,7 +276,7 @@ model Character {
   avatarAsset        MediaAsset?         @relation("CharacterAvatar", fields: [avatarAssetId], references: [assetId], onDelete: SetNull)
   avatarAssetId      String?             @unique
   data               Json                @default("{}")
-  isNPC              Boolean             @default(false)
+
   isActive           Boolean             @default(true)
   campaign           Campaign            @relation(fields: [campaignId], references: [campaignId])
   campaignId         String
@@ -302,12 +299,9 @@ enum MediaAssetPurpose {
   AVATAR
   CHARACTER_AVATAR
   CAMPAIGN_COVER
+  CAMPAIGN_BACKGROUND
 }
 
-enum CharacterTemplateKind {
-  PLAYER_CHARACTER
-  NPC
-}
 
 enum CampaignBackgroundSelectionMode {
   FIXED
@@ -316,7 +310,8 @@ enum CampaignBackgroundSelectionMode {
 
 enum InvestigationCardKind {
   FREE
-  NOTE_REFERENCE
+
+  ELEMENT_REFERENCE
   CHARACTER_REFERENCE
 }
 
@@ -325,12 +320,18 @@ enum CampaignRole {
   VIEWER
 }
 
-enum NoteVisibility {
-  PRIVATE
-  MASTER_ONLY
-  PLAYERS
-  PUBLIC
+enum CampaignElementType {
+  NOTE
+  LOCATION
+  NPC
+  OTHER
 }
+
+enum CampaignElementAccess {
+  MASTER_ONLY
+  SHARED
+}
+
 
 enum ApplicationRole {
   USER

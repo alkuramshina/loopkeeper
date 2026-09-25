@@ -1,4 +1,3 @@
-
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class InvestigationBoardNodeResponseDto {
@@ -28,20 +27,17 @@ export class InvestigationBoardNodeResponseDto {
 }
 
 export class InvestigationCardReferenceResponseDto {
-  @ApiProperty({ enum: ['NOTE', 'CHARACTER'] })
-  kind!: 'NOTE' | 'CHARACTER';
+  @ApiProperty({ enum: ['ELEMENT', 'CHARACTER'] })
+  kind!: 'ELEMENT' | 'CHARACTER';
 
   @ApiPropertyOptional({ format: 'uuid' })
-  noteId?: string;
+  elementId?: string;
 
   @ApiPropertyOptional({ format: 'uuid' })
   characterId?: string;
 
   @ApiPropertyOptional({ format: 'uri', nullable: true })
   avatarUrl?: string | null;
-
-  @ApiPropertyOptional()
-  isNPC?: boolean;
 }
 
 export class InvestigationCardResponseDto {
@@ -54,8 +50,8 @@ export class InvestigationCardResponseDto {
   @ApiProperty({ format: 'date-time' })
   updatedAt!: Date;
 
-  @ApiProperty({ enum: ['FREE', 'NOTE_REFERENCE', 'CHARACTER_REFERENCE'] })
-  cardKind!: 'FREE' | 'NOTE_REFERENCE' | 'CHARACTER_REFERENCE';
+  @ApiProperty({ enum: ['FREE', 'ELEMENT_REFERENCE', 'CHARACTER_REFERENCE'] })
+  cardKind!: 'FREE' | 'ELEMENT_REFERENCE' | 'CHARACTER_REFERENCE';
 
   @ApiPropertyOptional({ nullable: true })
   title!: string | null;
@@ -73,7 +69,7 @@ export class InvestigationCardResponseDto {
   icon!: string | null;
 
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
-  noteId!: string | null;
+  elementId!: string | null;
 
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
   characterId!: string | null;
@@ -87,7 +83,10 @@ export class InvestigationCardResponseDto {
   @ApiProperty({ format: 'uuid' })
   createdById!: string;
 
-  @ApiProperty({ type: () => InvestigationBoardNodeResponseDto, nullable: true })
+  @ApiProperty({
+    type: () => InvestigationBoardNodeResponseDto,
+    nullable: true,
+  })
   node!: InvestigationBoardNodeResponseDto | null;
 
   @ApiPropertyOptional({ type: () => InvestigationCardReferenceResponseDto })

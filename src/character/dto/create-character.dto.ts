@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsBoolean,
   IsObject,
   IsOptional,
   IsString,
@@ -33,9 +32,4 @@ export class CreateCharacterDto {
   @IsOptional()
   @IsUrl()
   avatarUrl?: string;
-
-  @ApiPropertyOptional({ default: false })
-  @IsOptional()
-  @IsBoolean()
-  isNPC?: boolean;
 }

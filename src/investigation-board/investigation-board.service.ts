@@ -1,5 +1,9 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { InvestigationCardKind, NoteVisibility, Prisma } from '@prisma/client';
+import {
+  CampaignElementAccess,
+  InvestigationCardKind,
+  Prisma,
+} from '@prisma/client';
 import {
   DomainException,
   ErrorViolation,
@@ -18,8 +22,8 @@ import { UpdateInvestigationBoardNodeDto } from './dto/node.dto';
 
 const cardInclude = {
   node: true,
-  note: {
-    select: { noteId: true, title: true, content: true },
+  element: {
+    select: { elementId: true, title: true, content: true, access: true },
   },
   character: {
     select: {
@@ -27,7 +31,6 @@ const cardInclude = {
       name: true,
       description: true,
       avatarUrl: true,
-      isNPC: true,
     },
   },
 } satisfies Prisma.InvestigationCardInclude;
@@ -49,12 +52,22 @@ export class InvestigationBoardService {
     const result = await this.prisma.investigationBoard.findUniqueOrThrow({
       where: { boardId: board.boardId },
       include: {
-        cards: { include: cardInclude, orderBy: { createdAt: 'asc' } },
+        cards: {
+          where: this.visibleCardWhere,
+          include: cardInclude,
+          orderBy: { createdAt: 'asc' },
+        },
         links: { orderBy: { createdAt: 'asc' } },
       },
     });
-
-    return { ...result, cards: result.cards.map((card) => this.presentCard(card)) };
+    const cardIds = new Set(result.cards.map((card) => card.cardId));
+    return {
+      ...result,
+      cards: result.cards.map((card) => this.presentCard(card)),
+      links: result.links.filter(
+        (link) => cardIds.has(link.fromCardId) && cardIds.has(link.toCardId),
+      ),
+    };
   }
 
   async createCard(
@@ -66,26 +79,35 @@ export class InvestigationBoardService {
     const board = await this.getOrCreate(campaignId);
     const cardKind = dto.cardKind ?? InvestigationCardKind.FREE;
 
-    const source = await this.resolveCardSource(campaignId, board.boardId, cardKind, dto);
-    const card = await this.prisma.investigationCard.create({
-      data: {
-        cardKind,
-        title: cardKind === InvestigationCardKind.FREE ? dto.title : null,
-        content: cardKind === InvestigationCardKind.FREE ? dto.content : null,
-        tags: dto.tags ?? [],
-        color: dto.color,
-        icon: dto.icon,
-        noteId: source.noteId,
-        characterId: source.characterId,
+    return this.prisma.$transaction(async (tx) => {
+      // Serialize reference checks and inserts across workers on this board.
+      await tx.$queryRaw`SELECT "boardId" FROM "investigation_boards" WHERE "boardId" = ${board.boardId} FOR UPDATE`;
+      const source = await this.resolveCardSource(
+        tx,
         campaignId,
-        boardId: board.boardId,
-        createdById: userId,
-        node: { create: {} },
-      },
-      include: cardInclude,
+        board.boardId,
+        cardKind,
+        dto,
+      );
+      const card = await tx.investigationCard.create({
+        data: {
+          cardKind,
+          title: cardKind === InvestigationCardKind.FREE ? dto.title : null,
+          content: cardKind === InvestigationCardKind.FREE ? dto.content : null,
+          tags: dto.tags ?? [],
+          color: dto.color,
+          icon: dto.icon,
+          elementId: source.elementId,
+          characterId: source.characterId,
+          campaignId,
+          boardId: board.boardId,
+          createdById: userId,
+          node: { create: {} },
+        },
+        include: cardInclude,
+      });
+      return this.presentCard(card);
     });
-
-    return this.presentCard(card);
   }
 
   async updateCard(
@@ -133,7 +155,11 @@ export class InvestigationBoardService {
     const board = await this.getOrCreate(campaignId);
     const [fromCardId, toCardId] = [dto.cardAId, dto.cardBId].sort();
     const cards = await this.prisma.investigationCard.findMany({
-      where: { cardId: { in: [fromCardId, toCardId] }, boardId: board.boardId },
+      where: {
+        cardId: { in: [fromCardId, toCardId] },
+        boardId: board.boardId,
+        AND: [this.visibleCardWhere],
+      },
       select: { cardId: true },
     });
     if (cards.length !== 2) {
@@ -184,56 +210,62 @@ export class InvestigationBoardService {
   }
 
   private async resolveCardSource(
+    tx: Prisma.TransactionClient,
     campaignId: string,
     boardId: string,
     cardKind: InvestigationCardKind,
     dto: CreateInvestigationCardDto,
-  ): Promise<{ noteId?: string; characterId?: string }> {
+  ): Promise<{ elementId?: string; characterId?: string }> {
     if (cardKind === InvestigationCardKind.FREE) {
-      if (!dto.title || dto.noteId || dto.characterId) {
+      if (!dto.title || dto.elementId || dto.characterId) {
         throw this.invalidCardPayload();
       }
       return {};
     }
 
-    if (cardKind === InvestigationCardKind.NOTE_REFERENCE) {
-      if (!dto.noteId || dto.characterId || dto.title || dto.content) {
+    if (cardKind === InvestigationCardKind.ELEMENT_REFERENCE) {
+      if (!dto.elementId || dto.characterId || dto.title || dto.content) {
         throw this.invalidCardPayload();
       }
-      const note = await this.prisma.note.findFirst({
-        where: {
-          noteId: dto.noteId,
-          campaignId,
-          visibility: { in: [NoteVisibility.PLAYERS, NoteVisibility.PUBLIC] },
-        },
-        select: { noteId: true },
-      });
-      if (!note) {
-        throw this.cardNotFound();
-      }
-      await this.assertNoReference(boardId, { noteId: note.noteId });
-      return { noteId: note.noteId };
+      // Lock the source while validating and inserting, so an access change
+      // cannot commit between the check and card creation.
+      const rows = await tx.$queryRaw<{ elementId: string }[]>`
+        SELECT "elementId" FROM "campaign_elements"
+        WHERE "elementId" = ${dto.elementId} AND "campaignId" = ${campaignId}
+          AND "access" = 'SHARED' FOR SHARE`;
+      if (!rows.length) throw this.cardNotFound();
+      await this.assertNoReference(tx, boardId, { elementId: dto.elementId });
+      return { elementId: dto.elementId };
     }
 
-    if (!dto.characterId || dto.noteId || dto.title || dto.content) {
+    if (
+      cardKind !== InvestigationCardKind.CHARACTER_REFERENCE ||
+      !dto.characterId ||
+      dto.elementId ||
+      dto.title ||
+      dto.content
+    ) {
       throw this.invalidCardPayload();
     }
-    const character = await this.prisma.character.findFirst({
+    const character = await tx.character.findFirst({
       where: { characterId: dto.characterId, campaignId },
       select: { characterId: true },
     });
     if (!character) {
       throw this.cardNotFound();
     }
-    await this.assertNoReference(boardId, { characterId: character.characterId });
+    await this.assertNoReference(tx, boardId, {
+      characterId: character.characterId,
+    });
     return { characterId: character.characterId };
   }
 
   private async assertNoReference(
+    tx: Prisma.TransactionClient,
     boardId: string,
-    source: { noteId?: string; characterId?: string },
+    source: { elementId?: string; characterId?: string },
   ): Promise<void> {
-    const existing = await this.prisma.investigationCard.findFirst({
+    const existing = await tx.investigationCard.findFirst({
       where: { boardId, ...source },
       select: { cardId: true },
     });
@@ -247,16 +279,22 @@ export class InvestigationBoardService {
   }
 
   private presentCard(card: CardWithReference) {
-    const { note, character, ...cardData } = card;
-    if (card.cardKind === InvestigationCardKind.NOTE_REFERENCE && note) {
+    const { element, character, ...cardData } = card;
+    if (
+      card.cardKind === InvestigationCardKind.ELEMENT_REFERENCE &&
+      element?.access === CampaignElementAccess.SHARED
+    ) {
       return {
         ...cardData,
-        title: note.title,
-        content: this.preview(note.content),
-        reference: { kind: 'NOTE', noteId: note.noteId },
+        title: element.title,
+        content: this.preview(element.content),
+        reference: { kind: 'ELEMENT', elementId: element.elementId },
       };
     }
-    if (card.cardKind === InvestigationCardKind.CHARACTER_REFERENCE && character) {
+    if (
+      card.cardKind === InvestigationCardKind.CHARACTER_REFERENCE &&
+      character
+    ) {
       return {
         ...cardData,
         title: character.name,
@@ -265,12 +303,25 @@ export class InvestigationBoardService {
           kind: 'CHARACTER',
           characterId: character.characterId,
           avatarUrl: character.avatarUrl,
-          isNPC: character.isNPC,
         },
       };
     }
     return cardData;
   }
+
+  private readonly visibleCardWhere: Prisma.InvestigationCardWhereInput = {
+    OR: [
+      { cardKind: InvestigationCardKind.FREE },
+      {
+        cardKind: InvestigationCardKind.ELEMENT_REFERENCE,
+        element: { access: CampaignElementAccess.SHARED },
+      },
+      {
+        cardKind: InvestigationCardKind.CHARACTER_REFERENCE,
+        character: { is: {} },
+      },
+    ],
+  };
 
   private preview(content?: string | null): string | null {
     if (!content) {
@@ -327,6 +378,7 @@ export class InvestigationBoardService {
     const card = await this.prisma.investigationCard.findFirst({
       where: {
         cardId,
+        AND: [this.visibleCardWhere],
         campaign: {
           OR: [{ ownerId: userId }, { members: { some: { userId } } }],
         },
@@ -342,6 +394,8 @@ export class InvestigationBoardService {
     const link = await this.prisma.investigationLink.findFirst({
       where: {
         linkId,
+        fromCard: { is: this.visibleCardWhere },
+        toCard: { is: this.visibleCardWhere },
         campaign: {
           OR: [{ ownerId: userId }, { members: { some: { userId } } }],
         },

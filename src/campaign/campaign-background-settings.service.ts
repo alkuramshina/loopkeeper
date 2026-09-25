@@ -43,18 +43,55 @@ export class CampaignBackgroundSettingsService {
     await this.campaignAccess.requireOwner(userId, campaignId);
     this.validate(updateDto);
 
-    const campaign = await this.prisma.campaign.update({
-      where: { campaignId },
-      data: {
-        backgroundSelectionMode: updateDto.selectionMode,
-        fixedBackgroundId: updateDto.fixedBackgroundId,
-        backgrounds: updateDto.backgrounds as unknown as Prisma.InputJsonValue,
-      },
-      select: {
-        backgroundSelectionMode: true,
-        fixedBackgroundId: true,
-        backgrounds: true,
-      },
+    const campaign = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "campaignId" FROM "campaigns" WHERE "campaignId" = ${campaignId} FOR UPDATE`;
+      const current = await tx.campaign.findUniqueOrThrow({
+        where: { campaignId },
+        select: { backgrounds: true },
+      });
+      const existing =
+        current.backgrounds as unknown as CampaignBackgroundDto[];
+      for (const background of existing) {
+        if (!background.imageUrl.startsWith('/media/')) continue;
+        const requested = updateDto.backgrounds.find(
+          (entry) => entry.backgroundId === background.backgroundId,
+        );
+        if (requested?.imageUrl !== background.imageUrl) {
+          throw this.invalidSettings(
+            'backgrounds',
+            'Delete local backgrounds through the media endpoint',
+          );
+        }
+      }
+      for (const background of updateDto.backgrounds) {
+        if (
+          background.imageUrl.startsWith('/media/') &&
+          !existing.some(
+            (entry) =>
+              entry.backgroundId === background.backgroundId &&
+              entry.imageUrl === background.imageUrl,
+          )
+        ) {
+          throw this.invalidSettings(
+            'backgrounds',
+            'Local background references must belong to this campaign',
+          );
+        }
+      }
+      return tx.campaign.update({
+        where: { campaignId },
+        data: {
+          backgroundSelectionMode: updateDto.selectionMode,
+          fixedBackgroundId: updateDto.fixedBackgroundId,
+          backgrounds:
+            updateDto.backgrounds as unknown as Prisma.InputJsonValue,
+        },
+        select: {
+          backgroundSelectionMode: true,
+          fixedBackgroundId: true,
+          backgrounds: true,
+        },
+      });
     });
 
     return this.present(campaign);
@@ -65,7 +102,10 @@ export class CampaignBackgroundSettingsService {
       (background) => background.backgroundId,
     );
     if (new Set(backgroundIds).size !== backgroundIds.length) {
-      throw this.invalidSettings('backgrounds', 'Background IDs must be unique');
+      throw this.invalidSettings(
+        'backgrounds',
+        'Background IDs must be unique',
+      );
     }
 
     if (settings.selectionMode === CampaignBackgroundSelectionMode.RANDOM) {

@@ -4,19 +4,6 @@ import { PrismaClient, System } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const talesFromTheLoopTemplateId = '00000000-0000-4000-8000-000000000001';
-const talesFromTheLoopNpcTemplateId = '00000000-0000-4000-8000-000000000002';
-
-const talesFromTheLoopNpcSchema = {
-  title: 'Tales from the Loop — NPC',
-  sections: [{ key: 'profile', label: 'Profile' }],
-  fields: [
-    { key: 'role', label: 'Role', section: 'profile', type: 'string', required: true, maxLength: 100 },
-    { key: 'motivation', label: 'Motivation', section: 'profile', type: 'string', maxLength: 500 },
-    { key: 'firstImpression', label: 'First impression', section: 'profile', type: 'string', maxLength: 500 },
-    { key: 'secret', label: 'Secret', section: 'profile', type: 'string', maxLength: 1000 },
-    { key: 'relationship', label: 'Relationship', section: 'profile', type: 'string', maxLength: 500 },
-  ],
-};
 
 const talesFromTheLoopSchema = {
   title: 'Tales from the Loop — Kid',
@@ -317,32 +304,14 @@ async function seedReferenceData(prisma: PrismaClient) {
       name: 'Kid',
       schema: talesFromTheLoopSchema,
       version: 2,
-      characterKind: 'PLAYER_CHARACTER',
     },
     update: {
       schema: talesFromTheLoopSchema,
       version: 2,
-      characterKind: 'PLAYER_CHARACTER',
       isActive: true,
     },
   });
 
-  await prisma.characterTemplate.upsert({
-    where: { templateId: talesFromTheLoopNpcTemplateId },
-    create: {
-      templateId: talesFromTheLoopNpcTemplateId,
-      systemSlug: System.TALES_FROM_THE_LOOP,
-      name: 'NPC',
-      schema: talesFromTheLoopNpcSchema,
-      version: 1,
-      characterKind: 'NPC',
-    },
-    update: {
-      schema: talesFromTheLoopNpcSchema,
-      characterKind: 'NPC',
-      isActive: true,
-    },
-  });
 }
 
 async function main() {

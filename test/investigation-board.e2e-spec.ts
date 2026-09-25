@@ -186,25 +186,42 @@ describe('Investigation board (e2e)', () => {
   it('adds safe source references without transferring source ownership', async () => {
     const owner = await register(app, 'owner@loopkeeper.dev');
     const player = await register(app, 'player@loopkeeper.dev');
+    const viewer = await register(app, 'viewer@loopkeeper.dev');
     const campaignId = await campaign(app, owner, 'Mystery');
     const otherCampaignId = await campaign(app, owner, 'Other mystery');
 
     await inviteAndAccept(app, owner, player, campaignId, 'PLAYER');
+    await inviteAndAccept(app, owner, viewer, campaignId, 'VIEWER');
 
-    const sharedNote = await request(app.getHttpServer())
-      .post(`/campaigns/${campaignId}/notes`)
+    const sharedElement = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/elements`)
       .set(auth(owner))
-      .send({ title: 'Shared clue', content: 'The signal returns nightly.', visibility: 'PLAYERS' })
+      .send({
+        type: 'NOTE',
+        title: 'Shared clue',
+        content: 'The signal returns nightly.',
+        access: 'SHARED',
+      })
       .expect(201);
-    const privateNote = await request(app.getHttpServer())
-      .post(`/campaigns/${campaignId}/notes`)
+    const privateElement = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/elements`)
       .set(auth(owner))
-      .send({ title: 'Private clue', content: 'Do not share.', visibility: 'PRIVATE' })
+      .send({
+        type: 'NOTE',
+        title: 'Private clue',
+        content: 'Do not share.',
+        access: 'MASTER_ONLY',
+      })
       .expect(201);
-    const otherNote = await request(app.getHttpServer())
-      .post(`/campaigns/${otherCampaignId}/notes`)
+    const otherElement = await request(app.getHttpServer())
+      .post(`/campaigns/${otherCampaignId}/elements`)
       .set(auth(owner))
-      .send({ title: 'Other clue', content: 'Another campaign.', visibility: 'PLAYERS' })
+      .send({
+        type: 'NOTE',
+        title: 'Other clue',
+        content: 'Another campaign.',
+        access: 'SHARED',
+      })
       .expect(201);
 
     const prisma = getTestPrisma();
@@ -213,86 +230,184 @@ describe('Investigation board (e2e)', () => {
       prisma.user.findUniqueOrThrow({ where: { email: player.email } }),
       prisma.characterTemplate.findFirstOrThrow(),
     ]);
-    const [playerCharacter, npc] = await Promise.all([
-      prisma.character.create({
-        data: {
-          campaignId,
-          ownerId: playerRecord.userId,
-          templateId: template.templateId,
-          name: 'Alex',
-          data: {},
-        },
-      }),
-      prisma.character.create({
-        data: {
-          campaignId,
-          ownerId: ownerRecord.userId,
-          templateId: template.templateId,
-          name: 'Mr. Berg',
-          data: {},
-          isNPC: true,
-        },
-      }),
-    ]);
+    const playerCharacter = await prisma.character.create({
+      data: {
+        campaignId,
+        ownerId: playerRecord.userId,
+        templateId: template.templateId,
+        name: 'Alex',
+        data: {},
+      },
+    });
 
-    const noteCard = await request(app.getHttpServer())
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(auth(owner))
+      .send({
+        cardKind: 'NOTE_REFERENCE',
+        elementId: sharedElement.body.elementId,
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(auth(owner))
+      .send({
+        title: 'Not a free element card',
+        elementId: sharedElement.body.elementId,
+      })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(auth(viewer))
+      .send({
+        cardKind: 'ELEMENT_REFERENCE',
+        elementId: sharedElement.body.elementId,
+      })
+      .expect(404);
+
+    const elementCard = await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/cards`)
       .set(auth(player))
-      .send({ cardKind: 'NOTE_REFERENCE', noteId: sharedNote.body.noteId, tags: ['lead'] })
+      .send({
+        cardKind: 'ELEMENT_REFERENCE',
+        elementId: sharedElement.body.elementId,
+        tags: ['lead'],
+      })
       .expect(201)
       .expect((response) => {
         expect(response.body).toMatchObject({
-          cardKind: 'NOTE_REFERENCE',
+          cardKind: 'ELEMENT_REFERENCE',
           title: 'Shared clue',
           content: 'The signal returns nightly.',
-          reference: { kind: 'NOTE', noteId: sharedNote.body.noteId },
+          reference: {
+            kind: 'ELEMENT',
+            elementId: sharedElement.body.elementId,
+          },
         });
       });
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/cards`)
       .set(auth(owner))
-      .send({ cardKind: 'CHARACTER_REFERENCE', characterId: playerCharacter.characterId })
+      .send({
+        cardKind: 'CHARACTER_REFERENCE',
+        characterId: playerCharacter.characterId,
+      })
       .expect(201)
       .expect((response) =>
         expect(response.body).toMatchObject({
           cardKind: 'CHARACTER_REFERENCE',
           title: 'Alex',
-          reference: { kind: 'CHARACTER', characterId: playerCharacter.characterId, isNPC: false },
+          reference: {
+            kind: 'CHARACTER',
+            characterId: playerCharacter.characterId,
+          },
         }),
       );
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaignId}/cards`)
-      .set(auth(player))
-      .send({ cardKind: 'CHARACTER_REFERENCE', characterId: npc.characterId })
-      .expect(201);
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/cards`)
       .set(auth(player))
-      .send({ cardKind: 'NOTE_REFERENCE', noteId: privateNote.body.noteId })
+      .send({
+        cardKind: 'ELEMENT_REFERENCE',
+        elementId: privateElement.body.elementId,
+      })
       .expect(404);
     await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/cards`)
       .set(auth(player))
-      .send({ cardKind: 'NOTE_REFERENCE', noteId: otherNote.body.noteId })
+      .send({
+        cardKind: 'ELEMENT_REFERENCE',
+        elementId: otherElement.body.elementId,
+      })
       .expect(404);
-    await request(app.getHttpServer())
-      .post(`/campaigns/${campaignId}/cards`)
+    const duplicates = await Promise.all(
+      [owner, player].map((user) =>
+        request(app.getHttpServer())
+          .post(`/campaigns/${campaignId}/cards`)
+          .set(auth(user))
+          .send({
+            cardKind: 'ELEMENT_REFERENCE',
+            elementId: sharedElement.body.elementId,
+          }),
+      ),
+    );
+    expect(duplicates.map((response) => response.status)).toEqual([409, 409]);
+
+    const concurrentSource = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/elements`)
       .set(auth(owner))
-      .send({ cardKind: 'NOTE_REFERENCE', noteId: sharedNote.body.noteId })
-      .expect(409);
+      .send({ type: 'OTHER', title: 'Second clue', access: 'SHARED' })
+      .expect(201);
+    const concurrent = await Promise.all(
+      [owner, player].map((user) =>
+        request(app.getHttpServer())
+          .post(`/campaigns/${campaignId}/cards`)
+          .set(auth(user))
+          .send({
+            cardKind: 'ELEMENT_REFERENCE',
+            elementId: concurrentSource.body.elementId,
+          }),
+      ),
+    );
+    expect(concurrent.map((response) => response.status).sort()).toEqual([
+      201, 409,
+    ]);
+    await request(app.getHttpServer())
+      .delete(
+        `/cards/${concurrent.find((response) => response.status === 201)?.body.cardId}`,
+      )
+      .set(auth(owner))
+      .expect(200);
 
     await request(app.getHttpServer())
-      .patch(`/cards/${noteCard.body.cardId}`)
+      .patch(`/cards/${elementCard.body.cardId}`)
       .set(auth(player))
       .send({ title: 'Attempt to replace source' })
       .expect(400);
     await request(app.getHttpServer())
-      .patch(`/notes/${sharedNote.body.noteId}`)
+      .patch(`/elements/${sharedElement.body.elementId}`)
       .set(auth(owner))
-      .send({ visibility: 'PRIVATE' })
+      .send({ access: 'MASTER_ONLY' })
       .expect(200);
+    // A stale row must not expose source content or even appear as a board card.
+    const staleCard = await prisma.investigationCard.create({
+      data: {
+        cardKind: 'ELEMENT_REFERENCE',
+        campaignId,
+        boardId: (
+          await prisma.investigationBoard.findUniqueOrThrow({
+            where: { campaignId },
+          })
+        ).boardId,
+        createdById: ownerRecord.userId,
+        elementId: privateElement.body.elementId,
+        tags: [],
+      },
+    });
+
+    const pcCard = await prisma.investigationCard.findFirstOrThrow({
+      where: { characterId: playerCharacter.characterId, campaignId },
+    });
+    const hiddenLink = await prisma.investigationLink.create({
+      data: {
+        campaignId,
+        boardId: staleCard.boardId,
+        fromCardId: staleCard.cardId,
+        toCardId: pcCard.cardId,
+        createdById: ownerRecord.userId,
+        label: 'Hidden relationship',
+      },
+    });
+    await request(app.getHttpServer())
+      .patch(`/investigation-links/${hiddenLink.linkId}`)
+      .set(auth(player))
+      .send({ label: 'Read hidden link' })
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`/investigation-links/${hiddenLink.linkId}`)
+      .set(auth(player))
+      .expect(404);
     await request(app.getHttpServer())
       .delete(`/characters/${playerCharacter.characterId}`)
       .set(auth(player))
@@ -303,11 +418,7 @@ describe('Investigation board (e2e)', () => {
       .set(auth(owner))
       .expect(200)
       .expect((response) => {
-        expect(response.body.cards).toHaveLength(1);
-        expect(response.body.cards[0]).toMatchObject({
-          cardKind: 'CHARACTER_REFERENCE',
-          characterId: npc.characterId,
-        });
+        expect(response.body.cards).toEqual([]);
       });
   });
 });

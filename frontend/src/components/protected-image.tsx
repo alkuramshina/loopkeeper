@@ -6,6 +6,7 @@ type ProtectedImageProps = {
   className?: string;
   imageUrl?: string | null;
   fallback?: string;
+  onError?: () => void;
 };
 
 export function ProtectedImage({
@@ -13,6 +14,7 @@ export function ProtectedImage({
   className,
   imageUrl,
   fallback,
+  onError,
 }: ProtectedImageProps) {
   const { api } = useAuth();
   const [localImage, setLocalImage] = useState<{
@@ -32,13 +34,16 @@ export function ProtectedImage({
         else URL.revokeObjectURL(objectUrl);
       })
       .catch(() => {
-        if (active) setLocalImage(undefined);
+        if (active) {
+          setLocalImage(undefined);
+          onError?.();
+        }
       });
     return () => {
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [api, imageUrl]);
+  }, [api, imageUrl, onError]);
 
   const src = imageUrl?.startsWith('/media/')
     ? localImage?.source === imageUrl
@@ -49,6 +54,7 @@ export function ProtectedImage({
     <img
       alt={alt}
       className={className}
+      onError={onError}
       referrerPolicy="no-referrer"
       src={src}
     />

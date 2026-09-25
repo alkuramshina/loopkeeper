@@ -130,27 +130,34 @@ export type Campaign = {
   coverUrl?: string | null;
 };
 
-export type Location = {
-  locationId: string;
-  title: string;
-  description?: string | null;
-  imageUrl?: string | null;
-  sortOrder: number;
+export type CampaignElementType = 'NOTE' | 'LOCATION' | 'NPC' | 'OTHER';
+export type CampaignElementAccess = 'MASTER_ONLY' | 'SHARED';
+export type CampaignElement = {
+  elementId: string;
   campaignId: string;
-  createdById: string;
+  type: CampaignElementType;
+  access: CampaignElementAccess;
+  title: string;
+  content: string | null;
+  imageUrl: string | null;
+  typeData: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 };
+export type CampaignElementInput = Pick<CampaignElement, 'type' | 'access' | 'title' | 'content'> & {
+  imageUrl?: string | null;
+  typeData?: Record<string, unknown>;
+};
 export type BoardCard = {
   cardId: string;
-  cardKind: 'FREE' | 'NOTE_REFERENCE' | 'CHARACTER_REFERENCE';
+  cardKind: 'FREE' | 'ELEMENT_REFERENCE' | 'CHARACTER_REFERENCE';
   title: string;
   content?: string | null;
   tags: string[];
   color?: string | null;
   icon?: string | null;
   node?: { x: number; y: number; width: number; height: number } | null;
-  reference?: { kind: 'NOTE' | 'CHARACTER'; noteId?: string; characterId?: string; isNPC?: boolean };
+  reference?: { kind: 'ELEMENT' | 'CHARACTER'; elementId?: string; characterId?: string };
 };
 
 export type BoardLink = {
@@ -181,7 +188,7 @@ export type CharacterField = {
 export type CharacterTemplate = {
   templateId: string;
   name: string;
-  characterKind: 'PLAYER_CHARACTER' | 'NPC';
+
   schema: {
     title?: string;
     sections?: Array<{ key: string; label: string }>;
@@ -198,20 +205,8 @@ export type Character = {
   description?: string | null;
   avatarUrl?: string | null;
   data: Record<string, unknown>;
-  isNPC: boolean;
+
   isActive: boolean;
-};
-
-export type NoteVisibility = 'PRIVATE' | 'MASTER_ONLY' | 'PLAYERS' | 'PUBLIC';
-
-export type Note = {
-  noteId: string;
-  campaignId: string;
-  authorId: string;
-  title: string;
-  content: string;
-  visibility: NoteVisibility;
-  updatedAt: string;
 };
 
 export type CampaignMember = {

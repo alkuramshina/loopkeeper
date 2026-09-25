@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ProtectedImage } from '../../components/protected-image';
 import { CampaignBackground, CampaignBackgroundConfig } from '../../api/client';
 
 function storageKey(campaignId: string) {
@@ -11,7 +12,11 @@ export function useCampaignBackground(
   role: 'OWNER' | 'PLAYER' | 'VIEWER' | undefined,
 ) {
   const enabled = useMemo(
-    () => (role === 'OWNER' || role === 'PLAYER' ? config?.backgrounds.filter((background) => background.isEnabled) ?? [] : []),
+    () =>
+      role === 'OWNER' || role === 'PLAYER'
+        ? (config?.backgrounds.filter((background) => background.isEnabled) ??
+          [])
+        : [],
     [config, role],
   );
   const fixedBackground = enabled.find(
@@ -20,16 +25,22 @@ export function useCampaignBackground(
   const [randomBackgroundId, setRandomBackgroundId] = useState<string>();
 
   useEffect(() => {
-    if (!campaignId || config?.selectionMode !== 'RANDOM' || enabled.length === 0) {
+    if (
+      !campaignId ||
+      config?.selectionMode !== 'RANDOM' ||
+      enabled.length === 0
+    ) {
       setRandomBackgroundId(undefined);
       return;
     }
 
     const key = storageKey(campaignId);
     const storedId = sessionStorage.getItem(key);
-    const currentId = storedId && enabled.some((background) => background.backgroundId === storedId)
-      ? storedId
-      : enabled[Math.floor(Math.random() * enabled.length)].backgroundId;
+    const currentId =
+      storedId &&
+      enabled.some((background) => background.backgroundId === storedId)
+        ? storedId
+        : enabled[Math.floor(Math.random() * enabled.length)].backgroundId;
 
     if (currentId !== storedId) sessionStorage.setItem(key, currentId);
     setRandomBackgroundId(currentId);
@@ -37,22 +48,32 @@ export function useCampaignBackground(
 
   if (role !== 'OWNER' && role !== 'PLAYER') return undefined;
   if (config?.selectionMode === 'FIXED') return fixedBackground;
-  return enabled.find((background) => background.backgroundId === randomBackgroundId);
+  return enabled.find(
+    (background) => background.backgroundId === randomBackgroundId,
+  );
 }
 
-export function CampaignBackgroundLayer({ background }: { background: CampaignBackground | undefined }) {
+export function CampaignBackgroundLayer({
+  background,
+}: {
+  background: CampaignBackground | undefined;
+}) {
   const [failedUrl, setFailedUrl] = useState<string>();
   const isVisible = background && failedUrl !== background.imageUrl;
+  const handleError = useCallback(
+    () => setFailedUrl(background?.imageUrl),
+    [background?.imageUrl],
+  );
 
   useEffect(() => setFailedUrl(undefined), [background?.imageUrl]);
 
   return (
     <div className="campaign-background-layer" aria-hidden="true">
       {isVisible ? (
-        <img
-          src={background.imageUrl}
+        <ProtectedImage
+          imageUrl={background.imageUrl}
           alt=""
-          onError={() => setFailedUrl(background.imageUrl)}
+          onError={handleError}
         />
       ) : (
         <div className="campaign-background-fallback" />

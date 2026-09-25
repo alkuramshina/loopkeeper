@@ -32,7 +32,7 @@ export class CreateInvestigationCardDto {
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
-  noteId?: string;
+  elementId?: string;
 
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()

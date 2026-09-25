@@ -3,7 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
-import { ApiError, Campaign, CampaignBackgroundConfig } from '../../api/client';
+import {
+  ApiError,
+  Campaign,
+  CampaignBackground,
+  CampaignBackgroundConfig,
+} from '../../api/client';
+import { ProtectedImage } from '../../components/protected-image';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 
@@ -24,6 +30,7 @@ export function BackgroundSettingsPage() {
   const queryClient = useQueryClient();
   const [config, setConfig] = useState<CampaignBackgroundConfig>();
   const [error, setError] = useState<string>();
+  const [pendingBackgroundId, setPendingBackgroundId] = useState<string>();
   const campaign = useQuery({
     queryKey: ['campaign', campaignId],
     queryFn: () => api.request<Campaign>(`/campaigns/${campaignId}`),
@@ -70,6 +77,67 @@ export function BackgroundSettingsPage() {
         {t('errors.resource.not_found')}
       </main>
     );
+  }
+
+  async function uploadBackground(file: File) {
+    if (!file.size) return;
+    setPendingBackgroundId('upload');
+    setError(undefined);
+    try {
+      const body = new FormData();
+      body.set('file', file);
+      const uploaded = await api.request<CampaignBackground>(
+        `/campaigns/${campaignId}/backgrounds`,
+        { method: 'POST', body },
+      );
+      setConfig(
+        (current) =>
+          current && {
+            ...current,
+            backgrounds: [...current.backgrounds, uploaded],
+          },
+      );
+      await queryClient.invalidateQueries({
+        queryKey: ['campaign', campaignId],
+      });
+    } catch (cause) {
+      setError(apiErrorMessage(cause, t));
+    } finally {
+      setPendingBackgroundId(undefined);
+    }
+  }
+
+  async function removeBackground(backgroundId: string, imageUrl: string) {
+    setPendingBackgroundId(backgroundId);
+    setError(undefined);
+    try {
+      if (imageUrl === `/media/${backgroundId}`) {
+        await api.request<void>(
+          `/campaigns/${campaignId}/backgrounds/${backgroundId}`,
+          { method: 'DELETE' },
+        );
+      }
+      setConfig(
+        (current) =>
+          current && {
+            ...current,
+            fixedBackgroundId:
+              current.fixedBackgroundId === backgroundId
+                ? null
+                : current.fixedBackgroundId,
+            backgrounds: current.backgrounds.filter(
+              (background) => background.backgroundId !== backgroundId,
+            ),
+          },
+      );
+      await queryClient.invalidateQueries({
+        queryKey: ['campaign', campaignId],
+      });
+    } catch (cause) {
+      setError(apiErrorMessage(cause, t));
+    } finally {
+      setPendingBackgroundId(undefined);
+    }
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -158,7 +226,11 @@ export function BackgroundSettingsPage() {
             <button
               type="button"
               className="button-ghost"
-              disabled={config.backgrounds.length >= 10}
+              disabled={
+                config.backgrounds.length >= 10 ||
+                Boolean(pendingBackgroundId) ||
+                save.isPending
+              }
               onClick={() =>
                 setConfig({
                   ...config,
@@ -178,9 +250,54 @@ export function BackgroundSettingsPage() {
               {t('backgrounds.add')}
             </button>
           </div>
+          <div className="media-upload">
+            <label>
+              {t('backgrounds.upload')}
+              <input
+                accept="image/jpeg,image/png,image/webp"
+                type="file"
+                disabled={
+                  config.backgrounds.length >= 10 ||
+                  Boolean(pendingBackgroundId) ||
+                  save.isPending
+                }
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void uploadBackground(file);
+                  event.target.value = '';
+                }}
+              />
+            </label>
+            {pendingBackgroundId === 'upload' && (
+              <span role="status">{t('common.loading')}</span>
+            )}
+            <p className="muted">{t('media.uploadNotice')}</p>
+          </div>
+          {config.backgrounds.length > 0 && (
+            <div
+              className="background-gallery"
+              aria-label={t('backgrounds.gallery')}
+            >
+              {config.backgrounds.map((background, index) => (
+                <a
+                  href={`#background-${background.backgroundId}`}
+                  key={background.backgroundId}
+                >
+                  <div className="background-gallery-thumb">
+                    <ProtectedImage alt="" imageUrl={background.imageUrl} />
+                  </div>
+                  <span>
+                    {background.name ||
+                      t('backgrounds.item', { number: index + 1 })}
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
           {config.backgrounds.map((background, index) => (
             <fieldset
               className="background-entry"
+              id={`background-${background.backgroundId}`}
               key={background.backgroundId}
             >
               <legend>{t('backgrounds.item', { number: index + 1 })}</legend>
@@ -198,16 +315,34 @@ export function BackgroundSettingsPage() {
               <label>
                 {t('backgrounds.imageUrl')}
                 <input
-                  type="url"
+                  type="text"
+                  inputMode="url"
                   value={background.imageUrl}
                   placeholder="https://"
-                  pattern="https://.*"
+                  pattern="(https://.*|/media/.*)"
                   required
+                  readOnly={
+                    background.imageUrl === `/media/${background.backgroundId}`
+                  }
                   onChange={(event) =>
                     updateBackground(index, 'imageUrl', event.target.value)
                   }
                 />
               </label>
+
+              {background.imageUrl && (
+                <div
+                  className="background-preview"
+                  aria-label={t('backgrounds.preview')}
+                >
+                  <ProtectedImage alt="" imageUrl={background.imageUrl} />
+                  <div
+                    className="background-preview-safe-area"
+                    aria-hidden="true"
+                  />
+                </div>
+              )}
+              <p className="muted">{t('backgrounds.safeAreaHint')}</p>
               <label>
                 {t('backgrounds.order')}
                 <input
@@ -231,24 +366,21 @@ export function BackgroundSettingsPage() {
               <button
                 type="button"
                 className="button-danger"
+                disabled={Boolean(pendingBackgroundId) || save.isPending}
                 onClick={() =>
-                  setConfig({
-                    ...config,
-                    fixedBackgroundId:
-                      config.fixedBackgroundId === background.backgroundId
-                        ? null
-                        : config.fixedBackgroundId,
-                    backgrounds: config.backgrounds.filter(
-                      (_, backgroundIndex) => backgroundIndex !== index,
-                    ),
-                  })
+                  void removeBackground(
+                    background.backgroundId,
+                    background.imageUrl,
+                  )
                 }
               >
                 {t('common.delete')}
               </button>
             </fieldset>
           ))}
-          <button disabled={save.isPending}>{t('common.save')}</button>
+          <button disabled={save.isPending || Boolean(pendingBackgroundId)}>
+            {t('common.save')}
+          </button>
         </form>
       )}
     </CampaignWorkspaceShell>

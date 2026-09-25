@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -16,11 +16,8 @@ import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
 import { MediaUpload } from '../../components/media-upload';
 
-type Filter = 'all' | 'players' | 'npcs';
-
 type EditorTarget = {
   character?: Character;
-  isNPC: boolean;
 };
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
@@ -34,7 +31,7 @@ function canEdit(
   profileId: string | undefined,
   role: Campaign['currentUserRole'],
 ) {
-  return character.isNPC ? role === 'OWNER' : character.ownerId === profileId;
+  return role === 'PLAYER' && character.ownerId === profileId;
 }
 
 function readFieldValue(field: CharacterField, form: FormData): unknown {
@@ -58,24 +55,16 @@ function CharacterEditor({
   const { api } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const availableTemplates = templates.filter(
-    (item) =>
-      item.characterKind === (target.isNPC ? 'NPC' : 'PLAYER_CHARACTER'),
-  );
+
   const [templateId, setTemplateId] = useState(
-    target.character?.templateId ?? availableTemplates[0]?.templateId ?? '',
+    target.character?.templateId ?? templates[0]?.templateId ?? '',
   );
   const [error, setError] = useState<string>();
-  const template = availableTemplates.find(
-    (item) => item.templateId === templateId,
-  );
+  const template = templates.find((item) => item.templateId === templateId);
 
   const save = useMutation({
-    mutationFn: async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+    mutationFn: async (form: FormData) => {
       if (!campaignId || !template) return;
-
-      const form = new FormData(event.currentTarget);
       const data = Object.fromEntries(
         template.schema.fields.flatMap((field) => {
           const value = readFieldValue(field, form);
@@ -86,9 +75,7 @@ function CharacterEditor({
         name: String(form.get('name') ?? ''),
         description: String(form.get('description') ?? '') || undefined,
         data,
-        ...(target.character
-          ? {}
-          : { templateId: template.templateId, isNPC: target.isNPC }),
+        ...(target.character ? {} : { templateId: template.templateId }),
       };
       return target.character
         ? api.request<Character>(
@@ -122,7 +109,7 @@ function CharacterEditor({
     );
   }
 
-  const sections = target.isNPC ? [] : (template.schema.sections ?? []);
+  const sections = template.schema.sections ?? [];
   const fieldsForSection = (section?: string) =>
     template.schema.fields.filter((field) => field.section === section);
 
@@ -133,7 +120,10 @@ function CharacterEditor({
     >
       <form
         className="character-editor"
-        onSubmit={(event) => save.mutate(event)}
+        onSubmit={(event: FormEvent<HTMLFormElement>) => {
+          event.preventDefault();
+          save.mutate(new FormData(event.currentTarget));
+        }}
       >
         {!target.character && (
           <label>
@@ -142,7 +132,7 @@ function CharacterEditor({
               value={templateId}
               onChange={(event) => setTemplateId(event.target.value)}
             >
-              {availableTemplates.map((item) => (
+              {templates.map((item) => (
                 <option key={item.templateId} value={item.templateId}>
                   {item.name}
                 </option>
@@ -263,10 +253,10 @@ function SchemaField({
 
 export function CharactersPage() {
   const { campaignId } = useParams();
-  const { api, profile, signOut } = useAuth();
+  const { api, profile } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<Filter>('all');
+
   const [editor, setEditor] = useState<EditorTarget>();
   const [error, setError] = useState<string>();
   const campaign = useQuery({
@@ -315,14 +305,6 @@ export function CharactersPage() {
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });
 
-  const visibleCharacters = useMemo(() => {
-    if (filter === 'players')
-      return characters.data?.filter((character) => !character.isNPC);
-    if (filter === 'npcs')
-      return characters.data?.filter((character) => character.isNPC);
-    return characters.data;
-  }, [characters.data, filter]);
-
   if (campaign.isError || characters.isError) {
     return (
       <main className="page-state" role="alert">
@@ -332,13 +314,11 @@ export function CharactersPage() {
   }
 
   const data = campaign.data;
-  const basePath = `/campaigns/${campaignId}`;
-  const canAddToBoard = data?.currentUserRole !== 'VIEWER';
+
+  const canAddToBoard =
+    data?.currentUserRole === 'OWNER' || data?.currentUserRole === 'PLAYER';
   const hasActivePlayerCharacter = characters.data?.some(
-    (character) =>
-      !character.isNPC &&
-      character.isActive &&
-      character.ownerId === profile?.userId,
+    (character) => character.isActive && character.ownerId === profile?.userId,
   );
 
   return (
@@ -352,13 +332,8 @@ export function CharactersPage() {
           {data?.currentUserRole === 'PLAYER' &&
           templates.data?.length &&
           !hasActivePlayerCharacter ? (
-            <button onClick={() => setEditor({ isNPC: false })}>
+            <button onClick={() => setEditor({})}>
               {t('characters.newPlayerCharacter')}
-            </button>
-          ) : null}
-          {data?.currentUserRole === 'OWNER' && templates.data?.length ? (
-            <button onClick={() => setEditor({ isNPC: true })}>
-              {t('characters.newNpc')}
             </button>
           ) : null}
         </div>
@@ -375,23 +350,12 @@ export function CharactersPage() {
           {error}
         </p>
       )}
-      <div className="filter-row" aria-label={t('characters.filtersLabel')}>
-        {(['all', 'players', 'npcs'] as const).map((item) => (
-          <button
-            className={filter === item ? '' : 'button-ghost'}
-            key={item}
-            onClick={() => setFilter(item)}
-            type="button"
-          >
-            {t(`characters.filters.${item}`)}
-          </button>
-        ))}
-      </div>
+
       {characters.isLoading || campaign.isLoading ? (
         <p>{t('common.loading')}</p>
-      ) : visibleCharacters?.length ? (
+      ) : characters.data?.length ? (
         <section className="character-list">
-          {visibleCharacters.map((character) => {
+          {characters.data.map((character) => {
             const editable = canEdit(
               character,
               profile?.userId,
@@ -406,11 +370,7 @@ export function CharactersPage() {
                     seed={character.characterId}
                   />
                   <div>
-                    <p className="kicker">
-                      {character.isNPC
-                        ? t('characters.npc')
-                        : t('characters.playerCharacter')}
-                    </p>
+                    <p className="kicker">{t('characters.playerCharacter')}</p>
                     <h3>{character.name}</h3>
                     {character.description && <p>{character.description}</p>}
                   </div>
@@ -443,9 +403,7 @@ export function CharactersPage() {
                     <button
                       className="button-ghost"
                       type="button"
-                      onClick={() =>
-                        setEditor({ character, isNPC: character.isNPC })
-                      }
+                      onClick={() => setEditor({ character })}
                     >
                       {t('common.edit')}
                     </button>
