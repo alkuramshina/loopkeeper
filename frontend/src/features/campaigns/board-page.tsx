@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addEdge,
@@ -412,6 +412,9 @@ export function BoardPage() {
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
+  // Layout saves that the server has not confirmed yet. A board refetch must
+  // not move these cards back to their stale server position.
+  const pendingLayout = useRef(new Map<string, NodeDimensions>());
   const updateNode = useMutation({
     mutationFn: ({
       cardId,
@@ -424,7 +427,27 @@ export function BoardPage() {
         method: 'PATCH',
         body: JSON.stringify(dimensions),
       }),
+    onMutate: ({ cardId, dimensions }) => {
+      pendingLayout.current.set(cardId, dimensions);
+    },
+    onSuccess: (_result, { cardId, dimensions }) => {
+      // Keep the cached snapshot in line with the saved layout.
+      queryClient.setQueryData<Board>(
+        ['board', campaignId],
+        (current) =>
+          current && {
+            ...current,
+            cards: current.cards.map((card) =>
+              card.cardId === cardId ? { ...card, node: dimensions } : card,
+            ),
+          },
+      );
+    },
     onError: (cause) => setError(apiErrorMessage(cause, t)),
+    onSettled: (_result, _error, { cardId, dimensions }) => {
+      if (pendingLayout.current.get(cardId) === dimensions)
+        pendingLayout.current.delete(cardId);
+    },
   });
   const persistNodeDimensions = useCallback(
     (cardId: string, dimensions: NodeDimensions) => {
@@ -433,10 +456,42 @@ export function BoardPage() {
     [updateNode.mutate],
   );
 
+  // Reconcile server data with local React Flow state: keep the selection and
+  // any unsaved local layout instead of replacing the nodes wholesale.
   useEffect(() => {
     if (!board.data) return;
-    setNodes(boardNodes(board.data.cards, canManage, persistNodeDimensions));
-    setEdges(boardEdges(board.data.links));
+    const nextNodes = boardNodes(
+      board.data.cards,
+      canManage,
+      persistNodeDimensions,
+    );
+    setNodes((current) => {
+      const selected = new Set(
+        current.filter((node) => node.selected).map((node) => node.id),
+      );
+      return nextNodes.map((node) => {
+        const pending = pendingLayout.current.get(node.id);
+        return {
+          ...node,
+          ...(pending && {
+            position: { x: pending.x, y: pending.y },
+            width: pending.width,
+            height: pending.height,
+          }),
+          selected: canManage && selected.has(node.id),
+        };
+      });
+    });
+    const nextEdges = boardEdges(board.data.links);
+    setEdges((current) => {
+      const selected = new Set(
+        current.filter((edge) => edge.selected).map((edge) => edge.id),
+      );
+      return nextEdges.map((edge) => ({
+        ...edge,
+        selected: canManage && selected.has(edge.id),
+      }));
+    });
   }, [board.data, canManage, persistNodeDimensions, setEdges, setNodes]);
   const createLink = useMutation({
     mutationFn: (connection: Connection) =>
@@ -552,7 +607,9 @@ export function BoardPage() {
                 nodesConnectable={canManage}
                 nodesDraggable={canManage}
                 elementsSelectable={canManage}
-                deleteKeyCode={canManage ? undefined : null}
+                // Deletion goes through the inspector with a confirmation;
+                // the shortcut would only remove the card locally.
+                deleteKeyCode={null}
                 onConnect={canManage ? onConnect : undefined}
                 onEdgesChange={onEdgesChange}
                 onEdgeClick={

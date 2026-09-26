@@ -282,3 +282,83 @@ test('an empty board says so', async ({ page, request }) => {
   await page.goto(`/campaigns/${campaignId}/board`);
   await expect(page.getByText('На доске пока нет карточек.')).toBeVisible();
 });
+
+test('F8: a refresh keeps the selection and a layout that is still being saved', async ({
+  page,
+  request,
+}) => {
+  const { campaignId, owner, player } = await createCampaignWithRoles(request);
+  await createFreeCard(request, owner, campaignId, 'Радиосигнал', {
+    x: 0,
+    y: 0,
+  });
+  await createFreeCard(request, owner, campaignId, 'Заброшенная ферма', {
+    x: 600,
+    y: 0,
+  });
+  await signInAs(page, player);
+  await page.goto(`/campaigns/${campaignId}/board`);
+
+  const radio = boardCard(page, 'Радиосигнал');
+  const farm = boardCard(page, 'Заброшенная ферма');
+  await farm.locator('h3').click();
+  await page.getByRole('button', { name: 'Отмена' }).click();
+  await expect(farm).toHaveClass(/selected/);
+
+  // Another participant adds a card; a refresh brings it and keeps the selection.
+  await createFreeCard(request, owner, campaignId, 'Третья улика', {
+    x: 0,
+    y: 400,
+  });
+  await page.getByRole('button', { name: 'Обновить' }).click();
+  await expect(boardCard(page, 'Третья улика')).toBeVisible();
+  await expect(farm).toHaveClass(/selected/);
+
+  // A refresh that lands before the position save must not move the card back.
+  let releaseSave: () => void = () => undefined;
+  const saveHeld = new Promise<void>((resolve) => (releaseSave = resolve));
+  await page.route('**/api/investigation-board/nodes/*', async (route) => {
+    await saveHeld;
+    await route.fallback();
+  });
+  const before = await radio.boundingBox();
+  await dragBy(page, radio.locator('h3'), 0, 150);
+  const dragged = await radio.boundingBox();
+  expect((dragged?.y ?? 0) - (before?.y ?? 0)).toBeGreaterThan(50);
+
+  const refreshed = page.waitForResponse((response) =>
+    response.url().endsWith('/investigation-board'),
+  );
+  await page.getByRole('button', { name: 'Обновить' }).click();
+  await refreshed;
+  expect((await radio.boundingBox())?.y).toBeCloseTo(dragged?.y ?? 0, 0);
+
+  const saved = nodeSaved(page);
+  releaseSave();
+  await saved;
+  await page.unroute('**/api/investigation-board/nodes/*');
+  await page.getByRole('button', { name: 'Обновить' }).click();
+  expect((await radio.boundingBox())?.y).toBeCloseTo(dragged?.y ?? 0, 0);
+});
+
+test('F8: Backspace does not remove a selected card behind the server', async ({
+  page,
+  request,
+}) => {
+  const { campaignId, owner, player } = await createCampaignWithRoles(request);
+  await createFreeCard(request, owner, campaignId, 'Хрупкая улика', {
+    x: 0,
+    y: 0,
+  });
+  await signInAs(page, player);
+  await page.goto(`/campaigns/${campaignId}/board`);
+
+  const card = boardCard(page, 'Хрупкая улика');
+  await card.locator('h3').click();
+  await page.getByRole('button', { name: 'Отмена' }).click();
+  await expect(card).toHaveClass(/selected/);
+  await page.keyboard.press('Backspace');
+  await page.keyboard.press('Delete');
+  await expect(card).toBeVisible();
+  expect((await getBoard(request, owner, campaignId)).cards).toHaveLength(1);
+});

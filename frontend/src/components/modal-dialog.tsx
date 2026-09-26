@@ -16,9 +16,16 @@ export function ModalDialog({ title, children, onClose }: ModalDialogProps) {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     dialog.showModal();
     return () => {
       if (dialog.open) dialog.close();
+      // The dialog is already detached on unmount, so the browser cannot
+      // restore focus by itself; return it to the control that opened it.
+      if (opener?.isConnected) opener.focus();
     };
   }, []);
 
