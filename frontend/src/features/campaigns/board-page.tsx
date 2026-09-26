@@ -20,14 +20,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { TFunction } from 'i18next';
-import {
-  ApiError,
-  Board,
-  BoardCard,
-  BoardLink,
-  Campaign,
-} from '../../api/client';
+import { Board, BoardCard, BoardLink, Campaign } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ProtectedImage } from '../../components/protected-image';
 import {
@@ -35,6 +28,7 @@ import {
   useCampaignBackground,
 } from './use-campaign-background';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { errorMessage, PageError } from '../../components/page-error';
 
 type NodeDimensions = {
   x: number;
@@ -52,11 +46,7 @@ type EditorTarget =
   | { type: 'link'; link: BoardLink }
   | { type: 'new-card' };
 
-function apiErrorMessage(cause: unknown, t: TFunction) {
-  return cause instanceof ApiError
-    ? t(`errors.${cause.code}`, { defaultValue: t('errors.unexpected') })
-    : t('errors.unexpected');
-}
+const apiErrorMessage = errorMessage;
 
 function boardNodes(
   cards: BoardCard[],
@@ -493,12 +483,21 @@ export function BoardPage() {
 
   const data = campaign.data;
   const background = useCampaignBackground(campaignId, data?.backgroundConfig);
-  if (campaign.isError || board.isError)
+  // A failed refresh keeps the last snapshot on screen; only a board that
+  // never loaded is replaced by the page state.
+  if (campaign.isError || (board.isError && !board.data))
     return (
-      <main className="page-state" role="alert">
-        {t('workspace.boardUnavailable')}
-      </main>
+      <PageError
+        error={campaign.error ?? board.error ?? undefined}
+        unavailableKey="workspace.boardUnavailable"
+        onRetry={() => {
+          void campaign.refetch();
+          void board.refetch();
+        }}
+      />
     );
+  const refreshError =
+    board.isError && board.data ? errorMessage(board.error, t) : undefined;
 
   return (
     <CampaignWorkspaceShell campaign={data}>
@@ -524,10 +523,13 @@ export function BoardPage() {
             )}
           </div>
         </section>
-        {error && (
+        {(error ?? refreshError) && (
           <p className="form-error" role="alert">
-            {error}
+            {error ?? refreshError}
           </p>
+        )}
+        {board.data && !board.data.cards.length && (
+          <p className="muted">{t('workspace.boardEmpty')}</p>
         )}
         {board.isLoading || campaign.isLoading ? (
           <section className="board-loading" aria-label={t('common.loading')}>

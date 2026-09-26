@@ -171,3 +171,91 @@ test('M6: a viewer cannot move board cards', async ({ page, request }) => {
   const board = await getBoard(request, owner, campaignId);
   expect(board.cards[0].node).toMatchObject({ x: 0, y: 0 });
 });
+
+
+test('M7: a board survives an unreachable server and recovers on refresh', async ({
+  page,
+  request,
+}) => {
+  const { campaignId, owner, player } = await createCampaignWithRoles(request);
+  await createFreeCard(request, owner, campaignId, 'Первая улика', {
+    x: 0,
+    y: 0,
+  });
+  await signInAs(page, player);
+  await page.goto(`/campaigns/${campaignId}/board`);
+  await expect(boardCard(page, 'Первая улика')).toBeVisible();
+
+  // The server is unreachable: an explicit network error, the cards stay.
+  await page.route('**/api/**', (route) => route.abort('connectionrefused'));
+  await page.getByRole('button', { name: 'Обновить' }).click();
+  await expect(page.getByRole('alert')).toHaveText(/^Нет связи с сервером/);
+  await expect(boardCard(page, 'Первая улика')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Новая карточка' }).click();
+  const editor = page
+    .getByRole('complementary')
+    .filter({ has: page.getByLabel('Название карточки') });
+  await editor.getByLabel('Название карточки').fill('Вторая улика');
+  await editor.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(editor.getByRole('alert')).toHaveText(/^Нет связи с сервером/);
+
+  // The server is back: the same save succeeds, a refresh brings other changes.
+  await page.unroute('**/api/**');
+  await editor.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(boardCard(page, 'Вторая улика')).toBeVisible();
+  await createFreeCard(request, owner, campaignId, 'Третья улика', {
+    x: 600,
+    y: 300,
+  });
+  await page.getByRole('button', { name: 'Обновить' }).click();
+  await expect(boardCard(page, 'Третья улика')).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect((await getBoard(request, owner, campaignId)).cards).toHaveLength(3);
+});
+
+test('M7: an offline browser is told so and a pending save goes out on reconnect', async ({
+  context,
+  page,
+  request,
+}) => {
+  const { campaignId, owner, player } = await createCampaignWithRoles(request);
+  await createFreeCard(request, owner, campaignId, 'Первая улика', {
+    x: 0,
+    y: 0,
+  });
+  await signInAs(page, player);
+  await page.goto(`/campaigns/${campaignId}/board`);
+  await expect(boardCard(page, 'Первая улика')).toBeVisible();
+
+  await context.setOffline(true);
+  const notice = page
+    .getByRole('status')
+    .filter({ hasText: 'Нет связи с сервером' });
+  await expect(notice).toBeVisible();
+  await page.getByRole('button', { name: 'Обновить' }).click();
+  await expect(boardCard(page, 'Первая улика')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Новая карточка' }).click();
+  const editor = page
+    .getByRole('complementary')
+    .filter({ has: page.getByLabel('Название карточки') });
+  await editor.getByLabel('Название карточки').fill('Записано без сети');
+  await editor.getByRole('button', { name: 'Сохранить' }).click();
+  await expect(
+    editor.getByRole('button', { name: 'Сохранить' }),
+  ).toBeDisabled();
+
+  await context.setOffline(false);
+  await expect(notice).toHaveCount(0);
+  await expect(boardCard(page, 'Записано без сети')).toBeVisible();
+  expect((await getBoard(request, owner, campaignId)).cards).toHaveLength(2);
+});
+
+test('an empty board says so', async ({ page, request }) => {
+  const { campaignId, viewer } = await createCampaignWithRoles(request);
+  await signInAs(page, viewer);
+  await page.goto(`/campaigns/${campaignId}/board`);
+  await expect(page.getByText('На доске пока нет карточек.')).toBeVisible();
+});

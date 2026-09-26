@@ -12,6 +12,7 @@ import {
 import { ProtectedImage } from '../../components/protected-image';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { PageError } from '../../components/page-error';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -73,9 +74,10 @@ export function BackgroundSettingsPage() {
 
   if (campaign.isError || (campaign.data && !isOwner)) {
     return (
-      <main className="page-state" role="alert">
-        {t('errors.resource.not_found')}
-      </main>
+      <PageError
+        error={campaign.error ?? undefined}
+        onRetry={() => void campaign.refetch()}
+      />
     );
   }
 

@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Campaign } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import { OfflineNotice } from '../../components/offline-notice';
 
 type CampaignWorkspaceShellProps = {
   campaign?: Campaign;
@@ -95,7 +96,10 @@ export function CampaignWorkspaceShell({
           </div>
           {navigation('campaign-workspace-shell-navigation')}
         </aside>
-        <main className="campaign-workspace-shell-content">{children}</main>
+        <main className="campaign-workspace-shell-content">
+          <OfflineNotice />
+          {children}
+        </main>
       </div>
       {navigation('campaign-workspace-shell-mobile-navigation')}
     </div>

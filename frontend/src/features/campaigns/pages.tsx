@@ -7,6 +7,8 @@ import { ApiError, Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ModalDialog } from '../../components/modal-dialog';
 import { ProtectedImage } from '../../components/protected-image';
+import { errorMessage } from '../../components/page-error';
+import { OfflineNotice } from '../../components/offline-notice';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -72,6 +74,7 @@ export function CampaignListPage() {
         </div>
       </header>
       <section className="campaigns-bg">
+        <OfflineNotice />
         <header className="campaigns-top">
           <div>
             <p className="kicker">{t('campaigns.kicker')}</p>
@@ -120,6 +123,16 @@ export function CampaignListPage() {
               <button>{t('campaigns.create')}</button>
             </form>
           </ModalDialog>
+        ) : campaigns.isError && !campaigns.data ? (
+          // A failed load must not look like an empty list.
+          <section className="campaign-page-state">
+            <p role="alert">
+              {t('campaigns.loadFailed')} {errorMessage(campaigns.error, t)}
+            </p>
+            <button onClick={() => void campaigns.refetch()}>
+              {t('common.retry')}
+            </button>
+          </section>
         ) : campaigns.isLoading ? (
           <section className="campaign-page-state" aria-live="polite">
             <p>{t('common.loading')}</p>

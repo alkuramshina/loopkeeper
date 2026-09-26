@@ -82,7 +82,7 @@ export function ElementMapViewer({
           <button
             type="button"
             className="button-ghost"
-            aria-label={t('locations.zoomIn', { defaultValue: 'Zoom in' })}
+            aria-label={t('locations.zoomIn')}
             onClick={() => setZoom((current) => clampZoom(current + 0.25))}
           >
             +
@@ -90,7 +90,7 @@ export function ElementMapViewer({
           <button
             type="button"
             className="button-ghost"
-            aria-label={t('locations.zoomOut', { defaultValue: 'Zoom out' })}
+            aria-label={t('locations.zoomOut')}
             onClick={() => setZoom((current) => clampZoom(current - 0.25))}
           >
             −

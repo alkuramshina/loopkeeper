@@ -214,3 +214,50 @@ export async function getBoard(
     }),
   );
 }
+
+export type ElementType = 'NOTE' | 'LOCATION' | 'NPC' | 'OTHER';
+export type ElementAccess = 'PRIVATE' | 'MASTER_ONLY' | 'SHARED';
+
+export async function createElement(
+  request: APIRequestContext,
+  author: TestUser,
+  campaignId: string,
+  data: {
+    type: ElementType;
+    title: string;
+    content?: string;
+    access?: ElementAccess;
+    typeData?: Record<string, string>;
+  },
+): Promise<string> {
+  const element = await json<{ elementId: string }>(
+    await request.post(`/api/campaigns/${campaignId}/elements`, {
+      headers: author.headers,
+      data,
+    }),
+  );
+  return element.elementId;
+}
+
+export async function listElementTitles(
+  request: APIRequestContext,
+  user: TestUser,
+  campaignId: string,
+): Promise<string[]> {
+  const elements = await json<Array<{ title: string }>>(
+    await request.get(`/api/campaigns/${campaignId}/elements`, {
+      headers: user.headers,
+    }),
+  );
+  return elements.map((element) => element.title);
+}
+
+export async function listCampaignTitles(
+  request: APIRequestContext,
+  user: TestUser,
+): Promise<string[]> {
+  const campaigns = await json<Array<{ title: string }>>(
+    await request.get('/api/campaigns', { headers: user.headers }),
+  );
+  return campaigns.map((campaign) => campaign.title);
+}

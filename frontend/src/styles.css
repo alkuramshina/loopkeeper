@@ -32,6 +32,8 @@ a {
 }
 label {
   display: grid;
+  /* Keep controls within the label instead of sizing the label to them. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.35rem;
   color: #504d46;
 }
@@ -325,6 +327,10 @@ textarea {
 .settings-danger-zone h2,
 .settings-danger-zone p {
   margin-top: 0;
+}
+.offline-notice {
+  margin-bottom: 1rem;
+  font-weight: 700;
 }
 .success-message {
   color: #3f5424;
@@ -951,6 +957,8 @@ textarea {
 }
 .note-detail {
   min-width: 0;
+  /* Without an explicit track the column grows to its widest control. */
+  grid-template-columns: minmax(0, 1fr);
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -961,31 +969,13 @@ textarea {
 }
 .members-layout {
   display: grid;
-  grid-template-areas:
-    'current current'
-    'invitations invitations'
-    'direct invite';
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 1rem;
-}
-.members-layout > :nth-child(1) {
-  grid-area: direct;
-}
-.members-layout > :nth-child(2) {
-  grid-area: invite;
-}
-.members-layout > :nth-child(3) {
-  grid-area: current;
-}
-.members-layout > :nth-child(4) {
-  grid-area: invitations;
 }
 .members-layout .panel form {
   display: grid;
   gap: 1rem;
-}
-.member-section {
-  grid-column: 1 / -1;
 }
 .member-list {
   display: grid;
@@ -1524,6 +1514,21 @@ textarea {
 .campaign-workspace-shell-mobile-navigation {
   display: none;
 }
+input[type='file'] {
+  max-width: 100%;
+}
+/* Grids without an explicit track grow to the intrinsic width of a file input. */
+.media-upload,
+.element-media-controls {
+  grid-template-columns: minmax(0, 1fr);
+}
+/* With the sidebar, two columns leave the material text and forms too narrow. */
+@media (max-width: 960px) {
+  .notes-layout,
+  .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 700px) {
   .auth-layout {
     display: block;
@@ -1613,9 +1618,6 @@ textarea {
   .members-layout,
   .locations-layout {
     grid-template-columns: 1fr;
-  }
-  .member-section {
-    grid-column: auto;
   }
   .member-row {
     align-items: stretch;

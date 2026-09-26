@@ -220,6 +220,139 @@ describe('Investigation board (e2e)', () => {
     expect(link.body.linkId).toBeDefined();
   });
 
+  it('lets contributors relabel and remove links and keeps the board separate from the catalog', async () => {
+    const owner = await register(app, 'owner@loopkeeper.dev');
+    const player = await register(app, 'player@loopkeeper.dev');
+    const outsider = await register(app, 'outsider@loopkeeper.dev');
+    const campaignId = await campaign(app, owner, 'Mystery');
+    await inviteAndAccept(app, owner, player, campaignId, 'PLAYER');
+
+    const createCard = async (title: string) =>
+      (
+        await request(app.getHttpServer())
+          .post(`/campaigns/${campaignId}/cards`)
+          .set(auth(owner))
+          .send({ title })
+          .expect(201)
+      ).body.cardId as string;
+    const freeA = await createCard('Hum at night');
+    const freeB = await createCard('Broken fence');
+    const source = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/elements`)
+      .set(auth(owner))
+      .send({ type: 'LOCATION', title: 'The tower', access: 'SHARED' })
+      .expect(201);
+    const referenceCard = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(auth(player))
+      .send({
+        cardKind: 'ELEMENT_REFERENCE',
+        elementId: source.body.elementId,
+      })
+      .expect(201);
+
+    const link = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/investigation-links`)
+      .set(auth(owner))
+      .send({ cardAId: freeA, cardBId: freeB })
+      .expect(201);
+    const referenceLink = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/investigation-links`)
+      .set(auth(player))
+      .send({ cardAId: freeA, cardBId: referenceCard.body.cardId })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/investigation-links/${link.body.linkId}`)
+      .set(auth(player))
+      .send({ label: 'same night' })
+      .expect(200)
+      .expect((response) => expect(response.body.label).toBe('same night'));
+    await request(app.getHttpServer())
+      .patch(`/investigation-links/${link.body.linkId}`)
+      .set(auth(outsider))
+      .send({ label: 'No access' })
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`/investigation-links/${link.body.linkId}`)
+      .set(auth(owner))
+      .expect(200);
+
+    // A reference card may carry board-only tags, but the source stays intact
+    // when the card leaves the board.
+    await request(app.getHttpServer())
+      .patch(`/cards/${referenceCard.body.cardId}`)
+      .set(auth(player))
+      .send({ tags: ['lead'], color: '#39726a' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .delete(`/cards/${referenceCard.body.cardId}`)
+      .set(auth(player))
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/elements/${source.body.elementId}`)
+      .set(auth(player))
+      .expect(200);
+
+    // Hiding a referenced element removes its card and links; sharing it again
+    // does not bring them back.
+    const again = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(auth(owner))
+      .send({
+        cardKind: 'ELEMENT_REFERENCE',
+        elementId: source.body.elementId,
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/investigation-links`)
+      .set(auth(owner))
+      .send({ cardAId: freeB, cardBId: again.body.cardId })
+      .expect(201);
+    for (const access of ['MASTER_ONLY', 'SHARED']) {
+      await request(app.getHttpServer())
+        .patch(`/elements/${source.body.elementId}/access`)
+        .set(auth(owner))
+        .send({ access })
+        .expect(200);
+    }
+    await request(app.getHttpServer())
+      .get(`/campaigns/${campaignId}/investigation-board`)
+      .set(auth(player))
+      .expect(200)
+      .expect((response) => {
+        expect(
+          response.body.cards.map((card: { cardId: string }) => card.cardId),
+        ).toEqual(expect.arrayContaining([freeA, freeB]));
+        expect(response.body.cards).toHaveLength(2);
+        expect(response.body.links).toEqual([]);
+      });
+    expect(referenceLink.body.linkId).toBeDefined();
+
+    // Deleting a referenced element also clears it from the board.
+    const last = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(auth(player))
+      .send({
+        cardKind: 'ELEMENT_REFERENCE',
+        elementId: source.body.elementId,
+      })
+      .expect(201);
+    await request(app.getHttpServer())
+      .delete(`/elements/${source.body.elementId}`)
+      .set(auth(owner))
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/campaigns/${campaignId}/investigation-board`)
+      .set(auth(player))
+      .expect(200)
+      .expect((response) =>
+        expect(
+          response.body.cards.map((card: { cardId: string }) => card.cardId),
+        ).not.toContain(last.body.cardId),
+      );
+  });
+
   it('adds safe source references without transferring source ownership', async () => {
     const owner = await register(app, 'owner@loopkeeper.dev');
     const player = await register(app, 'player@loopkeeper.dev');

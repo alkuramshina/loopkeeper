@@ -14,6 +14,7 @@ import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
+import { PageError } from '../../components/page-error';
 
 const roles = ['PLAYER', 'VIEWER'] as const;
 
@@ -143,9 +144,10 @@ export function MembersPage() {
 
   if (campaign.isError || (campaign.data && !isOwner)) {
     return (
-      <main className="page-state" role="alert">
-        {t('errors.resource.not_found')}
-      </main>
+      <PageError
+        error={campaign.error ?? undefined}
+        onRetry={() => void campaign.refetch()}
+      />
     );
   }
 

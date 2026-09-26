@@ -184,6 +184,121 @@ describe('Characters (e2e)', () => {
       .expect(404);
   });
 
+  it('keeps a player character under the control of its player only', async () => {
+    const owner = await registerUser(app, 'owner@loopkeeper.dev', 'Owner');
+    const player = await registerUser(app, 'player@loopkeeper.dev', 'Player');
+    const otherPlayer = await registerUser(
+      app,
+      'other@loopkeeper.dev',
+      'Other',
+    );
+    const viewer = await registerUser(app, 'viewer@loopkeeper.dev', 'Viewer');
+    const campaign = await createCampaign(app, owner);
+    await inviteAndAccept(app, owner, player, campaign.campaignId, 'PLAYER');
+    await inviteAndAccept(
+      app,
+      owner,
+      otherPlayer,
+      campaign.campaignId,
+      'PLAYER',
+    );
+    await inviteAndAccept(app, owner, viewer, campaign.campaignId, 'VIEWER');
+
+    const templates = await request(app.getHttpServer())
+      .get('/game-systems/TALES_FROM_THE_LOOP/templates')
+      .set(authenticate(player))
+      .expect(200);
+    const templateId = templates.body[0].templateId;
+    const created = await request(app.getHttpServer())
+      .post(`/campaigns/${campaign.campaignId}/characters`)
+      .set(authenticate(player))
+      .send({ name: 'Alex', templateId, data: characterData })
+      .expect(201);
+    const characterId: string = created.body.characterId;
+
+    // Every member reads the sheet; nobody but its player changes it.
+    for (const reader of [owner, otherPlayer, viewer]) {
+      await request(app.getHttpServer())
+        .get(`/characters/${characterId}`)
+        .set(authenticate(reader))
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(`/characters/${characterId}`)
+        .set(authenticate(reader))
+        .send({ name: 'Renamed' })
+        .expect(404);
+      await request(app.getHttpServer())
+        .delete(`/characters/${characterId}`)
+        .set(authenticate(reader))
+        .expect(404);
+    }
+
+    await request(app.getHttpServer())
+      .patch(`/characters/${characterId}`)
+      .set(authenticate(player))
+      .send({ name: 'Alex Berg', data: { ...characterData, age: 16 } })
+      .expect(200)
+      .expect((response) =>
+        expect(response.body).toMatchObject({
+          name: 'Alex Berg',
+          data: { age: 16 },
+        }),
+      );
+    await request(app.getHttpServer())
+      .patch(`/characters/${characterId}`)
+      .set(authenticate(player))
+      .send({ data: { ...characterData, age: 99 } })
+      .expect(400);
+
+    // Retiring the active character frees the slot for a new one.
+    await request(app.getHttpServer())
+      .patch(`/characters/${characterId}`)
+      .set(authenticate(player))
+      .send({ isActive: false })
+      .expect(200);
+    const replacement = await request(app.getHttpServer())
+      .post(`/campaigns/${campaign.campaignId}/characters`)
+      .set(authenticate(player))
+      .send({ name: 'Kim', templateId, data: characterData })
+      .expect(201);
+    await request(app.getHttpServer())
+      .patch(`/characters/${characterId}`)
+      .set(authenticate(player))
+      .send({ isActive: true })
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .delete(`/characters/${replacement.body.characterId}`)
+      .set(authenticate(player))
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/characters/${replacement.body.characterId}`)
+      .set(authenticate(owner))
+      .expect(404);
+
+    // A player demoted to viewer keeps the sheet readable but not editable.
+    const playerProfile = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set(authenticate(player))
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(
+        `/campaigns/${campaign.campaignId}/members/${playerProfile.body.userId}`,
+      )
+      .set(authenticate(owner))
+      .send({ role: 'VIEWER' })
+      .expect(200);
+    await request(app.getHttpServer())
+      .get(`/characters/${characterId}`)
+      .set(authenticate(player))
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/characters/${characterId}`)
+      .set(authenticate(player))
+      .send({ name: 'Still mine?' })
+      .expect(404);
+  });
+
   it('validates data against the selected template', async () => {
     const owner = await registerUser(app, 'owner@loopkeeper.dev', 'Owner');
     const player = await registerUser(app, 'player@loopkeeper.dev', 'Player');

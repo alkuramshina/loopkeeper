@@ -15,6 +15,7 @@ import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
 import { MediaUpload } from '../../components/media-upload';
+import { PageError } from '../../components/page-error';
 
 type EditorTarget = {
   character?: Character;
@@ -307,9 +308,13 @@ export function CharactersPage() {
 
   if (campaign.isError || characters.isError) {
     return (
-      <main className="page-state" role="alert">
-        {t('errors.resource.not_found')}
-      </main>
+      <PageError
+        error={campaign.error ?? characters.error ?? undefined}
+        onRetry={() => {
+          void campaign.refetch();
+          void characters.refetch();
+        }}
+      />
     );
   }
 

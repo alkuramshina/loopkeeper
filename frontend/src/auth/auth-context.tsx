@@ -27,7 +27,9 @@ type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  // The token lives in a ref so a request that is retried after a refresh
+  // sends the new token instead of the one captured at render time.
+  const accessToken = useRef<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const sessionRestoreStarted = useRef(false);
@@ -48,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             method: 'POST',
           },
         );
-        setAccessToken(result.accessToken);
+        accessToken.current = result.accessToken;
         const refreshedApi = new ApiClient(
           () => result.accessToken,
           async () => null,
@@ -56,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(await refreshedApi.request<Profile>('/auth/me'));
         return result.accessToken;
       } catch {
-        setAccessToken(null);
+        accessToken.current = null;
         setProfile(null);
         return null;
       }
@@ -70,8 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const api = useMemo(
-    () => new ApiClient(() => accessToken, refresh),
-    [accessToken, refresh],
+    () => new ApiClient(() => accessToken.current, refresh),
+    [refresh],
   );
 
   const authenticate = useCallback(
@@ -84,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         body: JSON.stringify(body),
       });
-      setAccessToken(result.accessToken);
+      accessToken.current = result.accessToken;
       const authenticatedApi = new ApiClient(() => result.accessToken, refresh);
       setProfile(await authenticatedApi.request<Profile>('/auth/me'));
     },
@@ -95,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api
       .request<void>('/auth/logout', { method: 'POST' })
       .catch(() => undefined);
-    setAccessToken(null);
+    accessToken.current = null;
     setProfile(null);
   }, [api]);
 

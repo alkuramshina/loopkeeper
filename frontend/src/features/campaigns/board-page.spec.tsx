@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
+import { ApiError } from '../../api/client';
 import { BoardPage } from './board-page';
 
 const request = vi.fn();
@@ -111,6 +112,70 @@ describe('BoardPage', () => {
       ).toBe('blob:cover'),
     );
     expect(requestBlob).toHaveBeenCalledWith('/media/cover');
+  });
+
+  it('keeps the last snapshot when a manual refresh fails and recovers on the next one', async () => {
+    role = 'PLAYER';
+    cards = [
+      {
+        cardId: 'card',
+        cardKind: 'FREE',
+        title: 'Broken fence',
+        content: '',
+        tags: [],
+        node: { x: 0, y: 0, width: 240, height: 160 },
+      },
+    ];
+    renderBoard();
+    expect(await screen.findByText('Broken fence')).toBeInTheDocument();
+
+    const boardResponse = request.getMockImplementation()!;
+    request.mockImplementation((path: string) =>
+      path === '/campaigns/c/investigation-board'
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : boardResponse(path),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Нет связи с сервером.',
+    );
+    expect(screen.getByText('Broken fence')).toBeInTheDocument();
+
+    request.mockImplementation(boardResponse);
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('Broken fence')).toBeInTheDocument();
+  });
+
+  it('tells a network failure apart from an unavailable board', async () => {
+    request.mockImplementation((path: string) =>
+      path === '/campaigns/c'
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : Promise.reject(new Error(`Unexpected request: ${path}`)),
+    );
+    renderBoard();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Нет связи с сервером.',
+    );
+    expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument();
+  });
+
+  it('keeps an unavailable board tenant-neutral without a retry', async () => {
+    request.mockImplementation(() =>
+      Promise.reject(
+        new ApiError(404, 'campaign.not_found', 'Not found', undefined),
+      ),
+    );
+    renderBoard();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Этот ресурс недоступен.',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Повторить' }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps editing controls for contributors', async () => {

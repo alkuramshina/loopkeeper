@@ -22,6 +22,7 @@ import { ModalDialog } from '../../components/modal-dialog';
 import { ProtectedImage } from '../../components/protected-image';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { ElementMapViewer } from './element-map-viewer';
+import { PageError } from '../../components/page-error';
 
 function SafeMarkdown({ content }: { content: string | null | undefined }) {
   return (
@@ -391,9 +392,14 @@ export function ElementsPage() {
     ]);
   if (campaign.isError || elements.isError || detail.isError)
     return (
-      <main className="page-state" role="alert">
-        {t('errors.resource.not_found')}
-      </main>
+      <PageError
+        error={campaign.error ?? elements.error ?? detail.error ?? undefined}
+        onRetry={() => {
+          void campaign.refetch();
+          void elements.refetch();
+          void detail.refetch();
+        }}
+      />
     );
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
