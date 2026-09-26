@@ -56,7 +56,9 @@ export class CreateElementDto {
 
   @ApiPropertyOptional({
     format: 'uri',
-    description: 'Transitional location map URL',
+    nullable: true,
+    description:
+      'External HTTPS location map URL. Setting it (or null) removes an uploaded map file.',
   })
   @IsOptional()
   @IsUrl({ protocols: ['https'], require_protocol: true })
@@ -103,8 +105,18 @@ export class ElementResponseDto {
   @ApiProperty({ type: 'object', additionalProperties: true })
   typeData!: Record<string, unknown>;
 
-  @ApiPropertyOptional({ nullable: true, format: 'uri' })
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'LOCATION map: an external HTTPS URL or an authenticated /media/:assetId path',
+  })
   imageUrl!: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Authenticated /media/:assetId path of the element cover',
+  })
+  coverUrl!: string | null;
 
   @ApiPropertyOptional({ nullable: true, format: 'uuid' })
   coverAssetId!: string | null;

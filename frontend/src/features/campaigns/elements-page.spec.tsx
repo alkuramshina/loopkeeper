@@ -12,11 +12,12 @@ import '../../i18n';
 import { ElementsPage } from './elements-page';
 
 const request = vi.fn();
+const requestBlob = vi.fn();
 let role: 'OWNER' | 'PLAYER' | 'VIEWER' = 'OWNER';
 let userId = 'master';
 vi.mock('../../auth/auth-context', () => ({
   useAuth: () => ({
-    api: { request },
+    api: { request, requestBlob },
     profile: { userId },
     signOut: vi.fn(),
   }),
@@ -50,6 +51,16 @@ const playerNote = {
   content: 'The tower hums',
   createdById: player.userId,
   createdBy: player,
+};
+
+const uploadedLocation = {
+  ...privateElement,
+  elementId: 'uploaded-location',
+  type: 'LOCATION',
+  title: 'Plant',
+  content: '',
+  imageUrl: '/media/map-asset',
+  coverUrl: '/media/cover-asset',
 };
 
 function listFor(currentRole: typeof role) {
@@ -92,6 +103,10 @@ describe('ElementsPage', () => {
     };
     role = 'OWNER';
     userId = 'master';
+    requestBlob.mockReset();
+    requestBlob.mockResolvedValue(new Blob(['image'], { type: 'image/webp' }));
+    URL.createObjectURL = vi.fn(() => 'blob:image');
+    URL.revokeObjectURL = vi.fn();
     request.mockReset();
     request.mockImplementation((path: string, init?: RequestInit) => {
       if (path === '/campaigns/c')
@@ -115,6 +130,10 @@ describe('ElementsPage', () => {
           content:
             '[safe](https://example.test) [unsafe](javascript:alert(1)) <script>alert(1)</script>',
         });
+      if (path === '/elements/uploaded-location' && !init)
+        return Promise.resolve(uploadedLocation);
+      if (path === '/elements/uploaded-location' && init?.method === 'PATCH')
+        return Promise.resolve(uploadedLocation);
       if (path === '/elements/private/access' && init?.method === 'PATCH')
         return Promise.resolve({ ...privateElement, access: 'SHARED' });
       if (path === '/campaigns/c/elements' && init?.method === 'POST')
@@ -155,7 +174,9 @@ describe('ElementsPage', () => {
     renderPage('/campaigns/c/elements/private');
     const control = await screen.findByLabelText('Доступ');
     expect(
-      within(control).getAllByRole('option').map((option) => option.textContent),
+      within(control)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
     ).toEqual(['Только мастер', 'Всем']);
     fireEvent.change(control, { target: { value: 'SHARED' } });
     await waitFor(() =>
@@ -186,12 +207,12 @@ describe('ElementsPage', () => {
     renderPage('/campaigns/c/elements/player-note');
     const control = await screen.findByLabelText('Доступ');
     expect(
-      within(control).getAllByRole('option').map((option) => option.textContent),
+      within(control)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
     ).toEqual(['Лично', 'Мастеру', 'Всем']);
     expect(screen.queryByText('Автор: Player')).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Удалить' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Удалить' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('link', { name: /Shared/ }));
     expect(
@@ -253,6 +274,46 @@ describe('ElementsPage', () => {
       screen.queryByRole('link', { name: 'unsafe' }),
     ).not.toBeInTheDocument();
     expect(document.querySelector('script')).toBeNull();
+  });
+
+  it('shows uploaded cover and map through protected media with author upload controls', async () => {
+    renderPage('/campaigns/c/elements/uploaded-location');
+    expect(
+      await screen.findByRole('heading', { name: 'Plant' }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(requestBlob).toHaveBeenCalledWith('/media/cover-asset');
+      expect(requestBlob).toHaveBeenCalledWith('/media/map-asset');
+    });
+    expect(
+      within(screen.getByRole('region', { name: 'Открыть карту' })).getByRole(
+        'img',
+        { name: 'Plant' },
+      ),
+    ).toHaveAttribute('src', 'blob:image');
+    expect(screen.getByLabelText('Обложка')).toHaveAttribute('type', 'file');
+    expect(screen.getByLabelText('Файл карты')).toHaveAttribute('type', 'file');
+
+    // Saving the form keeps the uploaded map: the map link is not sent.
+    fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
+    expect(screen.getByLabelText('HTTPS-адрес карты')).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('/elements/uploaded-location', {
+        method: 'PATCH',
+        body: JSON.stringify({ type: 'LOCATION', title: 'Plant', content: '' }),
+      }),
+    );
+  });
+
+  it('hides element media controls from readers who are not the author', async () => {
+    role = 'PLAYER';
+    userId = 'player';
+    renderPage('/campaigns/c/elements/shared');
+    expect(
+      await screen.findByRole('heading', { name: 'Shared' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Обложка')).not.toBeInTheDocument();
   });
 
   it('creates an NPC as master-only with required typeData', async () => {

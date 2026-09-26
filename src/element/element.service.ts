@@ -7,8 +7,10 @@ import {
 } from '@prisma/client';
 import { CampaignAccessService } from '../campaign/access/campaign-access.service';
 import { DomainException } from '../common/exceptions/domain.exception';
+import { MediaService } from '../media/media.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateElementDto, UpdateElementDto } from './dto/element.dto';
+import { editableElementWhere, readableElementWhere } from './element-access';
 
 const npcFields: Record<string, number> = {
   role: 100,
@@ -22,20 +24,12 @@ const elementInclude = {
   createdBy: { select: { userId: true, name: true } },
 } satisfies Prisma.CampaignElementInclude;
 
-// Authors keep rights on their elements only while they remain the campaign
-// owner or a PLAYER member.
-const authorCampaignWhere = (userId: string): Prisma.CampaignWhereInput => ({
-  OR: [
-    { ownerId: userId },
-    { members: { some: { userId, campaignRole: CampaignRole.PLAYER } } },
-  ],
-});
-
 @Injectable()
 export class ElementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly access: CampaignAccessService,
+    private readonly media: MediaService,
   ) {}
 
   async create(userId: string, campaignId: string, dto: CreateElementDto) {
@@ -106,22 +100,7 @@ export class ElementService {
 
   async findOne(userId: string, elementId: string) {
     const element = await this.prisma.campaignElement.findFirst({
-      where: {
-        elementId,
-        OR: [
-          {
-            access: CampaignElementAccess.SHARED,
-            campaign: {
-              OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-            },
-          },
-          {
-            access: CampaignElementAccess.MASTER_ONLY,
-            campaign: { ownerId: userId },
-          },
-          { createdById: userId, campaign: authorCampaignWhere(userId) },
-        ],
-      },
+      where: { elementId, ...readableElementWhere(userId) },
       include: elementInclude,
     });
     if (!element) throw this.notFound();
@@ -137,17 +116,41 @@ export class ElementService {
       dto.typeData ?? (element.typeData as Record<string, unknown>),
       dto.imageUrl ?? element.imageUrl ?? undefined,
     );
-    return this.prisma.campaignElement.update({
-      where: { elementId },
-      data: {
-        title: dto.title,
-        content: dto.content,
-        sortOrder: dto.sortOrder,
-        imageUrl: dto.imageUrl,
-        typeData: dto.typeData as Prisma.InputJsonValue | undefined,
+    const { updated, oldStorageKey } = await this.prisma.$transaction(
+      async (tx) => {
+        // An explicit map URL (or null) replaces an uploaded map file.
+        const current =
+          dto.imageUrl !== undefined
+            ? await tx.campaignElement.findUniqueOrThrow({
+                where: { elementId },
+                select: {
+                  mapAssetId: true,
+                  mapAsset: { select: { storageKey: true } },
+                },
+              })
+            : null;
+        const updated = await tx.campaignElement.update({
+          where: { elementId },
+          data: {
+            title: dto.title,
+            content: dto.content,
+            sortOrder: dto.sortOrder,
+            imageUrl: dto.imageUrl,
+            typeData: dto.typeData as Prisma.InputJsonValue | undefined,
+            ...(current?.mapAssetId ? { mapAssetId: null } : {}),
+          },
+          include: elementInclude,
+        });
+        if (current?.mapAssetId) {
+          await tx.mediaAsset.delete({
+            where: { assetId: current.mapAssetId },
+          });
+        }
+        return { updated, oldStorageKey: current?.mapAsset?.storageKey };
       },
-      include: elementInclude,
-    });
+    );
+    if (oldStorageKey) await this.media.removeStorageFile(oldStorageKey);
+    return updated;
   }
 
   async setAccess(
@@ -173,16 +176,30 @@ export class ElementService {
 
   async remove(userId: string, elementId: string) {
     await this.requireAuthor(userId, elementId);
-    await this.prisma.campaignElement.delete({ where: { elementId } });
+    const storageKeys = await this.prisma.$transaction(async (tx) => {
+      const element = await tx.campaignElement.delete({
+        where: { elementId },
+        select: {
+          coverAsset: { select: { assetId: true, storageKey: true } },
+          mapAsset: { select: { assetId: true, storageKey: true } },
+        },
+      });
+      const assets = [element.coverAsset, element.mapAsset].filter(
+        (asset) => asset !== null,
+      );
+      await tx.mediaAsset.deleteMany({
+        where: { assetId: { in: assets.map((asset) => asset.assetId) } },
+      });
+      return assets.map((asset) => asset.storageKey);
+    });
+    await Promise.all(
+      storageKeys.map((key) => this.media.removeStorageFile(key)),
+    );
   }
 
   private async requireAuthor(userId: string, elementId: string) {
     const element = await this.prisma.campaignElement.findFirst({
-      where: {
-        elementId,
-        createdById: userId,
-        campaign: authorCampaignWhere(userId),
-      },
+      where: { elementId, ...editableElementWhere(userId) },
       include: { campaign: { select: { ownerId: true } } },
     });
     if (!element) throw this.notFound();

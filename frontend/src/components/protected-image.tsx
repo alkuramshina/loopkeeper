@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { CSSProperties, useEffect, useState } from 'react';
 import { useAuth } from '../auth/auth-context';
 
 type ProtectedImageProps = {
@@ -7,6 +7,8 @@ type ProtectedImageProps = {
   imageUrl?: string | null;
   fallback?: string;
   onError?: () => void;
+  draggable?: boolean;
+  style?: CSSProperties;
 };
 
 export function ProtectedImage({
@@ -15,6 +17,8 @@ export function ProtectedImage({
   imageUrl,
   fallback,
   onError,
+  draggable,
+  style,
 }: ProtectedImageProps) {
   const { api } = useAuth();
   const [localImage, setLocalImage] = useState<{
@@ -54,9 +58,11 @@ export function ProtectedImage({
     <img
       alt={alt}
       className={className}
+      draggable={draggable}
       onError={onError}
       referrerPolicy="no-referrer"
       src={src}
+      style={style}
     />
   ) : null;
 }

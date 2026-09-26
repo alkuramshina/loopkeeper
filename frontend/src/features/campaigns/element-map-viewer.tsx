@@ -1,5 +1,6 @@
 import { PointerEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ProtectedImage } from '../../components/protected-image';
 
 const minimumZoom = 0.5;
 const maximumZoom = 3;
@@ -69,8 +70,8 @@ export function ElementMapViewer({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        <img
-          src={imageUrl}
+        <ProtectedImage
+          imageUrl={imageUrl}
           alt={title}
           draggable={false}
           style={{

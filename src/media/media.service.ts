@@ -1,5 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  open,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import {
   HttpStatus,
@@ -9,13 +18,21 @@ import {
 } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import sharp from 'sharp';
-import { CampaignRole, Prisma } from '@prisma/client';
+import { CampaignElementType, CampaignRole, Prisma } from '@prisma/client';
 import { CampaignBackgroundDto } from '../campaign/dto/campaign-background-settings.dto';
 
 import { DomainException } from '../common/exceptions/domain.exception';
 import appConfig from '../config/app.config';
+import {
+  editableElementWhere,
+  readableElementWhere,
+} from '../element/element-access';
 import { PrismaService } from '../prisma/prisma.service';
-import { MAX_MEDIA_BYTES } from './media-upload-exception.filter';
+import {
+  MAX_MAP_BYTES,
+  MAX_MEDIA_BYTES,
+} from './media-upload-exception.filter';
+import { MEDIA_UPLOAD_TEMP_PATH } from './temporary-file-storage';
 
 const MIN_AVATAR_DIMENSION = 256;
 const MAX_AVATAR_DIMENSION = 2048;
@@ -26,6 +43,28 @@ const MAX_COVER_DIMENSION = 2048;
 const MAX_COVER_WIDTH = 1280;
 const MAX_COVER_HEIGHT = 720;
 const BACKGROUND_DIMENSIONS = new Set(['1600x900', '1920x1080', '2560x1440']);
+const MIN_ELEMENT_COVER_DIMENSION = 256;
+const MAX_ELEMENT_COVER_DIMENSION = 4096;
+const NORMALIZED_ELEMENT_COVER_DIMENSION = 1024;
+const MIN_MAP_LONG_SIDE = 1024;
+const MIN_MAP_SHORT_SIDE = 256;
+const MAX_MAP_DIMENSION = 8192;
+const MAX_MAP_PIXELS = 40_000_000;
+const NORMALIZED_MAP_DIMENSION = 4096;
+
+type ElementMediaSlot = 'cover' | 'map';
+
+function orientedSize(metadata: sharp.Metadata) {
+  const swapped =
+    metadata.orientation !== undefined &&
+    metadata.orientation >= 5 &&
+    metadata.orientation <= 8;
+  return {
+    width: swapped ? metadata.height : metadata.width,
+    height: swapped ? metadata.width : metadata.height,
+  };
+}
+
 function hasSupportedImageSignature(buffer: Buffer): boolean {
   const png =
     buffer.length >= 8 &&
@@ -452,6 +491,229 @@ export class MediaService {
     await this.removeStorageFile(storageKey);
   }
 
+  async replaceElementCover(
+    userId: string,
+    elementId: string,
+    file: UploadedFile,
+  ) {
+    await this.requireEditableElement(userId, elementId);
+    const image = await this.normalizeElementCover(file);
+    const { assetId, url } = await this.attachElementAsset(
+      userId,
+      elementId,
+      'cover',
+      image,
+    );
+    return { assetId, coverUrl: url };
+  }
+
+  async deleteElementCover(userId: string, elementId: string): Promise<void> {
+    await this.detachElementAsset(userId, elementId, 'cover');
+  }
+
+  // The upload is already streamed to a temporary file; it is always removed.
+  async replaceLocationMap(
+    userId: string,
+    elementId: string,
+    file: { path: string } | undefined,
+  ) {
+    try {
+      await this.requireEditableElement(userId, elementId, true);
+      const image = await this.normalizeMap(file?.path);
+      const { assetId, url } = await this.attachElementAsset(
+        userId,
+        elementId,
+        'map',
+        image,
+      );
+      return { assetId, imageUrl: url };
+    } finally {
+      if (file?.path) await rm(file.path, { force: true });
+    }
+  }
+
+  async deleteLocationMap(userId: string, elementId: string): Promise<void> {
+    await this.detachElementAsset(userId, elementId, 'map');
+  }
+
+  // Element media follows element edit rights: the author, while still the
+  // campaign owner or a PLAYER. Maps exist only on LOCATION elements.
+  async requireEditableElement(
+    userId: string,
+    elementId: string,
+    locationOnly = false,
+  ): Promise<void> {
+    const element = await this.prisma.campaignElement.findFirst({
+      where: { elementId, ...editableElementWhere(userId) },
+      select: { type: true },
+    });
+    if (!element) throw this.elementNotFound();
+    if (locationOnly && element.type !== CampaignElementType.LOCATION) {
+      throw this.invalidMedia(
+        'media.location_only',
+        'Only location elements have a map',
+      );
+    }
+  }
+
+  private async attachElementAsset(
+    userId: string,
+    elementId: string,
+    slot: ElementMediaSlot,
+    image: NormalizedAvatar,
+  ) {
+    const storageKey = `${randomUUID()}.webp`;
+    await this.writeAtomically(storageKey, image.content);
+
+    let result: { assetId: string; url: string; previousKey?: string };
+    try {
+      result = await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
+        const element = await tx.campaignElement.findFirst({
+          where: {
+            elementId,
+            ...editableElementWhere(userId),
+            ...(slot === 'map' ? { type: CampaignElementType.LOCATION } : {}),
+          },
+          select: {
+            coverAsset: { select: { assetId: true, storageKey: true } },
+            mapAsset: { select: { assetId: true, storageKey: true } },
+          },
+        });
+        if (!element) throw this.elementNotFound();
+        const asset = await tx.mediaAsset.create({
+          data: {
+            storageKey,
+            purpose: slot === 'cover' ? 'ELEMENT_COVER' : 'LOCATION_MAP',
+            byteSize: image.content.length,
+            width: image.width,
+            height: image.height,
+          },
+        });
+        const url = `/media/${asset.assetId}`;
+        await tx.campaignElement.update({
+          where: { elementId },
+          data:
+            slot === 'cover'
+              ? { coverAssetId: asset.assetId, coverUrl: url }
+              : { mapAssetId: asset.assetId, imageUrl: url },
+        });
+        const previous =
+          slot === 'cover' ? element.coverAsset : element.mapAsset;
+        if (previous) {
+          await tx.mediaAsset.delete({ where: { assetId: previous.assetId } });
+        }
+        return {
+          assetId: asset.assetId,
+          url,
+          previousKey: previous?.storageKey,
+        };
+      });
+    } catch (error) {
+      await this.removeStorageFile(storageKey);
+      throw error;
+    }
+
+    if (result.previousKey) await this.removeStorageFile(result.previousKey);
+    return result;
+  }
+
+  private async detachElementAsset(
+    userId: string,
+    elementId: string,
+    slot: ElementMediaSlot,
+  ): Promise<void> {
+    const storageKey = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
+      const element = await tx.campaignElement.findFirst({
+        where: { elementId, ...editableElementWhere(userId) },
+        select: {
+          coverAsset: { select: { assetId: true, storageKey: true } },
+          mapAsset: { select: { assetId: true, storageKey: true } },
+        },
+      });
+      if (!element) throw this.elementNotFound();
+      const asset = slot === 'cover' ? element.coverAsset : element.mapAsset;
+      if (!asset) throw new NotFoundException();
+      await tx.campaignElement.update({
+        where: { elementId },
+        data:
+          slot === 'cover'
+            ? { coverAssetId: null, coverUrl: null }
+            : { mapAssetId: null, imageUrl: null },
+      });
+      await tx.mediaAsset.delete({ where: { assetId: asset.assetId } });
+      return asset.storageKey;
+    });
+    await this.removeStorageFile(storageKey);
+  }
+
+  // Removes media that no entity references any more: asset rows whose owner
+  // is gone and stored or temporary files without an asset row. Only entries
+  // older than the grace period are touched so in-flight uploads survive.
+  async reconcile({ apply, graceMs }: { apply: boolean; graceMs: number }) {
+    const cutoff = new Date(Date.now() - graceMs);
+    const orphanAssetWhere: Prisma.MediaAssetWhereInput = {
+      createdAt: { lt: cutoff },
+      OR: [
+        { purpose: 'AVATAR', avatarOwner: { is: null } },
+        { purpose: 'CHARACTER_AVATAR', characterAvatar: { is: null } },
+        { purpose: 'CAMPAIGN_COVER', campaignCover: { is: null } },
+        { purpose: 'CAMPAIGN_BACKGROUND', backgroundCampaignId: null },
+        { purpose: 'ELEMENT_COVER', elementCover: { is: null } },
+        { purpose: 'LOCATION_MAP', elementMap: { is: null } },
+      ],
+    };
+    const orphanAssets = await this.prisma.mediaAsset.findMany({
+      where: orphanAssetWhere,
+      select: { assetId: true, storageKey: true },
+    });
+    const orphanKeys = new Set(orphanAssets.map((asset) => asset.storageKey));
+    const knownKeys = new Set(
+      (
+        await this.prisma.mediaAsset.findMany({ select: { storageKey: true } })
+      ).map((asset) => asset.storageKey),
+    );
+
+    const orphanFiles: string[] = [];
+    for (const directory of [this.storagePath, MEDIA_UPLOAD_TEMP_PATH]) {
+      const entries = await readdir(directory, { withFileTypes: true }).catch(
+        () => [],
+      );
+      for (const entry of entries) {
+        if (!entry.isFile()) continue;
+        // Files of orphan asset rows are removed together with the rows.
+        if (directory === this.storagePath && knownKeys.has(entry.name)) {
+          continue;
+        }
+        const path = join(directory, entry.name);
+        const { mtime } = await stat(path);
+        if (mtime < cutoff) orphanFiles.push(path);
+      }
+    }
+
+    if (apply) {
+      if (orphanAssets.length) {
+        await this.prisma.mediaAsset.deleteMany({
+          where: {
+            ...orphanAssetWhere,
+            assetId: { in: orphanAssets.map((asset) => asset.assetId) },
+          },
+        });
+        await Promise.all(
+          [...orphanKeys].map((key) => this.removeStorageFile(key)),
+        );
+      }
+      await Promise.all(orphanFiles.map((path) => rm(path, { force: true })));
+    }
+
+    return {
+      applied: apply,
+      orphanAssets: orphanAssets.length,
+      orphanFiles: orphanFiles.length,
+    };
+  }
+
   async getMediaContent(userId: string, assetId: string): Promise<Buffer> {
     const asset = await this.prisma.mediaAsset.findFirst({
       where: {
@@ -483,6 +745,20 @@ export class MediaService {
             campaignCover: {
               coverUrl: `/media/${assetId}`,
               OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+            },
+          },
+          {
+            purpose: 'ELEMENT_COVER',
+            elementCover: {
+              coverUrl: `/media/${assetId}`,
+              ...readableElementWhere(userId),
+            },
+          },
+          {
+            purpose: 'LOCATION_MAP',
+            elementMap: {
+              imageUrl: `/media/${assetId}`,
+              ...readableElementWhere(userId),
             },
           },
         ],
@@ -700,6 +976,114 @@ export class MediaService {
     }
   }
 
+  private async normalizeElementCover(
+    file: UploadedFile,
+  ): Promise<NormalizedAvatar> {
+    await this.validateUpload(file);
+    try {
+      const image = sharp(file.buffer, {
+        limitInputPixels: MAX_ELEMENT_COVER_DIMENSION ** 2,
+      }).rotate();
+      const { width, height } = orientedSize(await image.metadata());
+      if (
+        !width ||
+        !height ||
+        Math.min(width, height) < MIN_ELEMENT_COVER_DIMENSION ||
+        Math.max(width, height) > MAX_ELEMENT_COVER_DIMENSION ||
+        width / height < 0.5 ||
+        width / height > 2
+      ) {
+        throw this.invalidMedia(
+          'media.invalid_element_cover_dimensions',
+          'Element covers must be 256–4096 pixels per side with an aspect ratio between 1:2 and 2:1',
+        );
+      }
+      const { data, info } = await image
+        .resize({
+          width: NORMALIZED_ELEMENT_COVER_DIMENSION,
+          height: NORMALIZED_ELEMENT_COVER_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp()
+        .toBuffer({ resolveWithObject: true });
+      return { content: data, width: info.width, height: info.height };
+    } catch (error) {
+      if (error instanceof DomainException) throw error;
+      throw this.invalidMedia(
+        'media.invalid_file',
+        'The image file is invalid',
+      );
+    }
+  }
+
+  // Maps are decoded from the temporary upload file, never from a request
+  // buffer, so large sources are not held in memory before validation.
+  private async normalizeMap(
+    path: string | undefined,
+  ): Promise<NormalizedAvatar> {
+    const size = path ? (await stat(path)).size : 0;
+    if (!path || !size) {
+      throw this.invalidMedia(
+        'media.invalid_file',
+        'An image file is required',
+      );
+    }
+    if (size > MAX_MAP_BYTES) {
+      throw this.invalidMedia(
+        'media.file_too_large',
+        'The image file exceeds 10 MiB',
+      );
+    }
+    const handle = await open(path, 'r');
+    const header = Buffer.alloc(12);
+    try {
+      await handle.read(header, 0, header.length, 0);
+    } finally {
+      await handle.close();
+    }
+    if (!hasSupportedImageSignature(header)) {
+      throw this.invalidMedia(
+        'media.unsupported_type',
+        'The image format is not supported',
+      );
+    }
+
+    try {
+      const image = sharp(path, { limitInputPixels: MAX_MAP_PIXELS }).rotate();
+      const { width, height } = orientedSize(await image.metadata());
+      if (
+        !width ||
+        !height ||
+        Math.max(width, height) < MIN_MAP_LONG_SIDE ||
+        Math.max(width, height) > MAX_MAP_DIMENSION ||
+        Math.min(width, height) < MIN_MAP_SHORT_SIDE ||
+        width * height > MAX_MAP_PIXELS
+      ) {
+        throw this.invalidMedia(
+          'media.invalid_map_dimensions',
+          'Maps must have a long side of 1024–8192 pixels, a short side of at least 256 pixels and at most 40 megapixels',
+        );
+      }
+      const { data, info } = await image
+        .resize({
+          width: NORMALIZED_MAP_DIMENSION,
+          height: NORMALIZED_MAP_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp()
+        .toBuffer({ resolveWithObject: true });
+      return { content: data, width: info.width, height: info.height };
+    } catch (error) {
+      if (error instanceof DomainException) throw error;
+      throw this.invalidMedia(
+        'media.invalid_file',
+        'The image file is invalid',
+      );
+    }
+  }
+
   private async writeAtomically(
     storageKey: string,
     content: Buffer,
@@ -718,6 +1102,14 @@ export class MediaService {
 
   private storageFilePath(storageKey: string): string {
     return join(this.storagePath, storageKey);
+  }
+
+  private elementNotFound(): DomainException {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'resource.not_found',
+      'Element not found',
+    );
   }
 
   private invalidMedia(code: string, message: string): DomainException {

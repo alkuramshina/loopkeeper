@@ -26,7 +26,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "npx prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "media:reconcile": "ts-node src/media-reconcile.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

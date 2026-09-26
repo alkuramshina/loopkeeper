@@ -139,7 +139,9 @@ export type CampaignElement = {
   access: CampaignElementAccess;
   title: string;
   content: string | null;
+  // LOCATION map: an external HTTPS URL or a protected /media/:assetId path.
   imageUrl: string | null;
+  coverUrl?: string | null;
   typeData: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;

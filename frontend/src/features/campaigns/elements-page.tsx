@@ -17,7 +17,9 @@ import {
   CampaignElementType,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import { MediaUpload } from '../../components/media-upload';
 import { ModalDialog } from '../../components/modal-dialog';
+import { ProtectedImage } from '../../components/protected-image';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { ElementMapViewer } from './element-map-viewer';
 
@@ -71,6 +73,18 @@ function accessLabelKey(access: CampaignElementAccess, playerNote: boolean) {
     : `elements.access.${access}`;
 }
 
+const isUploadedMedia = (url: string | null | undefined) =>
+  Boolean(url?.startsWith('/media/'));
+const isMapUrl = (url: string | null | undefined) =>
+  Boolean(url && (/^https:\/\//i.test(url) || isUploadedMedia(url)));
+
+// The map URL field edits only external links; an uploaded map file is
+// managed by its own upload control.
+const externalMapUrl = (element: CampaignElement | undefined) =>
+  element?.imageUrl && !isUploadedMedia(element.imageUrl)
+    ? element.imageUrl
+    : '';
+
 function draftFor(
   element: CampaignElement | undefined,
   type: CampaignElementType,
@@ -81,7 +95,7 @@ function draftFor(
     access: element?.access ?? (owner ? 'MASTER_ONLY' : 'PRIVATE'),
     title: element?.title ?? '',
     content: element?.content ?? '',
-    imageUrl: element?.imageUrl ?? '',
+    imageUrl: externalMapUrl(element),
     typeData: element?.typeData ?? {},
   };
 }
@@ -117,12 +131,15 @@ function ElementEditor({
   const [error, setError] = useState<string>();
   const save = useMutation({
     mutationFn: () => {
+      // An unchanged map link is not sent, so saving the form keeps an
+      // uploaded map file; a new link (or clearing it) replaces the map.
+      const mapChanged = draft.imageUrl !== externalMapUrl(element);
       const payload = {
         type: draft.type,
         title: draft.title.trim(),
         content: draft.content,
         ...(element ? {} : { access: draft.access }),
-        ...(draft.type === 'LOCATION'
+        ...(draft.type === 'LOCATION' && mapChanged
           ? { imageUrl: draft.imageUrl || (element ? null : undefined) }
           : {}),
         ...(draft.type === 'NPC' ? { typeData: draft.typeData } : {}),
@@ -218,19 +235,31 @@ function ElementEditor({
           />
         </label>
         {draft.type === 'LOCATION' && (
-          <label>
-            {t('elements.mapUrl')}
-            <input
-              type="url"
-              pattern="https://.*"
-              placeholder="https://"
-              maxLength={2048}
-              value={draft.imageUrl ?? ''}
-              onChange={(event) =>
-                setDraft({ ...draft, imageUrl: event.target.value })
-              }
-            />
-          </label>
+          <>
+            <label>
+              {t('elements.mapUrl')}
+              <input
+                type="url"
+                pattern="https://.*"
+                placeholder="https://"
+                maxLength={2048}
+                value={draft.imageUrl ?? ''}
+                aria-describedby={
+                  isUploadedMedia(element?.imageUrl)
+                    ? 'element-map-url-hint'
+                    : undefined
+                }
+                onChange={(event) =>
+                  setDraft({ ...draft, imageUrl: event.target.value })
+                }
+              />
+            </label>
+            {isUploadedMedia(element?.imageUrl) && (
+              <p className="muted" id="element-map-url-hint">
+                {t('elements.mapUrlReplacesFile')}
+              </p>
+            )}
+          </>
         )}
         {draft.type === 'NPC' &&
           npcFields.map((field) => (
@@ -355,6 +384,11 @@ export function ElementsPage() {
     },
     onError: (cause) => setError(message(cause, t)),
   });
+  const refreshElement = (id: string) =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['elements', campaignId] }),
+      queryClient.invalidateQueries({ queryKey: ['element', id] }),
+    ]);
   if (campaign.isError || elements.isError || detail.isError)
     return (
       <main className="page-state" role="alert">
@@ -480,12 +514,19 @@ export function ElementsPage() {
                     )}
                   </div>
                 </div>
+                {selected.coverUrl && (
+                  <ProtectedImage
+                    alt=""
+                    className="element-cover"
+                    imageUrl={selected.coverUrl}
+                  />
+                )}
                 <div className="markdown-preview">
                   <SafeMarkdown content={selected.content} />
                 </div>
                 {selected.type === 'LOCATION' &&
                   selected.imageUrl &&
-                  /^https:\/\//i.test(selected.imageUrl) && (
+                  isMapUrl(selected.imageUrl) && (
                     <ElementMapViewer
                       key={selected.elementId + selected.imageUrl}
                       imageUrl={selected.imageUrl}
@@ -577,6 +618,30 @@ export function ElementsPage() {
                       </button>
                     )}
                   </div>
+                )}
+                {contributor && isAuthor(selected) && (
+                  <section className="element-media-controls">
+                    <div>
+                      <MediaUpload
+                        endpoint={`/elements/${selected.elementId}/cover`}
+                        hasImage={Boolean(selected.coverUrl)}
+                        label={t('elements.cover')}
+                        onChanged={() => refreshElement(selected.elementId)}
+                      />
+                      <p className="muted">{t('elements.coverHint')}</p>
+                    </div>
+                    {selected.type === 'LOCATION' && (
+                      <div>
+                        <MediaUpload
+                          endpoint={`/elements/${selected.elementId}/map`}
+                          hasImage={isUploadedMedia(selected.imageUrl)}
+                          label={t('elements.mapFile')}
+                          onChanged={() => refreshElement(selected.elementId)}
+                        />
+                        <p className="muted">{t('elements.mapFileHint')}</p>
+                      </div>
+                    )}
+                  </section>
                 )}
               </>
             ) : (

@@ -47,6 +47,8 @@ model MediaAsset {
   campaignCover        Campaign?             @relation("CampaignCover")
   backgroundCampaign   Campaign?             @relation("CampaignBackgroundAssets", fields: [backgroundCampaignId], references: [campaignId], onDelete: Cascade)
   backgroundCampaignId String?
+  elementCover         CampaignElement?      @relation("ElementCover")
+  elementMap           CampaignElement?      @relation("ElementMap")
 
   @@index([backgroundCampaignId])
   @@index([purpose])
@@ -147,7 +149,10 @@ model CampaignElement {
   typeData           Json                  @default("{}")
   sortOrder          Int                   @default(0)
   imageUrl           String?
+  coverUrl           String?
+  coverAsset         MediaAsset?           @relation("ElementCover", fields: [coverAssetId], references: [assetId], onDelete: SetNull)
   coverAssetId       String?               @unique
+  mapAsset           MediaAsset?           @relation("ElementMap", fields: [mapAssetId], references: [assetId], onDelete: SetNull)
   mapAssetId         String?               @unique
   investigationCards InvestigationCard[]   @relation("InvestigationCardElement")
 
@@ -296,6 +301,8 @@ enum MediaAssetPurpose {
   CHARACTER_AVATAR
   CAMPAIGN_COVER
   CAMPAIGN_BACKGROUND
+  ELEMENT_COVER
+  LOCATION_MAP
 }
 
 enum CampaignBackgroundSelectionMode {

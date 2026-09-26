@@ -8,6 +8,7 @@ import {
 import type { Response } from 'express';
 
 export const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
+export const MAX_MAP_BYTES = 10 * 1024 * 1024;
 
 @Catch(PayloadTooLargeException)
 export class MediaUploadExceptionFilter implements ExceptionFilter {
@@ -19,7 +20,7 @@ export class MediaUploadExceptionFilter implements ExceptionFilter {
       .json({
         statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
         code: 'media.file_too_large',
-        message: 'The image file exceeds 5 MiB',
+        message: 'The image file is too large',
       });
   }
 }

@@ -129,10 +129,21 @@ export class CampaignService {
     await this.campaignAccess.requireOwner(userId, campaignId);
     const storageKeys = await this.prisma.$transaction(async (tx) => {
       const assets = await tx.mediaAsset.findMany({
-        where: { backgroundCampaignId: campaignId },
-        select: { storageKey: true },
+        where: {
+          OR: [
+            { backgroundCampaignId: campaignId },
+            { campaignCover: { campaignId } },
+            { elementCover: { campaignId } },
+            { elementMap: { campaignId } },
+          ],
+        },
+        select: { assetId: true, storageKey: true },
       });
       await tx.campaign.delete({ where: { campaignId } });
+      // Cover and element assets are only detached by the cascade.
+      await tx.mediaAsset.deleteMany({
+        where: { assetId: { in: assets.map((asset) => asset.assetId) } },
+      });
       return assets.map((asset) => asset.storageKey);
     });
     await Promise.all(
@@ -163,9 +174,9 @@ export class CampaignService {
       backgroundConfig: {
         selectionMode: backgroundSelectionMode,
         fixedBackgroundId,
-        backgrounds: (
-          backgrounds as unknown as CampaignBackgroundDto[]
-        ).filter((background) => background.isEnabled),
+        backgrounds: (backgrounds as unknown as CampaignBackgroundDto[]).filter(
+          (background) => background.isEnabled,
+        ),
       },
     };
   }

@@ -9,12 +9,14 @@ import {
   Res,
   UploadedFile,
   UseFilters,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiBodyOptions,
   ApiConsumes,
   ApiNoContentResponse,
   ApiOkResponse,
@@ -24,16 +26,33 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
+import { LocationMapUploadGuard } from './location-map-upload.guard';
 import {
+  MAX_MAP_BYTES,
   MAX_MEDIA_BYTES,
   MediaUploadExceptionFilter,
 } from './media-upload-exception.filter';
 import { MediaService } from './media.service';
+import { TemporaryFileStorage } from './temporary-file-storage';
 import { ApiCommonErrors } from '../common/swagger/api-errors.decorator';
 import { CampaignBackgroundDto } from '../campaign/dto/campaign-background-settings.dto';
 
 const uploadOptions = {
   limits: { fileSize: MAX_MEDIA_BYTES, files: 1, fields: 0 },
+};
+
+// Location maps may be larger, so they are streamed to a temporary file.
+const mapUploadOptions = {
+  storage: new TemporaryFileStorage(),
+  limits: { fileSize: MAX_MAP_BYTES, files: 1, fields: 0 },
+};
+
+const fileBody: ApiBodyOptions = {
+  schema: {
+    type: 'object',
+    properties: { file: { type: 'string', format: 'binary' } },
+    required: ['file'],
+  },
 };
 
 @ApiTags('Media')
@@ -203,6 +222,95 @@ export class MediaController {
       campaignId,
       backgroundId,
     );
+  }
+
+  @ApiOperation({
+    summary:
+      'Upload and set an element cover (author only; JPEG/PNG/WebP up to 5 MiB, 256–4096 pixels per side, aspect ratio 1:2–2:1; normalized to at most 1024×1024 WebP)',
+  })
+  @ApiParam({ name: 'elementId', format: 'uuid' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody(fileBody)
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        assetId: { type: 'string', format: 'uuid' },
+        coverUrl: { type: 'string' },
+      },
+    },
+  })
+  @ApiCommonErrors()
+  @Post('elements/:elementId/cover')
+  @UseInterceptors(FileInterceptor('file', uploadOptions))
+  uploadElementCover(
+    @Request() request: { user: TokenPayloadDto },
+    @Param('elementId') elementId: string,
+    @UploadedFile() file: { buffer: Buffer },
+  ) {
+    return this.mediaService.replaceElementCover(
+      request.user.userId,
+      elementId,
+      file,
+    );
+  }
+
+  @ApiOperation({ summary: 'Delete an element cover (author only)' })
+  @ApiParam({ name: 'elementId', format: 'uuid' })
+  @ApiNoContentResponse()
+  @ApiCommonErrors({ badRequest: false })
+  @Delete('elements/:elementId/cover')
+  @HttpCode(204)
+  async deleteElementCover(
+    @Request() request: { user: TokenPayloadDto },
+    @Param('elementId') elementId: string,
+  ): Promise<void> {
+    await this.mediaService.deleteElementCover(request.user.userId, elementId);
+  }
+
+  @ApiOperation({
+    summary:
+      'Upload and set a location map (author of a LOCATION only; JPEG/PNG/WebP up to 10 MiB, long side 1024–8192 pixels, short side at least 256, at most 40 megapixels; normalized to at most 4096 pixels per side WebP)',
+  })
+  @ApiParam({ name: 'elementId', format: 'uuid' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody(fileBody)
+  @ApiOkResponse({
+    schema: {
+      type: 'object',
+      properties: {
+        assetId: { type: 'string', format: 'uuid' },
+        imageUrl: { type: 'string' },
+      },
+    },
+  })
+  @ApiCommonErrors()
+  @Post('elements/:elementId/map')
+  @UseGuards(LocationMapUploadGuard)
+  @UseInterceptors(FileInterceptor('file', mapUploadOptions))
+  uploadLocationMap(
+    @Request() request: { user: TokenPayloadDto },
+    @Param('elementId') elementId: string,
+    @UploadedFile() file: { path: string } | undefined,
+  ) {
+    return this.mediaService.replaceLocationMap(
+      request.user.userId,
+      elementId,
+      file,
+    );
+  }
+
+  @ApiOperation({ summary: 'Delete an uploaded location map (author only)' })
+  @ApiParam({ name: 'elementId', format: 'uuid' })
+  @ApiNoContentResponse()
+  @ApiCommonErrors({ badRequest: false })
+  @Delete('elements/:elementId/map')
+  @HttpCode(204)
+  async deleteLocationMap(
+    @Request() request: { user: TokenPayloadDto },
+    @Param('elementId') elementId: string,
+  ): Promise<void> {
+    await this.mediaService.deleteLocationMap(request.user.userId, elementId);
   }
 
   @ApiOperation({ summary: 'Get an authorized media asset' })
