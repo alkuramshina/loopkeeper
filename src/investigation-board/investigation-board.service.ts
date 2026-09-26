@@ -19,6 +19,7 @@ import {
   UpdateInvestigationLinkDto,
 } from './dto/link.dto';
 import { UpdateInvestigationBoardNodeDto } from './dto/node.dto';
+import { memberCampaignWhere } from '../campaign/access/campaign-membership';
 
 const cardInclude = {
   node: true,
@@ -390,9 +391,7 @@ export class InvestigationBoardService {
       where: {
         cardId,
         AND: [this.visibleCardWhere],
-        campaign: {
-          OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-        },
+        campaign: memberCampaignWhere(userId),
       },
       select: { cardId: true, campaignId: true, cardKind: true },
     });
@@ -407,9 +406,7 @@ export class InvestigationBoardService {
         linkId,
         fromCard: { is: this.visibleCardWhere },
         toCard: { is: this.visibleCardWhere },
-        campaign: {
-          OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-        },
+        campaign: memberCampaignWhere(userId),
       },
       select: { linkId: true, campaignId: true },
     });

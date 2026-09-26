@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addEdge,
@@ -29,6 +29,7 @@ import {
 } from './use-campaign-background';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { errorMessage, PageError } from '../../components/page-error';
+import { formText } from '../../components/form-text';
 
 type NodeDimensions = {
   x: number;
@@ -194,11 +195,11 @@ function CardEditor({
           method: 'POST',
           body: JSON.stringify({
             cardKind: 'FREE',
-            title: String(form.get('title') ?? ''),
-            content: String(form.get('content') ?? '') || undefined,
-            tags: parseTags(String(form.get('tags') ?? '')),
-            color: String(form.get('color') ?? '') || undefined,
-            icon: String(form.get('icon') ?? '') || undefined,
+            title: formText(form, 'title'),
+            content: formText(form, 'content') || undefined,
+            tags: parseTags(formText(form, 'tags')),
+            color: formText(form, 'color') || undefined,
+            icon: formText(form, 'icon') || undefined,
           }),
         });
       }
@@ -208,20 +209,20 @@ function CardEditor({
           body: JSON.stringify({
             ...(card.cardKind === 'FREE'
               ? {
-                  title: String(form.get('title') ?? ''),
-                  content: String(form.get('content') ?? '') || undefined,
+                  title: formText(form, 'title'),
+                  content: formText(form, 'content') || undefined,
                 }
               : {}),
-            tags: parseTags(String(form.get('tags') ?? '')),
-            color: String(form.get('color') ?? '') || undefined,
-            icon: String(form.get('icon') ?? '') || undefined,
+            tags: parseTags(formText(form, 'tags')),
+            color: formText(form, 'color') || undefined,
+            icon: formText(form, 'icon') || undefined,
           }),
         });
       }
       return api.request<BoardLink>(`/investigation-links/${link?.linkId}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          label: String(form.get('label') ?? '') || undefined,
+          label: formText(form, 'label') || undefined,
         }),
       });
     },
@@ -385,7 +386,7 @@ function parseTags(value: string) {
 
 export function BoardPage() {
   const { campaignId } = useParams();
-  const { api, profile, signOut } = useAuth();
+  const { api } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [editor, setEditor] = useState<EditorTarget>();

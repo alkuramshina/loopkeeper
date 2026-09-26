@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
-
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { CampaignRole } from '@prisma/client';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from './access/campaign-access.service';
 
 import { UpdateMemberDto } from './dto/update-member.dto';
@@ -45,6 +46,7 @@ export class CampaignMemberService {
     updateDto: UpdateMemberDto,
   ) {
     await this.campaignAccess.requireOwner(ownerId, campaignId);
+    await this.requireManageableMember(campaignId, userId);
 
     return this.prisma.campaignMember.update({
       where: { userId_campaignId: { userId, campaignId } },
@@ -55,9 +57,33 @@ export class CampaignMemberService {
 
   async remove(ownerId: string, campaignId: string, userId: string) {
     await this.campaignAccess.requireOwner(ownerId, campaignId);
+    await this.requireManageableMember(campaignId, userId);
 
+    // The participant's personal state cascades with the membership row.
     await this.prisma.campaignMember.delete({
       where: { userId_campaignId: { userId, campaignId } },
     });
+  }
+
+  // The OWNER row is never changed or removed through member management.
+  private async requireManageableMember(campaignId: string, userId: string) {
+    const member = await this.prisma.campaignMember.findUnique({
+      where: { userId_campaignId: { userId, campaignId } },
+      select: { campaignRole: true },
+    });
+    if (!member) {
+      throw new DomainException(
+        HttpStatus.NOT_FOUND,
+        'member.not_found',
+        'Campaign member not found',
+      );
+    }
+    if (member.campaignRole === CampaignRole.OWNER) {
+      throw new DomainException(
+        HttpStatus.CONFLICT,
+        'member.owner_protected',
+        'The campaign owner cannot be changed or removed',
+      );
+    }
   }
 }

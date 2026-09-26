@@ -1,9 +1,10 @@
-import { CampaignRole } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum } from 'class-validator';
+import { IsIn } from 'class-validator';
+import type { AssignableCampaignRole } from './assignable-campaign-role';
+import { assignableCampaignRoles } from './assignable-campaign-role';
 
 export class CreateInvitationDto {
-  @ApiProperty({ enum: CampaignRole })
-  @IsEnum(CampaignRole)
-  role!: CampaignRole;
+  @ApiProperty({ enum: assignableCampaignRoles })
+  @IsIn(assignableCampaignRoles)
+  role!: AssignableCampaignRole;
 }

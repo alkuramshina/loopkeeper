@@ -17,11 +17,15 @@ async function openAs(browser: Browser, user: TestUser, path: string) {
 
 function uploaded(page: Page, path: RegExp) {
   return page.waitForResponse(
-    (response) => response.request().method() === 'POST' && path.test(response.url()),
+    (response) =>
+      response.request().method() === 'POST' && path.test(response.url()),
   );
 }
 
-test('P5b: a user sets and removes an account avatar', async ({ page, request }) => {
+test('P5b: a user sets and removes an account avatar', async ({
+  page,
+  request,
+}) => {
   const { owner } = await createCampaignWithRoles(request);
   await signInAs(page, owner);
   await page.goto('/settings/account');
@@ -29,14 +33,18 @@ test('P5b: a user sets and removes an account avatar', async ({ page, request })
   await expect(avatar).toHaveAttribute('src', /^data:image\/svg\+xml/);
 
   const tooSmall = uploaded(page, /\/users\/me\/avatar$/);
-  await page.getByLabel('Аватар', { exact: true }).setInputFiles(await pngFile(100, 100));
+  await page
+    .getByLabel('Аватар', { exact: true })
+    .setInputFiles(await pngFile(100, 100));
   expect((await tooSmall).status()).toBe(400);
   await expect(page.getByRole('alert')).toHaveText(
     'Каждая сторона аватара должна быть от 256 до 2048 пикселей.',
   );
 
   const done = uploaded(page, /\/users\/me\/avatar$/);
-  await page.getByLabel('Аватар', { exact: true }).setInputFiles(await pngFile(400, 300));
+  await page
+    .getByLabel('Аватар', { exact: true })
+    .setInputFiles(await pngFile(400, 300));
   expect((await done).ok()).toBeTruthy();
   await expect(avatar).toHaveAttribute('src', /^blob:/);
   await expect(page.getByRole('alert')).toHaveCount(0);
@@ -60,7 +68,9 @@ test('P5b: a player sets the avatar of their character, others only see it', asy
   const avatar = card.getByRole('img', { name: 'Алекс' });
   await expect(avatar).toHaveAttribute('src', /^data:image\/svg\+xml/);
   const done = uploaded(page, /\/characters\/[^/]+\/avatar$/);
-  await card.getByLabel('Аватар персонажа').setInputFiles(await pngFile(512, 512));
+  await card
+    .getByLabel('Аватар персонажа')
+    .setInputFiles(await pngFile(512, 512));
   expect((await done).ok()).toBeTruthy();
   await expect(avatar).toHaveAttribute('src', /^blob:/);
 
@@ -71,7 +81,9 @@ test('P5b: a player sets the avatar of their character, others only see it', asy
     /^blob:/,
   );
   await expect(ownerCard.locator('input[type=file]')).toHaveCount(0);
-  await expect(ownerCard.getByRole('button', { name: 'Редактировать' })).toHaveCount(0);
+  await expect(
+    ownerCard.getByRole('button', { name: 'Редактировать' }),
+  ).toHaveCount(0);
 });
 
 test('P5b: the campaign cover reaches every member, including viewers', async ({
@@ -84,14 +96,23 @@ test('P5b: the campaign cover reaches every member, including viewers', async ({
   await page.goto(`/campaigns/${campaignId}/settings`);
 
   const square = uploaded(page, /\/campaigns\/[^/]+\/cover$/);
-  await page.getByLabel('Обложка кампании').setInputFiles(await pngFile(800, 800));
+  await page
+    .getByLabel('Обложка кампании')
+    .setInputFiles(await pngFile(800, 800));
   expect((await square).status()).toBe(400);
-  await expect(page.getByRole('alert')).toHaveText(/^Обложка должна быть горизонтальной/);
+  await expect(page.getByRole('alert')).toHaveText(
+    /^Обложка должна быть горизонтальной/,
+  );
 
   const done = uploaded(page, /\/campaigns\/[^/]+\/cover$/);
-  await page.getByLabel('Обложка кампании').setInputFiles(await pngFile(1200, 700));
+  await page
+    .getByLabel('Обложка кампании')
+    .setInputFiles(await pngFile(1200, 700));
   expect((await done).ok()).toBeTruthy();
-  await expect(page.locator('img.campaign-cover-preview')).toHaveAttribute('src', /^blob:/);
+  await expect(page.locator('img.campaign-cover-preview')).toHaveAttribute(
+    'src',
+    /^blob:/,
+  );
 
   const viewerPage = await openAs(browser, viewer, '/campaigns');
   const cover = viewerPage.locator('.campaign-card img.campaign-cover');
@@ -106,6 +127,8 @@ test('P5b: the campaign cover reaches every member, including viewers', async ({
     .click();
   await expect(page.locator('img.campaign-cover-preview')).toHaveCount(0);
   await viewerPage.reload();
-  await expect(viewerPage.getByRole('link', { name: /Тайна у озера/ })).toBeVisible();
+  await expect(
+    viewerPage.getByRole('link', { name: /Тайна у озера/ }),
+  ).toBeVisible();
   await expect(cover).toHaveCount(0);
 });

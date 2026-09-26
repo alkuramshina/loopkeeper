@@ -1,15 +1,15 @@
-import { CampaignElementAccess, CampaignRole, Prisma } from '@prisma/client';
+import { CampaignElementAccess, Prisma } from '@prisma/client';
+import {
+  contributorRoles,
+  memberCampaignWhere,
+  ownerCampaignWhere,
+} from '../campaign/access/campaign-membership';
 
 // Authors keep rights on their elements only while they remain the campaign
 // owner or a PLAYER member.
 export const authorCampaignWhere = (
   userId: string,
-): Prisma.CampaignWhereInput => ({
-  OR: [
-    { ownerId: userId },
-    { members: { some: { userId, campaignRole: CampaignRole.PLAYER } } },
-  ],
-});
+): Prisma.CampaignWhereInput => memberCampaignWhere(userId, contributorRoles);
 
 // Elements the user may read right now. Element media delivery reuses this
 // rule so that images follow the current access of their element.
@@ -19,13 +19,11 @@ export const readableElementWhere = (
   OR: [
     {
       access: CampaignElementAccess.SHARED,
-      campaign: {
-        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-      },
+      campaign: memberCampaignWhere(userId),
     },
     {
       access: CampaignElementAccess.MASTER_ONLY,
-      campaign: { ownerId: userId },
+      campaign: ownerCampaignWhere(userId),
     },
     { createdById: userId, campaign: authorCampaignWhere(userId) },
   ],

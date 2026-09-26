@@ -5,6 +5,7 @@ import { TFunction } from 'i18next';
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { Avatar } from '../../components/avatar';
+import { formText } from '../../components/form-text';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -31,7 +32,7 @@ export function AccountSettingsPage() {
     setSavingProfile(true);
     try {
       const form = new FormData(event.currentTarget);
-      await updateProfile({ name: String(form.get('name') ?? '').trim() });
+      await updateProfile({ name: formText(form, 'name').trim() });
       setProfileSaved(true);
     } catch (cause) {
       setProfileError(apiErrorMessage(cause, t));
@@ -74,8 +75,8 @@ export function AccountSettingsPage() {
     event.preventDefault();
     setPasswordError(undefined);
     const form = new FormData(event.currentTarget);
-    const newPassword = String(form.get('newPassword') ?? '');
-    const confirmation = String(form.get('confirmation') ?? '');
+    const newPassword = formText(form, 'newPassword');
+    const confirmation = formText(form, 'confirmation');
     if (newPassword !== confirmation) {
       setPasswordError(t('account.passwordMismatch'));
       return;
@@ -91,7 +92,7 @@ export function AccountSettingsPage() {
         }),
       });
       await signOut();
-      navigate('/sign-in', { replace: true });
+      void navigate('/sign-in', { replace: true });
     } catch (cause) {
       setPasswordError(apiErrorMessage(cause, t));
       setChangingPassword(false);
@@ -101,7 +102,10 @@ export function AccountSettingsPage() {
   return (
     <main className="settings-page">
       <header className="settings-topbar">
-        <button className="button-ghost" onClick={() => navigate('/campaigns')}>
+        <button
+          className="button-ghost"
+          onClick={() => void navigate('/campaigns')}
+        >
           ← {t('workspace.backToCampaigns')}
         </button>
       </header>
@@ -110,7 +114,7 @@ export function AccountSettingsPage() {
         <h1>{t('account.title')}</h1>
       </section>
       <div className="settings-grid">
-        <form className="panel" onSubmit={saveProfile}>
+        <form className="panel" onSubmit={(event) => void saveProfile(event)}>
           <div className="section-heading">
             <h2>{t('account.profile')}</h2>
             {profileSaved && (
@@ -177,7 +181,10 @@ export function AccountSettingsPage() {
           )}
           <button disabled={savingProfile}>{t('common.save')}</button>
         </form>
-        <form className="panel" onSubmit={changePassword}>
+        <form
+          className="panel"
+          onSubmit={(event) => void changePassword(event)}
+        >
           <div className="section-heading">
             <h2>{t('account.password')}</h2>
           </div>

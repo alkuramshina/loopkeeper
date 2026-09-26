@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const anonymousApi = new ApiClient(
           () => null,
-          async () => null,
+          () => Promise.resolve(null),
         );
         const result = await anonymousApi.request<AuthResponse>(
           '/auth/refresh',
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accessToken.current = result.accessToken;
         const refreshedApi = new ApiClient(
           () => result.accessToken,
-          async () => null,
+          () => Promise.resolve(null),
         );
         setProfile(await refreshedApi.request<Profile>('/auth/me'));
         return result.accessToken;
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (path: string, body: Record<string, string | undefined>) => {
       const anonymousApi = new ApiClient(
         () => null,
-        async () => null,
+        () => Promise.resolve(null),
       );
       const result = await anonymousApi.request<AuthResponse>(path, {
         method: 'POST',

@@ -95,14 +95,7 @@ export class CampaignInvitationService {
           userId_campaignId: { userId, campaignId: invitation.campaignId },
         },
       });
-      const campaign = await tx.campaign.findUnique({
-        where: { campaignId: invitation.campaignId },
-        select: { ownerId: true },
-      });
-
-      if (!campaign || campaign.ownerId === userId) {
-        throw this.alreadyMember();
-      }
+      // The owner already has a membership row, so this covers them too.
       if (existingMember) {
         throw this.alreadyMember();
       }

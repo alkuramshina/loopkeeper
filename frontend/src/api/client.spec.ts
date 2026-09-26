@@ -8,9 +8,9 @@ describe('ApiClient', () => {
 
   it('refreshes once and retries a protected request after 401', async () => {
     let token: string | null = 'expired-access-token';
-    const refresh = vi.fn(async () => {
+    const refresh = vi.fn(() => {
       token = 'fresh-access-token';
-      return token;
+      return Promise.resolve(token);
     });
     const fetchMock = vi
       .fn()
@@ -24,7 +24,9 @@ describe('ApiClient', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const api = new ApiClient(() => token, refresh);
-    await expect(api.request<{ campaignId: string }>('/campaigns/campaign-1')).resolves.toEqual({
+    await expect(
+      api.request<{ campaignId: string }>('/campaigns/campaign-1'),
+    ).resolves.toEqual({
       campaignId: 'campaign-1',
     });
 
@@ -36,7 +38,7 @@ describe('ApiClient', () => {
   });
 
   it('does not retry a request after its retry also returns 401', async () => {
-    const refresh = vi.fn(async () => 'fresh-access-token');
+    const refresh = vi.fn(() => Promise.resolve('fresh-access-token'));
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response(null, { status: 401 }))
@@ -44,22 +46,38 @@ describe('ApiClient', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     const api = new ApiClient(() => 'expired-access-token', refresh);
-    await expect(api.request('/campaigns/campaign-1')).rejects.toBeInstanceOf(ApiError);
+    await expect(api.request('/campaigns/campaign-1')).rejects.toBeInstanceOf(
+      ApiError,
+    );
 
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('returns undefined for no-content responses', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
-    const api = new ApiClient(() => 'access-token', async () => null);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
+    );
+    const api = new ApiClient(
+      () => 'access-token',
+      () => Promise.resolve(null),
+    );
 
-    await expect(api.request<void>('/auth/logout', { method: 'POST' })).resolves.toBeUndefined();
+    await expect(
+      api.request<void>('/auth/logout', { method: 'POST' }),
+    ).resolves.toBeUndefined();
   });
 
   it('returns undefined for a successful response with an empty body', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 200 })));
-    const api = new ApiClient(() => 'access-token', async () => null);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('', { status: 200 })),
+    );
+    const api = new ApiClient(
+      () => 'access-token',
+      () => Promise.resolve(null),
+    );
 
     await expect(
       api.request<void>('/campaigns/campaign-1', { method: 'DELETE' }),
@@ -81,9 +99,14 @@ describe('ApiClient', () => {
         ),
       ),
     );
-    const api = new ApiClient(() => 'access-token', async () => null);
+    const api = new ApiClient(
+      () => 'access-token',
+      () => Promise.resolve(null),
+    );
 
-    await expect(api.request('/campaigns', { method: 'POST' })).rejects.toMatchObject({
+    await expect(
+      api.request('/campaigns', { method: 'POST' }),
+    ).rejects.toMatchObject({
       status: 400,
       code: 'validation.failed',
       violations: [{ field: 'title', code: 'validation.required' }],
@@ -93,9 +116,16 @@ describe('ApiClient', () => {
   it('falls back to internal.error when the error body is not JSON', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(new Response('<html>Bad gateway</html>', { status: 502 })),
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response('<html>Bad gateway</html>', { status: 502 }),
+        ),
     );
-    const api = new ApiClient(() => 'access-token', async () => null);
+    const api = new ApiClient(
+      () => 'access-token',
+      () => Promise.resolve(null),
+    );
 
     await expect(api.request('/campaigns')).rejects.toMatchObject({
       status: 502,

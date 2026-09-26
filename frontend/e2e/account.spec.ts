@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { registerUser, signInAs } from './support/api';
 
-test('M9: renames the account and changes the password', async ({ page, request }) => {
+test('M9: renames the account and changes the password', async ({
+  page,
+  request,
+}) => {
   const user = await registerUser(request, 'Старое имя');
   await signInAs(page, user);
   await page.goto('/campaigns');
@@ -17,19 +20,28 @@ test('M9: renames the account and changes the password', async ({ page, request 
   await page.reload();
   await expect(page.getByLabel('Имя')).toHaveValue('Новое имя');
 
-  const passwordForm = page.locator('form').filter({ hasText: 'Текущий пароль' });
+  const passwordForm = page
+    .locator('form')
+    .filter({ hasText: 'Текущий пароль' });
   const newPassword = 'another-browser-password';
   let changeRequests = 0;
   page.on('request', (outgoing) => {
-    if (outgoing.url().endsWith('/api/auth/change-password')) changeRequests += 1;
+    if (outgoing.url().endsWith('/api/auth/change-password'))
+      changeRequests += 1;
   });
 
   // Mismatched confirmation is caught before any API request.
   await passwordForm.getByLabel('Текущий пароль').fill(user.password);
-  await passwordForm.getByLabel('Новый пароль', { exact: true }).fill(newPassword);
-  await passwordForm.getByLabel('Повторите новый пароль').fill('something-else');
+  await passwordForm
+    .getByLabel('Новый пароль', { exact: true })
+    .fill(newPassword);
+  await passwordForm
+    .getByLabel('Повторите новый пароль')
+    .fill('something-else');
   await passwordForm.getByRole('button', { name: 'Изменить пароль' }).click();
-  await expect(passwordForm.getByRole('alert')).toHaveText('Новые пароли не совпадают');
+  await expect(passwordForm.getByRole('alert')).toHaveText(
+    'Новые пароли не совпадают',
+  );
   expect(changeRequests).toBe(0);
 
   await passwordForm.getByLabel('Текущий пароль').fill('not-my-password');

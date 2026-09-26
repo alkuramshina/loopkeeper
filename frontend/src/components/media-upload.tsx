@@ -10,7 +10,12 @@ type MediaUploadProps = {
   onChanged: () => Promise<unknown>;
 };
 
-export function MediaUpload({ endpoint, hasImage, label, onChanged }: MediaUploadProps) {
+export function MediaUpload({
+  endpoint,
+  hasImage,
+  label,
+  onChanged,
+}: MediaUploadProps) {
   const { api } = useAuth();
   const { t } = useTranslation();
   const [pending, setPending] = useState(false);
@@ -68,12 +73,21 @@ export function MediaUpload({ endpoint, hasImage, label, onChanged }: MediaUploa
         />
       </label>
       {hasImage && (
-        <button className="button-ghost" disabled={pending} onClick={() => void remove()} type="button">
+        <button
+          className="button-ghost"
+          disabled={pending}
+          onClick={() => void remove()}
+          type="button"
+        >
           {t('common.delete')}
         </button>
       )}
       {pending && <span role="status">{t('common.loading')}</span>}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
       <p className="muted">{t('media.uploadNotice')}</p>
     </div>
   );

@@ -3,7 +3,10 @@ import { createCampaignWithRoles, registerUser, signInAs } from './support/api';
 
 // M13: loading, empty, unavailable and network failure must look different.
 
-test('M13: a new campaign shows empty states, not errors', async ({ page, request }) => {
+test('M13: a new campaign shows empty states, not errors', async ({
+  page,
+  request,
+}) => {
   const { campaignId, owner } = await createCampaignWithRoles(request);
   await signInAs(page, owner);
 
@@ -30,16 +33,23 @@ test('M13: an outsider gets the same neutral unavailable state everywhere', asyn
   for (const section of ['characters', 'elements', 'members', 'settings']) {
     await page.goto(`/campaigns/${campaignId}/${section}`);
     await expect(page.getByRole('alert')).toHaveText('Ресурс недоступен.');
-    await expect(page.getByRole('button', { name: 'Повторить' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Повторить' })).toHaveCount(
+      0,
+    );
   }
 });
 
-test('M13: a failed load says so and recovers with a retry', async ({ page, request }) => {
+test('M13: a failed load says so and recovers with a retry', async ({
+  page,
+  request,
+}) => {
   const { campaignId, player } = await createCampaignWithRoles(request);
   await signInAs(page, player);
 
   // Campaign list: a failure must not look like "no campaigns yet".
-  await page.route('**/api/campaigns', (route) => route.abort('connectionrefused'));
+  await page.route('**/api/campaigns', (route) =>
+    route.abort('connectionrefused'),
+  );
   await page.goto('/campaigns');
   await expect(page.getByRole('alert')).toHaveText(
     'Не удалось загрузить кампании. Нет связи с сервером. Проверьте подключение и попробуйте снова.',
@@ -61,7 +71,10 @@ test('M13: a failed load says so and recovers with a retry', async ({ page, requ
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
-test('M13: a slow list shows a loading state first', async ({ page, request }) => {
+test('M13: a slow list shows a loading state first', async ({
+  page,
+  request,
+}) => {
   const { campaignId, owner } = await createCampaignWithRoles(request);
   await signInAs(page, owner);
   let release: () => void = () => undefined;

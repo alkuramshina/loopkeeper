@@ -93,7 +93,10 @@ export function CampaignListPage() {
             }}
             title={t('campaigns.newCampaign')}
           >
-            <form className="campaign-create-card" onSubmit={create}>
+            <form
+              className="campaign-create-card"
+              onSubmit={(event) => void create(event)}
+            >
               <label>
                 {t('campaigns.campaignTitle')}
                 <input name="title" required />

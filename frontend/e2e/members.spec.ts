@@ -37,7 +37,9 @@ test('the master invites a player, changes the role and removes the member', asy
 
   await signInAs(page, owner);
   await page.goto(membersPage);
-  await expect(page.getByText('Кроме мастера в кампании пока никого нет.')).toBeVisible();
+  await expect(
+    page.getByText('Кроме мастера в кампании пока никого нет.'),
+  ).toBeVisible();
   const invitationPath = await createInvitationLink(page, 'PLAYER');
   await expect(page.getByText('Активно')).toBeVisible();
 
@@ -46,9 +48,13 @@ test('the master invites a player, changes the role and removes the member', asy
   const memberPage = await memberContext.newPage();
   await signInAs(memberPage, member);
   await memberPage.goto(invitationPath);
-  await expect(memberPage).toHaveURL(new RegExp(`/campaigns/${campaignId}(/[a-z]+)?$`));
+  await expect(memberPage).toHaveURL(
+    new RegExp(`/campaigns/${campaignId}(/[a-z]+)?$`),
+  );
   await memberPage.goto(`/campaigns/${campaignId}/elements`);
-  await expect(memberPage.getByRole('button', { name: 'Новая заметка' })).toBeVisible();
+  await expect(
+    memberPage.getByRole('button', { name: 'Новая заметка' }),
+  ).toBeVisible();
 
   await page.reload();
   await expect(page.getByText('Принято')).toBeVisible();
@@ -60,8 +66,12 @@ test('the master invites a player, changes the role and removes the member', asy
   await role.selectOption('VIEWER');
   await demoted;
   await memberPage.reload();
-  await expect(memberPage.getByRole('heading', { name: 'Каталог кампании' })).toBeVisible();
-  await expect(memberPage.getByRole('button', { name: 'Новая заметка' })).toHaveCount(0);
+  await expect(
+    memberPage.getByRole('heading', { name: 'Каталог кампании' }),
+  ).toBeVisible();
+  await expect(
+    memberPage.getByRole('button', { name: 'Новая заметка' }),
+  ).toHaveCount(0);
 
   // Removal asks for confirmation and takes the campaign away from the member.
   page.once('dialog', (confirm) => void confirm.dismiss());
@@ -72,16 +82,24 @@ test('the master invites a player, changes the role and removes the member', asy
   const removed = memberSaved(page, 'DELETE');
   await page.getByRole('button', { name: 'Удалить' }).click();
   await removed;
-  await expect(page.getByText('Кроме мастера в кампании пока никого нет.')).toBeVisible();
+  await expect(
+    page.getByText('Кроме мастера в кампании пока никого нет.'),
+  ).toBeVisible();
 
   expect(await listCampaignTitles(request, member)).toEqual([]);
   await memberPage.goto('/campaigns');
   await expect(memberPage.getByText('Здесь пока нет кампаний')).toBeVisible();
   await memberPage.goto(`/campaigns/${campaignId}/board`);
-  await expect(memberPage.getByRole('alert')).toHaveText('Этот ресурс недоступен.');
+  await expect(memberPage.getByRole('alert')).toHaveText(
+    'Этот ресурс недоступен.',
+  );
 });
 
-test('a revoked invitation link no longer works', async ({ browser, page, request }) => {
+test('a revoked invitation link no longer works', async ({
+  browser,
+  page,
+  request,
+}) => {
   const owner = await registerUser(request, 'Мастер');
   const latecomer = await registerUser(request, 'Опоздавший');
   const campaignId = await createCampaign(request, owner);
@@ -99,6 +117,8 @@ test('a revoked invitation link no longer works', async ({ browser, page, reques
   const latecomerPage = await context.newPage();
   await signInAs(latecomerPage, latecomer);
   await latecomerPage.goto(invitationPath);
-  await expect(latecomerPage.getByRole('alert')).toHaveText('Приглашение недоступно.');
+  await expect(latecomerPage.getByRole('alert')).toHaveText(
+    'Приглашение недоступно.',
+  );
   expect(await listCampaignTitles(request, latecomer)).toEqual([]);
 });

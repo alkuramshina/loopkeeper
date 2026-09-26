@@ -32,7 +32,9 @@ function fillPasswords(current: string, next: string, confirmation: string) {
   fireEvent.change(screen.getByLabelText('Текущий пароль'), {
     target: { value: current },
   });
-  fireEvent.change(screen.getByLabelText('Новый пароль'), { target: { value: next } });
+  fireEvent.change(screen.getByLabelText('Новый пароль'), {
+    target: { value: next },
+  });
   fireEvent.change(screen.getByLabelText('Повторите новый пароль'), {
     target: { value: confirmation },
   });
@@ -51,7 +53,9 @@ describe('AccountSettingsPage', () => {
     renderPage();
 
     expect(screen.getByLabelText('Электронная почта')).toBeDisabled();
-    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: '  Мира  ' } });
+    fireEvent.change(screen.getByLabelText('Имя'), {
+      target: { value: '  Мира  ' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
 
     expect(await screen.findByText('Сохранено')).toBeInTheDocument();
@@ -63,13 +67,20 @@ describe('AccountSettingsPage', () => {
 
     fillPasswords('current-password', 'new-password-1', 'new-password-2');
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Новые пароли не совпадают');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Новые пароли не совпадают',
+    );
     expect(request).not.toHaveBeenCalled();
   });
 
   it('shows a localized error for a wrong current password', async () => {
     request.mockRejectedValue(
-      new ApiError(401, 'auth.invalid_credentials', 'Invalid current password', undefined),
+      new ApiError(
+        401,
+        'auth.invalid_credentials',
+        'Invalid current password',
+        undefined,
+      ),
     );
     renderPage();
 
@@ -79,7 +90,9 @@ describe('AccountSettingsPage', () => {
       'Не удалось войти. Проверьте почту и пароль.',
     );
     expect(signOut).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Изменить пароль' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Изменить пароль' }),
+    ).toBeEnabled();
   });
 
   it('signs out and returns to sign-in after a password change', async () => {

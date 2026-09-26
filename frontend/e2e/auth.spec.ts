@@ -11,18 +11,25 @@ import {
 function countRefreshRequests(page: Page) {
   const counter = { value: 0 };
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().endsWith('/api/auth/refresh'))
+    if (
+      request.method() === 'POST' &&
+      request.url().endsWith('/api/auth/refresh')
+    )
       counter.value += 1;
   });
   return counter;
 }
 
-test('signs up, restores the session on reload and signs out', async ({ page }) => {
+test('signs up, restores the session on reload and signs out', async ({
+  page,
+}) => {
   await page.goto('/sign-up');
   await page.getByLabel('Имя').fill('Новичок');
   await page.getByLabel('Электронная почта').fill(uniqueEmail('signup'));
   await page.getByLabel('Пароль').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Создать аккаунт', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Создать аккаунт', exact: true })
+    .click();
 
   await expect(page).toHaveURL(/\/campaigns$/);
   await expect(
@@ -113,7 +120,11 @@ test('a new user signs up from an invitation link and joins the campaign', async
   request,
 }) => {
   const owner = await registerUser(request, 'Мастер');
-  const campaignId = await createCampaign(request, owner, 'Кампания для новичка');
+  const campaignId = await createCampaign(
+    request,
+    owner,
+    'Кампания для новичка',
+  );
   const token = await createInvitation(request, owner, campaignId, 'VIEWER');
 
   await page.goto(`/invitations/${token}`);
@@ -123,8 +134,12 @@ test('a new user signs up from an invitation link and joins the campaign', async
   await page.getByLabel('Имя').fill('Новичок');
   await page.getByLabel('Электронная почта').fill(uniqueEmail('invited'));
   await page.getByLabel('Пароль').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Создать аккаунт', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Создать аккаунт', exact: true })
+    .click();
 
   await expect(page).toHaveURL(`/campaigns/${campaignId}/characters`);
-  await expect(page.getByText('Наблюдатель', { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText('Наблюдатель', { exact: true }).first(),
+  ).toBeVisible();
 });

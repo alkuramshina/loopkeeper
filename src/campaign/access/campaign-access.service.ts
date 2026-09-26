@@ -2,81 +2,63 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { CampaignRole } from '@prisma/client';
 import { DomainException } from '../../common/exceptions/domain.exception';
 import { PrismaService } from '../../prisma/prisma.service';
+import { contributorRoles } from './campaign-membership';
 
 @Injectable()
 export class CampaignAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getAccess(userId: string, campaignId: string) {
-    const campaign = await this.prisma.campaign.findFirst({
-      where: {
-        campaignId,
-        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-      },
-      select: {
-        ownerId: true,
-        members: {
-          where: { userId },
-          select: { campaignRole: true },
-        },
-      },
-    });
-
-    if (!campaign) {
+    const campaignRole = await this.findRole(userId, campaignId);
+    if (!campaignRole) {
       throw this.campaignNotFound();
     }
 
     return {
-      isOwner: campaign.ownerId === userId,
-      campaignRole: campaign.members[0]?.campaignRole,
+      isOwner: campaignRole === CampaignRole.OWNER,
+      campaignRole,
     };
   }
 
   async requireOwner(userId: string, campaignId: string): Promise<void> {
-    const campaign = await this.prisma.campaign.findFirst({
-      where: { campaignId, ownerId: userId },
-      select: { campaignId: true },
-    });
-
-    if (!campaign) {
-      throw this.campaignNotFound();
-    }
+    await this.requireRole(userId, campaignId, [CampaignRole.OWNER]);
   }
 
   async requireBoardContributor(
     userId: string,
     campaignId: string,
   ): Promise<void> {
-    const access = await this.getAccess(userId, campaignId);
-    if (access.isOwner || access.campaignRole === CampaignRole.PLAYER) {
-      return;
-    }
-    throw this.campaignNotFound();
+    await this.requireRole(userId, campaignId, contributorRoles);
   }
 
   async requirePlayer(userId: string, campaignId: string): Promise<void> {
-    const membership = await this.prisma.campaignMember.findFirst({
-      where: { campaignId, userId, campaignRole: CampaignRole.PLAYER },
-      select: { memberId: true },
-    });
+    await this.requireRole(userId, campaignId, [CampaignRole.PLAYER]);
+  }
 
-    if (!membership) {
+  async requireMember(userId: string, campaignId: string): Promise<void> {
+    await this.getAccess(userId, campaignId);
+  }
+
+  private async requireRole(
+    userId: string,
+    campaignId: string,
+    roles: CampaignRole[],
+  ): Promise<void> {
+    const campaignRole = await this.findRole(userId, campaignId);
+    if (!campaignRole || !roles.includes(campaignRole)) {
       throw this.campaignNotFound();
     }
   }
 
-  async requireMember(userId: string, campaignId: string): Promise<void> {
-    const campaign = await this.prisma.campaign.findFirst({
-      where: {
-        campaignId,
-        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-      },
-      select: { campaignId: true },
+  private async findRole(
+    userId: string,
+    campaignId: string,
+  ): Promise<CampaignRole | undefined> {
+    const membership = await this.prisma.campaignMember.findUnique({
+      where: { userId_campaignId: { userId, campaignId } },
+      select: { campaignRole: true },
     });
-
-    if (!campaign) {
-      throw this.campaignNotFound();
-    }
+    return membership?.campaignRole;
   }
 
   private campaignNotFound(): DomainException {

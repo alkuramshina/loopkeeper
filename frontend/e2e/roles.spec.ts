@@ -30,8 +30,12 @@ test('M5: a viewer reads the board and catalog without editing controls', async 
 
   await navigation.getByRole('link', { name: 'Доска расследования' }).click();
   await expect(page.getByText(/^Режим просмотра/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Новая карточка' })).toHaveCount(0);
-  const card = page.locator('.react-flow__node', { hasText: 'Сломанный робот' });
+  await expect(
+    page.getByRole('button', { name: 'Новая карточка' }),
+  ).toHaveCount(0);
+  const card = page.locator('.react-flow__node', {
+    hasText: 'Сломанный робот',
+  });
   await expect(card).toBeVisible();
 
   // Clicking a card must not open the inspector for a viewer. The read-only
@@ -45,8 +49,12 @@ test('M5: a viewer reads the board and catalog without editing controls', async 
   ).toHaveCount(0);
 
   await navigation.getByRole('link', { name: 'Каталог' }).click();
-  await expect(page.getByRole('button', { name: 'Новый элемент' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Новая заметка' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Новый элемент' })).toHaveCount(
+    0,
+  );
+  await expect(page.getByRole('button', { name: 'Новая заметка' })).toHaveCount(
+    0,
+  );
 
   for (const section of ['members', 'settings']) {
     await page.goto(`/campaigns/${campaignId}/${section}`);

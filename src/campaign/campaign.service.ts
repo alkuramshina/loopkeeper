@@ -5,10 +5,9 @@ import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { CampaignAccessService } from './access/campaign-access.service';
+import { memberCampaignWhere } from './access/campaign-membership';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
-
-type CurrentUserRole = 'OWNER' | CampaignRole;
 
 const campaignForCurrentUser = (userId: string) =>
   ({
@@ -22,7 +21,6 @@ const campaignForCurrentUser = (userId: string) =>
     backgroundSelectionMode: true,
     fixedBackgroundId: true,
     backgrounds: true,
-    ownerId: true,
     members: {
       where: { userId },
       select: { campaignRole: true },
@@ -44,32 +42,29 @@ export class CampaignService {
         description: createDto.description,
         system: createDto.system,
         coverUrl: createDto.coverUrl,
-        ownerId: userId,
+        members: {
+          create: { userId, campaignRole: CampaignRole.OWNER },
+        },
       },
       select: campaignForCurrentUser(userId),
     });
 
-    return this.presentCampaign(campaign, userId);
+    return this.presentCampaign(campaign);
   }
 
   async findAll(userId: string) {
     const campaigns = await this.prisma.campaign.findMany({
-      where: {
-        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-      },
+      where: memberCampaignWhere(userId),
       orderBy: { updatedAt: 'desc' },
       select: campaignForCurrentUser(userId),
     });
 
-    return campaigns.map((campaign) => this.presentCampaign(campaign, userId));
+    return campaigns.map((campaign) => this.presentCampaign(campaign));
   }
 
   async findOne(userId: string, campaignId: string) {
     const campaign = await this.prisma.campaign.findFirst({
-      where: {
-        campaignId,
-        OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-      },
+      where: { campaignId, ...memberCampaignWhere(userId) },
       select: campaignForCurrentUser(userId),
     });
 
@@ -81,7 +76,7 @@ export class CampaignService {
       );
     }
 
-    return this.presentCampaign(campaign, userId);
+    return this.presentCampaign(campaign);
   }
 
   async update(
@@ -122,7 +117,7 @@ export class CampaignService {
     if (oldStorageKey) {
       await this.mediaService.removeStorageFile(oldStorageKey);
     }
-    return this.presentCampaign(campaign, userId);
+    return this.presentCampaign(campaign);
   }
 
   async remove(userId: string, campaignId: string) {
@@ -157,22 +152,17 @@ export class CampaignService {
     campaign: Prisma.CampaignGetPayload<{
       select: ReturnType<typeof campaignForCurrentUser>;
     }>,
-    userId: string,
   ) {
     const {
       members,
-      ownerId,
       backgroundSelectionMode,
       fixedBackgroundId,
       backgrounds,
       ...campaignData
     } = campaign;
-    const currentUserRole: CurrentUserRole =
-      ownerId === userId ? 'OWNER' : members[0].campaignRole;
-
     return {
       ...campaignData,
-      currentUserRole,
+      currentUserRole: members[0].campaignRole,
       backgroundConfig: {
         selectionMode: backgroundSelectionMode,
         fixedBackgroundId,

@@ -20,6 +20,10 @@ import type { ConfigType } from '@nestjs/config';
 import sharp from 'sharp';
 import { CampaignElementType, CampaignRole, Prisma } from '@prisma/client';
 import { CampaignBackgroundDto } from '../campaign/dto/campaign-background-settings.dto';
+import {
+  memberCampaignWhere,
+  ownerCampaignWhere,
+} from '../campaign/access/campaign-membership';
 
 import { DomainException } from '../common/exceptions/domain.exception';
 import appConfig from '../config/app.config';
@@ -396,7 +400,7 @@ export class MediaService {
       background = await this.prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT "campaignId" FROM "campaigns" WHERE "campaignId" = ${campaignId} FOR UPDATE`;
         const campaign = await tx.campaign.findUniqueOrThrow({
-          where: { campaignId, ownerId: userId },
+          where: { campaignId, ...ownerCampaignWhere(userId) },
           select: { backgrounds: true },
         });
         const backgrounds =
@@ -451,7 +455,7 @@ export class MediaService {
     const storageKey = await this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "campaignId" FROM "campaigns" WHERE "campaignId" = ${campaignId} FOR UPDATE`;
       const campaign = await tx.campaign.findUniqueOrThrow({
-        where: { campaignId, ownerId: userId },
+        where: { campaignId, ...ownerCampaignWhere(userId) },
         select: { backgrounds: true, fixedBackgroundId: true },
       });
       const backgrounds =
@@ -724,9 +728,7 @@ export class MediaService {
             purpose: 'CHARACTER_AVATAR',
             characterAvatar: {
               avatarUrl: `/media/${assetId}`,
-              campaign: {
-                OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-              },
+              campaign: memberCampaignWhere(userId),
             },
           },
           {
@@ -737,14 +739,14 @@ export class MediaService {
                   { backgroundId: assetId, imageUrl: `/media/${assetId}` },
                 ],
               },
-              OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+              ...memberCampaignWhere(userId),
             },
           },
           {
             purpose: 'CAMPAIGN_COVER',
             campaignCover: {
               coverUrl: `/media/${assetId}`,
-              OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+              ...memberCampaignWhere(userId),
             },
           },
           {
@@ -782,7 +784,7 @@ export class MediaService {
     campaignId: string,
   ): Promise<void> {
     const campaign = await this.prisma.campaign.findFirst({
-      where: { campaignId, ownerId: userId },
+      where: { campaignId, ...ownerCampaignWhere(userId) },
       select: { campaignId: true },
     });
     if (!campaign) {
@@ -798,9 +800,7 @@ export class MediaService {
     const character = await this.prisma.character.findFirst({
       where: {
         characterId,
-        campaign: {
-          OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-        },
+        campaign: memberCampaignWhere(userId),
       },
       select: {
         characterId: true,

@@ -40,7 +40,12 @@ test('an existing member sees the localized already-member message', async ({
   const player = await registerUser(request, 'Игрок');
   const campaignId = await createCampaign(request, owner);
   await addMember(request, owner, campaignId, player, 'PLAYER');
-  const secondToken = await createInvitation(request, owner, campaignId, 'VIEWER');
+  const secondToken = await createInvitation(
+    request,
+    owner,
+    campaignId,
+    'VIEWER',
+  );
 
   await signInAs(page, player);
   await page.goto(`/invitations/${secondToken}`);

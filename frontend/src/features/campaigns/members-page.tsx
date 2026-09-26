@@ -15,6 +15,7 @@ import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
 import { PageError } from '../../components/page-error';
+import { formText } from '../../components/form-text';
 
 const roles = ['PLAYER', 'VIEWER'] as const;
 
@@ -127,7 +128,7 @@ export function MembersPage() {
   function submitInvitation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     createInvitation.mutate(
-      String(new FormData(event.currentTarget).get('role') ?? 'PLAYER'),
+      formText(new FormData(event.currentTarget), 'role') || 'PLAYER',
     );
   }
 
@@ -192,48 +193,54 @@ export function MembersPage() {
                         {member.user.name && <p>{member.user.email}</p>}
                       </div>
                     </div>
-                    <div className="action-row">
-                      <select
-                        aria-label={t('members.roleFor', {
-                          name: member.user.name || member.user.email,
-                        })}
-                        defaultValue={member.campaignRole}
-                        onChange={(event) =>
-                          updateMember.mutate({
-                            userId: member.user.userId,
-                            role: event.target.value,
-                          })
-                        }
-                      >
-                        {roles.map((role) => (
-                          <option key={role} value={role}>
-                            {t(`workspace.roles.${role}`)}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        className="button-danger"
-                        type="button"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              t('members.removeConfirmation', {
-                                name: member.user.name || member.user.email,
-                              }),
+                    {member.campaignRole === 'OWNER' ? (
+                      // The master is listed but cannot be managed here.
+                      <p className="role-badge">{t('workspace.roles.OWNER')}</p>
+                    ) : (
+                      <div className="action-row">
+                        <select
+                          aria-label={t('members.roleFor', {
+                            name: member.user.name || member.user.email,
+                          })}
+                          defaultValue={member.campaignRole}
+                          onChange={(event) =>
+                            updateMember.mutate({
+                              userId: member.user.userId,
+                              role: event.target.value,
+                            })
+                          }
+                        >
+                          {roles.map((role) => (
+                            <option key={role} value={role}>
+                              {t(`workspace.roles.${role}`)}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          className="button-danger"
+                          type="button"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                t('members.removeConfirmation', {
+                                  name: member.user.name || member.user.email,
+                                }),
+                              )
                             )
-                          )
-                            removeMember.mutate(member.user.userId);
-                        }}
-                      >
-                        {t('common.delete')}
-                      </button>
-                    </div>
+                              removeMember.mutate(member.user.userId);
+                          }}
+                        >
+                          {t('common.delete')}
+                        </button>
+                      </div>
+                    )}
                   </article>
                 ))}
               </div>
-            ) : (
-              <p className="muted">{t('members.empty')}</p>
-            )}
+            ) : null}
+            {!members.data?.some(
+              (member) => member.campaignRole !== 'OWNER',
+            ) && <p className="muted">{t('members.empty')}</p>}
           </section>
           <section className="member-section">
             <div className="section-heading">

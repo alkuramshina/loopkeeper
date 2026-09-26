@@ -23,6 +23,12 @@ vi.mock('../../auth/auth-context', () => ({
 }));
 
 const future = new Date(Date.now() + 86_400_000).toISOString();
+const master = {
+  memberId: 'm0',
+  campaignId: 'c',
+  campaignRole: 'OWNER',
+  user: { userId: 'master', email: 'mira@example.test', name: 'Mira' },
+};
 const member = {
   memberId: 'm1',
   campaignId: 'c',
@@ -83,7 +89,7 @@ describe('MembersPage', () => {
           currentUserRole: role,
         });
       if (path === '/campaigns/c/members' && !init)
-        return Promise.resolve([member]);
+        return Promise.resolve([master, member]);
       if (path === '/campaigns/c/invitations' && !init)
         return Promise.resolve([activeInvitation, acceptedInvitation]);
       if (path === '/campaigns/c/invitations' && init?.method === 'POST')
@@ -105,6 +111,12 @@ describe('MembersPage', () => {
     expect(await screen.findByText('Kim')).toBeInTheDocument();
     expect(screen.getByText('kim@example.test')).toBeInTheDocument();
     expect(screen.getByLabelText('Роль для Kim')).toHaveValue('PLAYER');
+    // The master is listed as «Мастер» without management controls.
+    const masterRow = screen.getByText('Mira').closest('article')!;
+    expect(within(masterRow).getByText('Мастер')).toBeInTheDocument();
+    expect(within(masterRow).queryByRole('combobox')).not.toBeInTheDocument();
+    expect(within(masterRow).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Удалить' })).toHaveLength(1);
     expect(screen.getByText('Активно')).toBeInTheDocument();
     expect(screen.getByText('Принято')).toBeInTheDocument();
     // Only an active invitation can be revoked.

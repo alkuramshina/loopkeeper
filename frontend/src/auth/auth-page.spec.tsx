@@ -3,7 +3,11 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n';
 import { ApiError } from '../api/client';
-import { AuthPage, brandVariantKeys, brandVariantStorageKey } from './auth-page';
+import {
+  AuthPage,
+  brandVariantKeys,
+  brandVariantStorageKey,
+} from './auth-page';
 
 const signIn = vi.fn();
 const signUp = vi.fn();
@@ -38,7 +42,12 @@ describe('AuthPage', () => {
 
   it('translates a sign-in failure by its code and keeps the form usable', async () => {
     signIn.mockRejectedValue(
-      new ApiError(401, 'auth.invalid_credentials', 'Invalid credentials', undefined),
+      new ApiError(
+        401,
+        'auth.invalid_credentials',
+        'Invalid credentials',
+        undefined,
+      ),
     );
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     renderAuth('/sign-in');
@@ -76,22 +85,25 @@ describe('AuthPage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent('/sign-up'),
     );
-    expect(screen.getByLabelText('Электронная почта')).toHaveValue('user@example.test');
+    expect(screen.getByLabelText('Электронная почта')).toHaveValue(
+      'user@example.test',
+    );
     expect(screen.getByLabelText(/Пароль/)).toHaveValue('');
   });
 
   it('carries a pending invitation over to the other auth form', () => {
     renderAuth('/sign-in?invitation=token-1');
 
-    expect(screen.getByRole('link', { name: 'Создать аккаунт' })).toHaveAttribute(
-      'href',
-      '/sign-up?invitation=token-1',
-    );
+    expect(
+      screen.getByRole('link', { name: 'Создать аккаунт' }),
+    ).toHaveAttribute('href', '/sign-up?invitation=token-1');
   });
 
   it('accepts an invitation link or bare token and rejects nested paths', () => {
     renderAuth('/sign-in');
-    fireEvent.click(screen.getByRole('button', { name: 'Использовать приглашение' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Использовать приглашение' }),
+    );
     const input = screen.getByLabelText('Ссылка или токен приглашения');
 
     fireEvent.change(input, { target: { value: '/invitations/a/b' } });
@@ -104,7 +116,9 @@ describe('AuthPage', () => {
       target: { value: 'https://loopkeeper.test/invitations/token-2' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Продолжить' }));
-    expect(screen.getByTestId('location')).toHaveTextContent('/invitations/token-2');
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/invitations/token-2',
+    );
   });
 
   it('keeps the brand copy variant stable within the tab', async () => {
@@ -119,7 +133,9 @@ describe('AuthPage', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Создать аккаунт' }));
 
     expect(
-      await screen.findByText(i18n.t(`auth.brandVariants.${variant}.signUp.title`)),
+      await screen.findByText(
+        i18n.t(`auth.brandVariants.${variant}.signUp.title`),
+      ),
     ).toBeInTheDocument();
     expect(window.sessionStorage.getItem(brandVariantStorageKey)).toBe(variant);
   });

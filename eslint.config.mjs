@@ -7,7 +7,14 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     // src/generated/prisma is a stale, unused Prisma output.
-    ignores: ['eslint.config.mjs', 'src/generated/**'],
+    ignores: [
+      'eslint.config.mjs',
+      'src/generated/**',
+      'frontend/dist/**',
+      // Tool configs are outside the frontend TypeScript projects.
+      'frontend/vite.config.ts',
+      'frontend/playwright.config.ts',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -38,8 +45,20 @@ export default tseslint.config(
     },
   },
   {
+    files: ['frontend/**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: globals.browser,
+      sourceType: 'module',
+    },
+  },
+  {
     // Tests read untyped HTTP response bodies (supertest) and mock objects.
-    files: ['test/**/*.ts', 'src/**/*.spec.ts'],
+    files: [
+      'test/**/*.ts',
+      'src/**/*.spec.ts',
+      'frontend/src/**/*.spec.{ts,tsx}',
+      'frontend/e2e/**/*.ts',
+    ],
     rules: {
       '@typescript-eslint/no-unsafe-argument': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',

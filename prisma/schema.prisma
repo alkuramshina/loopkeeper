@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -18,7 +19,6 @@ model User {
   avatarAssetId              String?              @unique
   applicationRole            ApplicationRole      @default(USER)
   isDeleted                  Boolean              @default(false)
-  ownedCampaigns             Campaign[]           @relation("GameMaster")
   campaignMemberships        CampaignMember[]     @relation("CampaignMemberships")
   characters                 Character[]
   authSessions               AuthSession[]
@@ -80,8 +80,6 @@ model Campaign {
   coverUrl     String?
   coverAsset   MediaAsset?          @relation("CampaignCover", fields: [coverAssetId], references: [assetId], onDelete: SetNull)
   coverAssetId String?              @unique
-  owner        User                 @relation("GameMaster", fields: [ownerId], references: [userId])
-  ownerId      String
   gameSystem   GameSystem?          @relation(fields: [system], references: [slug])
   characters   Character[]
   members      CampaignMember[]     @relation("CampaignMembers")
@@ -97,7 +95,6 @@ model Campaign {
   investigationCards InvestigationCard[]
   investigationLinks InvestigationLink[]
 
-  @@index([ownerId])
   @@map("campaigns")
 }
 
@@ -111,8 +108,23 @@ model CampaignMember {
   campaignId   String
   campaignRole CampaignRole @default(PLAYER)
 
+  participantState CampaignParticipantState?
+
   @@unique([userId, campaignId])
+  // Exactly one OWNER per campaign; the row is created with the campaign.
+  @@unique([campaignId], map: "campaign_members_one_owner_key", where: raw("\"campaignRole\" = 'OWNER'"))
   @@map("campaign_members")
+}
+
+// Personal per-campaign state of one participant (theme, last seen, ...).
+// Created on first write; a missing row means defaults.
+model CampaignParticipantState {
+  member    CampaignMember @relation(fields: [memberId], references: [memberId], onDelete: Cascade)
+  memberId  String         @id
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("campaign_participant_states")
 }
 
 model CampaignInvitation {
@@ -197,6 +209,8 @@ model InvestigationCard {
   linksFrom   InvestigationLink[]     @relation("InvestigationLinkFrom")
   linksTo     InvestigationLink[]     @relation("InvestigationLinkTo")
 
+  @@unique([boardId, elementId], map: "investigation_cards_boardId_elementId_key", where: raw("\"elementId\" IS NOT NULL"))
+  @@unique([boardId, characterId], map: "investigation_cards_boardId_characterId_key", where: raw("\"characterId\" IS NOT NULL"))
   @@index([campaignId])
   @@index([elementId])
   @@index([characterId])
@@ -287,6 +301,7 @@ model Character {
   templateId         String
   investigationCards InvestigationCard[] @relation("InvestigationCardCharacter")
 
+  @@unique([campaignId, ownerId], map: "characters_active_player_per_campaign_owner_key", where: raw("\"isActive\" = true"))
   @@index([campaignId])
   @@index([ownerId])
   @@map("characters")
@@ -318,6 +333,7 @@ enum InvestigationCardKind {
 }
 
 enum CampaignRole {
+  OWNER
   PLAYER
   VIEWER
 }

@@ -300,6 +300,8 @@
     "resource.not_found": "Ресурс недоступен.",
     "invitation.already_member": "Вы уже состоите в этой кампании.",
     "invitation.not_found": "Приглашение недоступно.",
+    "member.not_found": "Участник не найден.",
+    "member.owner_protected": "Мастера кампании нельзя удалить или сменить ему роль.",
     "media.invalid_file": "Не удалось прочитать изображение.",
     "media.file_too_large": "Файл слишком большой: до 5 МБ, для карты локации — до 10 МБ.",
     "media.invalid_element_cover_dimensions": "Каждая сторона обложки должна быть от 256 до 4096 пикселей, пропорции — от 1:2 до 2:1.",

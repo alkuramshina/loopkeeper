@@ -159,7 +159,9 @@ export class ElementService {
     access: CampaignElementAccess,
   ) {
     const element = await this.requireAuthor(userId, elementId);
-    this.validateAccess(element.campaign.ownerId === userId, access);
+    const isOwner =
+      element.campaign.members[0]?.campaignRole === CampaignRole.OWNER;
+    this.validateAccess(isOwner, access);
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
       // Leaving SHARED removes reference cards; their nodes and links cascade.
@@ -200,7 +202,13 @@ export class ElementService {
   private async requireAuthor(userId: string, elementId: string) {
     const element = await this.prisma.campaignElement.findFirst({
       where: { elementId, ...editableElementWhere(userId) },
-      include: { campaign: { select: { ownerId: true } } },
+      include: {
+        campaign: {
+          select: {
+            members: { where: { userId }, select: { campaignRole: true } },
+          },
+        },
+      },
     });
     if (!element) throw this.notFound();
     return element;

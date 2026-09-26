@@ -1,12 +1,19 @@
 import { expect, test } from '@playwright/test';
-import { createCampaignWithRoles, createFreeCard, signInAs } from './support/api';
+import {
+  createCampaignWithRoles,
+  createFreeCard,
+  signInAs,
+} from './support/api';
 
 test('M3: an expired access token is refreshed once and the requests are retried', async ({
   page,
   request,
 }) => {
   const { campaignId, owner, player } = await createCampaignWithRoles(request);
-  await createFreeCard(request, owner, campaignId, 'Сигнал в эфире', { x: 0, y: 0 });
+  await createFreeCard(request, owner, campaignId, 'Сигнал в эфире', {
+    x: 0,
+    y: 0,
+  });
   await signInAs(page, player);
   await page.goto(`/campaigns/${campaignId}/elements`);
   const navigation = page.locator('.campaign-workspace-shell-navigation');
@@ -47,6 +54,8 @@ test('M3: an expired access token is refreshed once and the requests are retried
 
   // Later requests use the new token without another refresh.
   await navigation.getByRole('link', { name: 'Персонажи' }).click();
-  await expect(page.getByRole('heading', { name: 'Персонажи' }).first()).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Персонажи' }).first(),
+  ).toBeVisible();
   expect(refreshes).toBe(1);
 });

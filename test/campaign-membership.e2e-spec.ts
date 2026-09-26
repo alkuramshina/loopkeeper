@@ -1,7 +1,11 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from './helpers/app';
-import { closeTestDatabase, resetTestDatabase } from './helpers/database';
+import {
+  closeTestDatabase,
+  getTestPrisma,
+  resetTestDatabase,
+} from './helpers/database';
 
 type User = { headers: { Authorization: string }; userId: string };
 const password = 'test-password-123';
@@ -93,11 +97,14 @@ describe('Campaign membership lifecycle (e2e)', () => {
           response.body.map((member: { campaignRole: string }) => [
             member.campaignRole,
           ]),
-        ).toEqual([['PLAYER'], ['VIEWER']]);
+        ).toEqual([['OWNER'], ['PLAYER'], ['VIEWER']]);
         expect(response.body[0].user).toEqual(
+          expect.objectContaining({ userId: owner.userId }),
+        );
+        expect(response.body[1].user).toEqual(
           expect.objectContaining({ userId: player.userId }),
         );
-        expect(response.body[0].user).not.toHaveProperty('passwordHash');
+        expect(response.body[1].user).not.toHaveProperty('passwordHash');
       });
     await http()
       .get(`/campaigns/${campaignId}/invitations`)
@@ -142,21 +149,55 @@ describe('Campaign membership lifecycle (e2e)', () => {
         .expect(404);
     }
 
-    // The owner is not a member row: it can be neither re-roled nor removed.
+    // The OWNER row can be neither re-roled nor removed, and OWNER can be
+    // granted neither by role change nor by invitation.
+    for (const role of ['VIEWER', 'PLAYER']) {
+      await http()
+        .patch(`/campaigns/${campaignId}/members/${owner.userId}`)
+        .set(owner.headers)
+        .send({ role })
+        .expect(409)
+        .expect((response) =>
+          expect(response.body.code).toBe('member.owner_protected'),
+        );
+    }
     await http()
-      .patch(`/campaigns/${campaignId}/members/${owner.userId}`)
+      .delete(`/campaigns/${campaignId}/members/${owner.userId}`)
       .set(owner.headers)
-      .send({ role: 'VIEWER' })
-      .expect(404);
+      .expect(409)
+      .expect((response) =>
+        expect(response.body.code).toBe('member.owner_protected'),
+      );
+    await http()
+      .patch(`/campaigns/${campaignId}/members/${player.userId}`)
+      .set(owner.headers)
+      .send({ role: 'OWNER' })
+      .expect(400);
     await http()
       .delete(`/campaigns/${campaignId}/members/${outsider.userId}`)
       .set(owner.headers)
-      .expect(404);
+      .expect(404)
+      .expect((response) =>
+        expect(response.body.code).toBe('member.not_found'),
+      );
     await http()
       .post(`/campaigns/${campaignId}/invitations`)
       .set(owner.headers)
       .send({ role: 'OWNER' })
       .expect(400);
+    for (const user of [player, viewer]) {
+      await http()
+        .delete(`/campaigns/${campaignId}/members/${owner.userId}`)
+        .set(user.headers)
+        .expect(404);
+    }
+    await http()
+      .get(`/campaigns/${campaignId}`)
+      .set(owner.headers)
+      .expect(200)
+      .expect((response) =>
+        expect(response.body.currentUserRole).toBe('OWNER'),
+      );
 
     // A revoked invitation cannot be revoked twice or accepted.
     await http()
@@ -260,7 +301,7 @@ describe('Campaign membership lifecycle (e2e)', () => {
       .get(`/campaigns/${campaignId}/members`)
       .set(owner.headers)
       .expect(200)
-      .expect((response) => expect(response.body).toHaveLength(1));
+      .expect((response) => expect(response.body).toHaveLength(2));
 
     // A removed user may come back through a new invitation.
     const { token } = await invite(owner, campaignId, 'VIEWER');
@@ -275,5 +316,83 @@ describe('Campaign membership lifecycle (e2e)', () => {
       .expect((response) =>
         expect(response.body.currentUserRole).toBe('VIEWER'),
       );
+  });
+
+  it('keeps exactly one OWNER member per campaign', async () => {
+    const { owner, player, campaignId } = await setup();
+    const prisma = getTestPrisma();
+
+    expect(
+      await prisma.campaignMember.findMany({
+        where: { campaignId, campaignRole: 'OWNER' },
+        select: { userId: true },
+      }),
+    ).toEqual([{ userId: owner.userId }]);
+    // The partial unique index rejects a second owner even outside the API.
+    await expect(
+      prisma.campaignMember.update({
+        where: { userId_campaignId: { userId: player.userId, campaignId } },
+        data: { campaignRole: 'OWNER' },
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
+
+    // Every campaign gets its own owner row.
+    const second = await http()
+      .post('/campaigns')
+      .set(player.headers)
+      .send({ title: 'Second', description: 'Another campaign' })
+      .expect(201)
+      .expect((response) =>
+        expect(response.body.currentUserRole).toBe('OWNER'),
+      );
+    expect(
+      await prisma.campaignMember.count({
+        where: { campaignId: second.body.campaignId, campaignRole: 'OWNER' },
+      }),
+    ).toBe(1);
+    await http()
+      .get(`/campaigns/${second.body.campaignId}`)
+      .set(owner.headers)
+      .expect(404)
+      .expect((response) =>
+        expect(response.body.code).toBe('campaign.not_found'),
+      );
+  });
+
+  it('removes personal participant state together with the membership', async () => {
+    const { owner, player, viewer, campaignId } = await setup();
+    const prisma = getTestPrisma();
+    const members = await prisma.campaignMember.findMany({
+      where: { campaignId },
+      select: { memberId: true },
+    });
+    await prisma.campaignParticipantState.createMany({
+      data: members.map(({ memberId }) => ({ memberId })),
+    });
+
+    await http()
+      .delete(`/campaigns/${campaignId}/members/${player.userId}`)
+      .set(owner.headers)
+      .expect(200);
+    expect(
+      await prisma.campaignParticipantState.count({
+        where: { member: { campaignId } },
+      }),
+    ).toBe(2);
+    expect(
+      await prisma.campaignParticipantState.count({
+        where: { member: { userId: player.userId } },
+      }),
+    ).toBe(0);
+
+    await http()
+      .delete(`/campaigns/${campaignId}`)
+      .set(viewer.headers)
+      .expect(404);
+    await http()
+      .delete(`/campaigns/${campaignId}`)
+      .set(owner.headers)
+      .expect(200);
+    expect(await prisma.campaignParticipantState.count()).toBe(0);
   });
 });

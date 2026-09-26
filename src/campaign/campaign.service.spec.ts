@@ -24,8 +24,7 @@ describe('CampaignService', () => {
     const campaign = {
       campaignId: 'campaign-id',
       title: 'The Loop',
-      ownerId: 'user-id',
-      members: [],
+      members: [{ campaignRole: 'OWNER' }],
       backgroundSelectionMode: 'FIXED',
       fixedBackgroundId: null,
       backgrounds: [],

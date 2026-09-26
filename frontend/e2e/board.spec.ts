@@ -64,7 +64,10 @@ test('M6: the owner creates a card with tags that survives refresh and reload', 
 
   const board = await getBoard(request, owner, campaignId);
   expect(board.cards).toHaveLength(1);
-  expect(board.cards[0]).toMatchObject({ title: 'Следы на снегу', tags: ['улика'] });
+  expect(board.cards[0]).toMatchObject({
+    title: 'Следы на снегу',
+    tags: ['улика'],
+  });
 });
 
 test('M6: a player drags, resizes and links cards; the layout persists', async ({
@@ -72,10 +75,16 @@ test('M6: a player drags, resizes and links cards; the layout persists', async (
   request,
 }) => {
   const { campaignId, owner, player } = await createCampaignWithRoles(request);
-  const radioId = await createFreeCard(request, owner, campaignId, 'Радиосигнал', {
-    x: 0,
-    y: 0,
-  });
+  const radioId = await createFreeCard(
+    request,
+    owner,
+    campaignId,
+    'Радиосигнал',
+    {
+      x: 0,
+      y: 0,
+    },
+  );
   await createFreeCard(request, owner, campaignId, 'Заброшенная ферма', {
     x: 600,
     y: 0,
@@ -101,7 +110,12 @@ test('M6: a player drags, resizes and links cards; the layout persists', async (
   await radio.locator('h3').click();
   await page.getByRole('button', { name: 'Отмена' }).click();
   const resized = nodeSaved(page);
-  await dragBy(page, radio.locator('.react-flow__resize-control.handle.bottom.right'), 80, 40);
+  await dragBy(
+    page,
+    radio.locator('.react-flow__resize-control.handle.bottom.right'),
+    80,
+    40,
+  );
   await resized;
   board = await getBoard(request, player, campaignId);
   const resizedNode = board.cards.find((card) => card.cardId === radioId)?.node;
@@ -119,11 +133,18 @@ test('M6: a player drags, resizes and links cards; the layout persists', async (
   const source = await farm.locator('.react-flow__handle-bottom').boundingBox();
   const target = await radio.locator('.react-flow__handle-top').boundingBox();
   if (!source || !target) throw new Error('Handles are not visible');
-  await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+  await page.mouse.move(
+    source.x + source.width / 2,
+    source.y + source.height / 2,
+  );
   await page.mouse.down();
-  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, {
-    steps: 10,
-  });
+  await page.mouse.move(
+    target.x + target.width / 2,
+    target.y + target.height / 2,
+    {
+      steps: 10,
+    },
+  );
   await page.mouse.up();
   await linked;
 
@@ -135,7 +156,9 @@ test('M6: a player drags, resizes and links cards; the layout persists', async (
 
   board = await getBoard(request, player, campaignId);
   expect(board.links).toHaveLength(1);
-  expect(board.cards.find((card) => card.cardId === radioId)?.node).toMatchObject({
+  expect(
+    board.cards.find((card) => card.cardId === radioId)?.node,
+  ).toMatchObject({
     x: movedNode?.x,
     y: movedNode?.y,
     width: resizedNode?.width,
@@ -150,7 +173,8 @@ test('M6: a viewer cannot move board cards', async ({ page, request }) => {
   });
   let nodeUpdates = 0;
   page.on('request', (outgoing) => {
-    if (outgoing.url().includes('/api/investigation-board/nodes/')) nodeUpdates += 1;
+    if (outgoing.url().includes('/api/investigation-board/nodes/'))
+      nodeUpdates += 1;
   });
   await signInAs(page, viewer);
   await page.goto(`/campaigns/${campaignId}/board`);
@@ -171,7 +195,6 @@ test('M6: a viewer cannot move board cards', async ({ page, request }) => {
   const board = await getBoard(request, owner, campaignId);
   expect(board.cards[0].node).toMatchObject({ x: 0, y: 0 });
 });
-
 
 test('M7: a board survives an unreachable server and recovers on refresh', async ({
   page,

@@ -34,7 +34,8 @@ test('the master reveals a location, players pin it to the board, hiding it clea
   page,
   request,
 }) => {
-  const { campaignId, owner, player, viewer } = await createCampaignWithRoles(request);
+  const { campaignId, owner, player, viewer } =
+    await createCampaignWithRoles(request);
   const catalog = `/campaigns/${campaignId}/elements`;
 
   // The master prepares a location; it starts hidden from players.
@@ -52,8 +53,12 @@ test('the master reveals a location, players pin it to the board, hiding it clea
   await dialog.getByLabel('Текст (Markdown)').fill('Гудит по ночам.');
   await dialog.getByRole('button', { name: 'Сохранить' }).click();
 
-  await expect(detail(page).getByRole('heading', { name: 'Старая вышка' })).toBeVisible();
-  await expect(detail(page).locator('.visibility-badge')).toHaveText('Только мастер');
+  await expect(
+    detail(page).getByRole('heading', { name: 'Старая вышка' }),
+  ).toBeVisible();
+  await expect(detail(page).locator('.visibility-badge')).toHaveText(
+    'Только мастер',
+  );
   expect(await listElementTitles(request, player, campaignId)).toEqual([]);
   expect(await listElementTitles(request, viewer, campaignId)).toEqual([]);
 
@@ -69,7 +74,9 @@ test('the master reveals a location, players pin it to the board, hiding it clea
   await expect(detail(playerPage)).toContainText('Гудит по ночам.');
   await expect(detail(playerPage)).toContainText('Автор: Мастер');
   for (const name of ['Редактировать', 'Удалить']) {
-    await expect(detail(playerPage).getByRole('button', { name })).toHaveCount(0);
+    await expect(detail(playerPage).getByRole('button', { name })).toHaveCount(
+      0,
+    );
   }
   await expect(detail(playerPage).getByLabel('Доступ')).toHaveCount(0);
   const pinned = playerPage.waitForResponse(
@@ -78,17 +85,23 @@ test('the master reveals a location, players pin it to the board, hiding it clea
       response.url().endsWith('/cards') &&
       response.status() === 201,
   );
-  await detail(playerPage).getByRole('button', { name: 'Добавить на доску' }).click();
+  await detail(playerPage)
+    .getByRole('button', { name: 'Добавить на доску' })
+    .click();
   await pinned;
 
   // Pinning twice is refused with a localized conflict.
-  await detail(playerPage).getByRole('button', { name: 'Добавить на доску' }).click();
+  await detail(playerPage)
+    .getByRole('button', { name: 'Добавить на доску' })
+    .click();
   await expect(playerPage.getByRole('alert')).toHaveText(
     'Невозможно сохранить изменения из-за конфликта данных.',
   );
 
   await playerPage.goto(`/campaigns/${campaignId}/board`);
-  const card = playerPage.locator('.react-flow__node', { hasText: 'Старая вышка' });
+  const card = playerPage.locator('.react-flow__node', {
+    hasText: 'Старая вышка',
+  });
   await expect(card).toBeVisible();
 
   // A viewer reads the revealed location but cannot pin it.
@@ -102,7 +115,8 @@ test('the master reveals a location, players pin it to the board, hiding it clea
   // Hiding asks for confirmation; dismissing keeps everything as it was.
   let patches = 0;
   page.on('request', (outgoing) => {
-    if (outgoing.method() === 'PATCH' && outgoing.url().endsWith('/access')) patches += 1;
+    if (outgoing.method() === 'PATCH' && outgoing.url().endsWith('/access'))
+      patches += 1;
   });
   page.once('dialog', (confirm) => void confirm.dismiss());
   await detail(page).getByLabel('Доступ').selectOption('MASTER_ONLY');
@@ -127,12 +141,15 @@ test('a player keeps a private note and then shows it to the master only', async
   page,
   request,
 }) => {
-  const { campaignId, owner, player, viewer } = await createCampaignWithRoles(request);
+  const { campaignId, owner, player, viewer } =
+    await createCampaignWithRoles(request);
   const catalog = `/campaigns/${campaignId}/elements`;
 
   await signInAs(page, player);
   await page.goto(catalog);
-  await expect(page.getByRole('button', { name: 'Новый элемент' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Новый элемент' })).toHaveCount(
+    0,
+  );
   await page.getByRole('button', { name: 'Новая заметка' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByLabel('Тип')).toBeDisabled();
@@ -147,7 +164,9 @@ test('a player keeps a private note and then shows it to the master only', async
   await dialog.getByLabel('Текст (Markdown)').fill('Сторож что-то скрывает.');
   await dialog.getByRole('button', { name: 'Сохранить' }).click();
 
-  await expect(detail(page).getByRole('heading', { name: 'Подозрение' })).toBeVisible();
+  await expect(
+    detail(page).getByRole('heading', { name: 'Подозрение' }),
+  ).toBeVisible();
   await expect(detail(page).locator('.visibility-badge')).toHaveText('Лично');
   const noteUrl = page.url();
 
@@ -162,19 +181,31 @@ test('a player keeps a private note and then shows it to the master only', async
   await expect(detail(page).locator('.visibility-badge')).toHaveText('Мастеру');
 
   await ownerPage.reload();
-  await expect(detail(ownerPage).getByRole('heading', { name: 'Подозрение' })).toBeVisible();
-  await expect(detail(ownerPage).locator('.visibility-badge')).toHaveText('Мастеру');
+  await expect(
+    detail(ownerPage).getByRole('heading', { name: 'Подозрение' }),
+  ).toBeVisible();
+  await expect(detail(ownerPage).locator('.visibility-badge')).toHaveText(
+    'Мастеру',
+  );
   await expect(detail(ownerPage)).toContainText('Автор: Игрок');
   for (const name of ['Редактировать', 'Удалить', 'Добавить на доску']) {
-    await expect(detail(ownerPage).getByRole('button', { name })).toHaveCount(0);
+    await expect(detail(ownerPage).getByRole('button', { name })).toHaveCount(
+      0,
+    );
   }
   await expect(detail(ownerPage).getByLabel('Доступ')).toHaveCount(0);
   expect(await listElementTitles(request, viewer, campaignId)).toEqual([]);
 
   // The author edits the note; the change reaches the master.
   await detail(page).getByRole('button', { name: 'Редактировать' }).click();
-  await page.getByRole('dialog').getByLabel('Название').fill('Подозрение: сторож');
-  await page.getByRole('dialog').getByRole('button', { name: 'Сохранить' }).click();
+  await page
+    .getByRole('dialog')
+    .getByLabel('Название')
+    .fill('Подозрение: сторож');
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Сохранить' })
+    .click();
   await expect(
     detail(page).getByRole('heading', { name: 'Подозрение: сторож' }),
   ).toBeVisible();
@@ -219,5 +250,7 @@ test('the catalog filters by type and searches titles and text', async ({
   await page.getByPlaceholder('Поиск по каталогу').fill('робот');
   await expect(items).toHaveText(['Ферма']);
   await items.first().click();
-  await expect(detail(page).locator('strong', { hasText: 'следы робота' })).toBeVisible();
+  await expect(
+    detail(page).locator('strong', { hasText: 'следы робота' }),
+  ).toBeVisible();
 });

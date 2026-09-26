@@ -16,6 +16,7 @@ import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
 import { MediaUpload } from '../../components/media-upload';
 import { PageError } from '../../components/page-error';
+import { formText } from '../../components/form-text';
 
 type EditorTarget = {
   character?: Character;
@@ -38,7 +39,7 @@ function canEdit(
 function readFieldValue(field: CharacterField, form: FormData): unknown {
   if (field.type === 'boolean') return form.get(field.key) === 'on';
 
-  const value = String(form.get(field.key) ?? '').trim();
+  const value = formText(form, field.key).trim();
   if (!value && !field.required) return undefined;
   return field.type === 'number' ? Number(value) : value;
 }
@@ -73,8 +74,8 @@ function CharacterEditor({
         }),
       );
       const payload = {
-        name: String(form.get('name') ?? ''),
-        description: String(form.get('description') ?? '') || undefined,
+        name: formText(form, 'name'),
+        description: formText(form, 'description') || undefined,
         data,
         ...(target.character ? {} : { templateId: template.templateId }),
       };

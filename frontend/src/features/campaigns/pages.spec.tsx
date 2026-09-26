@@ -89,7 +89,9 @@ describe('CampaignListPage', () => {
     const card = await screen.findByRole('link', { name: /Сигнал из леса/ });
     expect(card).toHaveAttribute('href', '/campaigns/c');
     expect(within(card).getByText('Наблюдатель')).toBeInTheDocument();
-    expect(within(card).getByText('Описание кампании ещё не добавлено.')).toBeInTheDocument();
+    expect(
+      within(card).getByText('Описание кампании ещё не добавлено.'),
+    ).toBeInTheDocument();
   });
 
   it('creates a campaign and puts it on top of the list', async () => {

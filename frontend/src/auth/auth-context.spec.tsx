@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { AuthProvider, useAuth } from './auth-context';
 
 type Api = ReturnType<typeof useAuth>['api'];
@@ -12,23 +12,25 @@ function Probe() {
 }
 
 function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  );
 }
 
 describe('AuthProvider', () => {
   let issued: string[];
   let validToken: string;
-  let fetchMock: ReturnType<typeof vi.fn>;
+  let fetchMock: Mock<(url: string, init?: RequestInit) => Promise<Response>>;
 
   beforeEach(() => {
     captured = undefined;
     issued = [];
     // The server accepts only the most recently issued access token, like an
     // expired JWT after a refresh.
-    fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    fetchMock = vi.fn((url: string, init?: RequestInit) => {
       if (url.endsWith('/auth/refresh')) {
         validToken = `token-${issued.length + 1}`;
         issued.push(validToken);
@@ -93,7 +95,7 @@ describe('AuthProvider', () => {
   it('signs out when the refresh session is gone', async () => {
     const api = await signedIn();
     validToken = 'expired-for-everyone';
-    fetchMock.mockImplementation(async (url: string) =>
+    fetchMock.mockImplementation((url: string) =>
       url.endsWith('/auth/refresh')
         ? json({ code: 'auth.invalid_token', message: 'Unauthorized' }, 401)
         : json({ code: 'auth.invalid_token', message: 'Unauthorized' }, 401),

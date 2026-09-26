@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
+import { memberCampaignWhere } from '../campaign/access/campaign-membership';
 
 type FieldDefinition = {
   key: string;
@@ -84,9 +85,7 @@ export class CharacterService {
     const character = await this.prisma.character.findFirst({
       where: {
         characterId,
-        campaign: {
-          OR: [{ ownerId: userId }, { members: { some: { userId } } }],
-        },
+        campaign: memberCampaignWhere(userId),
       },
     });
 

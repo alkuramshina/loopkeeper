@@ -7,7 +7,12 @@ import {
 } from './support/api';
 import { png } from './support/images';
 
-async function upload(page: Page, label: string, width: number, height: number) {
+async function upload(
+  page: Page,
+  label: string,
+  width: number,
+  height: number,
+) {
   const done = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
@@ -56,7 +61,9 @@ test('the master illustrates a location, players see it only while it is shared'
   await expect(detail.getByRole('alert')).toHaveText(
     /Длинная сторона карты должна быть от 1024 до 8192 пикселей/,
   );
-  expect((await elementMedia(page, owner, elementId)).imageUrl ?? null).toBeNull();
+  expect(
+    (await elementMedia(page, owner, elementId)).imageUrl ?? null,
+  ).toBeNull();
 
   expect((await upload(page, 'Обложка', 800, 600)).ok()).toBeTruthy();
   await expect(detail.locator('img.element-cover')).toBeVisible();
@@ -72,7 +79,9 @@ test('the master illustrates a location, players see it only while it is shared'
   await expect(mapImage).toHaveAttribute('style', /scale\(1\)/);
   await map.getByRole('button', { name: 'На весь экран' }).click();
   await expect
-    .poll(() => page.evaluate(() => document.fullscreenElement?.className ?? ''))
+    .poll(() =>
+      page.evaluate(() => document.fullscreenElement?.className ?? ''),
+    )
     .toContain('element-map-canvas');
   await page.evaluate(() => document.exitFullscreen());
   await expect
@@ -90,7 +99,9 @@ test('the master illustrates a location, players see it only while it is shared'
   await playerPage.goto(elementPath);
   const playerDetail = playerPage.locator('.note-detail');
   await expect(playerDetail.locator('img.element-cover')).toBeVisible();
-  await expect(playerDetail.getByRole('img', { name: 'Электростанция' })).toBeVisible();
+  await expect(
+    playerDetail.getByRole('img', { name: 'Электростанция' }),
+  ).toBeVisible();
   await expect(playerDetail.locator('input[type=file]')).toHaveCount(0);
   const mediaAs = (user: TestUser, url: string) =>
     playerPage.request.get(`/api${url}`, { headers: user.headers });
@@ -108,7 +119,8 @@ test('the master illustrates a location, players see it only while it is shared'
   // Removing the cover takes the old file offline.
   const removed = page.waitForResponse(
     (response) =>
-      response.request().method() === 'DELETE' && response.url().endsWith('/cover'),
+      response.request().method() === 'DELETE' &&
+      response.url().endsWith('/cover'),
   );
   await detail
     .locator('.media-upload', { hasText: 'Обложка' })
@@ -134,6 +146,8 @@ test('a player adds a cover to their own note', async ({ page, request }) => {
 
   // While the note is private, the master cannot fetch its cover.
   const { coverUrl } = await elementMedia(page, player, elementId);
-  const asOwner = await page.request.get(`/api${coverUrl}`, { headers: owner.headers });
+  const asOwner = await page.request.get(`/api${coverUrl}`, {
+    headers: owner.headers,
+  });
   expect(asOwner.status()).toBe(404);
 });

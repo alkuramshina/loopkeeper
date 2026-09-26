@@ -58,6 +58,8 @@ const npcLimits = {
   secret: 1000,
   relationship: 500,
 };
+// NPC details are stored as strings in the element's typeData.
+const npcText = (value: unknown) => (typeof value === 'string' ? value : '');
 
 const ownerAccess: CampaignElementAccess[] = ['MASTER_ONLY', 'SHARED'];
 const playerAccess: CampaignElementAccess[] = [
@@ -269,7 +271,7 @@ function ElementEditor({
               <input
                 required={field === 'role'}
                 maxLength={npcLimits[field]}
-                value={String(draft.typeData?.[field] ?? '')}
+                value={npcText(draft.typeData?.[field])}
                 onChange={(event) => updateNpc(field, event.target.value)}
               />
             </label>
@@ -381,7 +383,7 @@ export function ElementsPage() {
       });
       void queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
       if (variables.verb === 'delete')
-        navigate(`/campaigns/${campaignId}/elements`);
+        void navigate(`/campaigns/${campaignId}/elements`);
     },
     onError: (cause) => setError(message(cause, t)),
   });
@@ -429,7 +431,9 @@ export function ElementsPage() {
             void queryClient.invalidateQueries({
               queryKey: ['element', saved.elementId],
             });
-            navigate(`/campaigns/${campaignId}/elements/${saved.elementId}`);
+            void navigate(
+              `/campaigns/${campaignId}/elements/${saved.elementId}`,
+            );
           }}
         />
       )}
@@ -548,10 +552,10 @@ export function ElementsPage() {
                   )}
                 {selected.type === 'NPC' &&
                   npcFields.map((field) =>
-                    selected.typeData?.[field] ? (
+                    npcText(selected.typeData?.[field]) ? (
                       <p key={field}>
                         <strong>{t(`elements.npc.${field}`)}:</strong>{' '}
-                        {String(selected.typeData[field])}
+                        {npcText(selected.typeData[field])}
                       </p>
                     ) : null,
                   )}

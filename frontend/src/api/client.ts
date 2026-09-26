@@ -36,7 +36,9 @@ export class ApiClient {
       ...init,
       credentials: 'include',
       headers: {
-        ...(this.getToken() ? { Authorization: `Bearer ${this.getToken()}` } : {}),
+        ...(this.getToken()
+          ? { Authorization: `Bearer ${this.getToken()}` }
+          : {}),
         ...init.headers,
       },
     });
@@ -47,7 +49,9 @@ export class ApiClient {
     }
 
     if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
+      const body = (await response
+        .json()
+        .catch(() => null)) as ApiErrorBody | null;
       throw new ApiError(
         response.status,
         body?.code ?? 'internal.error',
@@ -59,7 +63,11 @@ export class ApiClient {
     return response.blob();
   }
 
-  async request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+  async request<T>(
+    path: string,
+    init: RequestInit = {},
+    retried = false,
+  ): Promise<T> {
     const response = await fetch(`${API_URL}${path}`, {
       ...init,
       credentials: 'include',
@@ -67,7 +75,9 @@ export class ApiClient {
         ...(init.body && !(init.body instanceof FormData)
           ? { 'Content-Type': 'application/json' }
           : {}),
-        ...(this.getToken() ? { Authorization: `Bearer ${this.getToken()}` } : {}),
+        ...(this.getToken()
+          ? { Authorization: `Bearer ${this.getToken()}` }
+          : {}),
         ...init.headers,
       },
     });
@@ -80,7 +90,9 @@ export class ApiClient {
     }
 
     if (!response.ok) {
-      const body = await response.json().catch(() => null) as ApiErrorBody | null;
+      const body = (await response
+        .json()
+        .catch(() => null)) as ApiErrorBody | null;
       throw new ApiError(
         response.status,
         body?.code ?? 'internal.error',
@@ -150,7 +162,10 @@ export type CampaignElement = {
   createdById: string;
   createdBy: { userId: string; name: string | null };
 };
-export type CampaignElementInput = Pick<CampaignElement, 'type' | 'access' | 'title' | 'content'> & {
+export type CampaignElementInput = Pick<
+  CampaignElement,
+  'type' | 'access' | 'title' | 'content'
+> & {
   imageUrl?: string | null;
   typeData?: Record<string, unknown>;
 };
@@ -223,8 +238,13 @@ export type Character = {
 export type CampaignMember = {
   memberId: string;
   campaignId: string;
-  campaignRole: 'PLAYER' | 'VIEWER';
-  user: { userId: string; email: string; name?: string | null; avatarUrl?: string | null };
+  campaignRole: 'OWNER' | 'PLAYER' | 'VIEWER';
+  user: {
+    userId: string;
+    email: string;
+    name?: string | null;
+    avatarUrl?: string | null;
+  };
 };
 
 export type CampaignInvitation = {

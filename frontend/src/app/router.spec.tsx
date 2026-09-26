@@ -36,10 +36,9 @@ describe('AppRouter', () => {
     expect(
       await screen.findByRole('heading', { name: 'Войдите в Loopkeeper' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Создать аккаунт' })).toHaveAttribute(
-      'href',
-      '/sign-up?invitation=token-1',
-    );
+    expect(
+      screen.getByRole('link', { name: 'Создать аккаунт' }),
+    ).toHaveAttribute('href', '/sign-up?invitation=token-1');
   });
 
   it('continues a signed-in user from sign-in to the pending invitation', async () => {
@@ -47,7 +46,9 @@ describe('AppRouter', () => {
     renderAt('/sign-in?invitation=token-1');
 
     expect(
-      await screen.findByText('Проверяем приглашение и подключаем вас к кампании…'),
+      await screen.findByText(
+        'Проверяем приглашение и подключаем вас к кампании…',
+      ),
     ).toBeInTheDocument();
     expect(request).toHaveBeenCalledWith('/invitations/token-1/accept', {
       method: 'POST',

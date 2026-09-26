@@ -6,12 +6,17 @@ import {
   signInAs,
 } from './support/api';
 
-test('creates the first campaign from the empty state', async ({ page, request }) => {
+test('creates the first campaign from the empty state', async ({
+  page,
+  request,
+}) => {
   const owner = await registerUser(request, 'Мастер');
   await signInAs(page, owner);
   await page.goto('/campaigns');
 
-  await expect(page.getByRole('button', { name: 'Новая кампания' })).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Новая кампания' }),
+  ).toHaveCount(0);
   await page.getByRole('button', { name: 'Создать первую кампанию' }).click();
   const dialog = page.getByRole('dialog', { name: 'Новая кампания' });
   await dialog.getByLabel('Название').fill('Лето в Мэларёарна');
@@ -52,13 +57,17 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
   await details.getByRole('button', { name: 'Сохранить' }).click();
   await expect(details.getByText('Сохранено')).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Финальная версия' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Финальная версия' }),
+  ).toBeVisible();
 
   const playerContext = await browser.newContext();
   const playerPage = await playerContext.newPage();
   await signInAs(playerPage, player);
   await playerPage.goto('/campaigns');
-  await expect(playerPage.getByRole('link', { name: /Финальная версия/ })).toBeVisible();
+  await expect(
+    playerPage.getByRole('link', { name: /Финальная версия/ }),
+  ).toBeVisible();
   await playerPage.goto(`/campaigns/${campaignId}/settings`);
   await expect(playerPage.getByRole('alert')).toHaveText('Ресурс недоступен.');
 
@@ -73,9 +82,13 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
   });
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
-  await expect(page.getByRole('heading', { name: 'Здесь пока нет кампаний' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Здесь пока нет кампаний' }),
+  ).toBeVisible();
 
   await playerPage.goto('/campaigns');
-  await expect(playerPage.getByRole('heading', { name: 'Здесь пока нет кампаний' })).toBeVisible();
+  await expect(
+    playerPage.getByRole('heading', { name: 'Здесь пока нет кампаний' }),
+  ).toBeVisible();
   await playerContext.close();
 });

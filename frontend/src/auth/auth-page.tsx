@@ -104,7 +104,7 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       return;
     }
 
-    navigate(`/invitations/${encodeURIComponent(token)}`);
+    void navigate(`/invitations/${encodeURIComponent(token)}`);
   }
 
   // Keep a pending invitation when switching between sign-in and sign-up.
@@ -144,7 +144,11 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             <p className="auth-intro">
               {t(isSignUp ? 'auth.signUpIntro' : 'auth.signInIntro')}
             </p>
-            <form className="auth-form" key={mode} onSubmit={submit}>
+            <form
+              className="auth-form"
+              key={mode}
+              onSubmit={(event) => void submit(event)}
+            >
               {isSignUp && (
                 <label className="auth-field">
                   {t('auth.name')}

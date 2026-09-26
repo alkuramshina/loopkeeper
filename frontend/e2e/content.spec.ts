@@ -23,7 +23,10 @@ const markdown = [
   '![картинка](https://example.com/tracker.png)',
 ].join('\n');
 
-test('M12: a note renders safe Markdown and never raw HTML', async ({ page, request }) => {
+test('M12: a note renders safe Markdown and never raw HTML', async ({
+  page,
+  request,
+}) => {
   const { campaignId, owner, player } = await createCampaignWithRoles(request);
   const elementId = await createElement(request, owner, campaignId, {
     type: 'NOTE',
@@ -36,7 +39,10 @@ test('M12: a note renders safe Markdown and never raw HTML', async ({ page, requ
 
   const body = page.locator('.note-detail .markdown-preview');
   await expect(body.getByRole('heading', { name: 'Дневник' })).toBeVisible();
-  await expect(body.locator('ol > li')).toHaveText(['Первый пункт', 'Второй пункт']);
+  await expect(body.locator('ol > li')).toHaveText([
+    'Первый пункт',
+    'Второй пункт',
+  ]);
   await expect(body.locator('blockquote')).toHaveText('Цитата сторожа');
   await expect(body.locator('strong')).toHaveText('важно');
   await expect(body.locator('code')).toHaveText('код');
@@ -45,7 +51,10 @@ test('M12: a note renders safe Markdown and never raw HTML', async ({ page, requ
   await expect(safe).toHaveAttribute('href', 'https://example.com/map');
   await expect(safe).toHaveAttribute('target', '_blank');
   await expect(safe).toHaveAttribute('rel', 'noopener noreferrer');
-  await expect(body.getByText('опасно')).not.toHaveAttribute('href', /javascript/);
+  await expect(body.getByText('опасно')).not.toHaveAttribute(
+    'href',
+    /javascript/,
+  );
 
   // Raw HTML stays text, scripts never run, remote images are not loaded.
   await expect(body.locator('b')).toHaveCount(0);
@@ -62,7 +71,8 @@ test('M12: fallback avatars are generated locally, without third-party requests'
   await createPlayerCharacter(request, player, campaignId, 'Алекс');
   const external: string[] = [];
   page.on('request', (outgoing) => {
-    if (!outgoing.url().startsWith('http://localhost')) external.push(outgoing.url());
+    if (!outgoing.url().startsWith('http://localhost'))
+      external.push(outgoing.url());
   });
 
   await signInAs(page, owner);
@@ -80,8 +90,13 @@ test('M12: fallback avatars are generated locally, without third-party requests'
   await expect(page.getByRole('img', { name: 'Наблюдатель' })).toBeVisible();
 
   // The same entity keeps the same fallback across visits.
-  const before = await page.getByRole('img', { name: 'Игрок' }).getAttribute('src');
+  const before = await page
+    .getByRole('img', { name: 'Игрок' })
+    .getAttribute('src');
   await page.reload();
-  await expect(page.getByRole('img', { name: 'Игрок' })).toHaveAttribute('src', before!);
+  await expect(page.getByRole('img', { name: 'Игрок' })).toHaveAttribute(
+    'src',
+    before!,
+  );
   expect(external.filter((url) => !url.startsWith('data:'))).toEqual([]);
 });

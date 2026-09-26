@@ -58,7 +58,7 @@ export function CampaignSettingsPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['campaigns'] });
       queryClient.removeQueries({ queryKey: ['campaign', campaignId] });
-      navigate('/campaigns', { replace: true });
+      void navigate('/campaigns', { replace: true });
     },
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });

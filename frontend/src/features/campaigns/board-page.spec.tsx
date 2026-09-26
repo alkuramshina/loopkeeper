@@ -83,9 +83,7 @@ describe('BoardPage', () => {
       screen.queryByRole('button', { name: 'Новая карточка' }),
     ).not.toBeInTheDocument();
     expect(document.querySelector('.board-canvas-readonly')).not.toBeNull();
-    expect(
-      document.querySelector('.campaign-background-layer'),
-    ).not.toBeNull();
+    expect(document.querySelector('.campaign-background-layer')).not.toBeNull();
   });
 
   it('shows the element cover on its reference card through protected media', async () => {
@@ -160,7 +158,9 @@ describe('BoardPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Нет связи с сервером.',
     );
-    expect(screen.getByRole('button', { name: 'Повторить' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Повторить' }),
+    ).toBeInTheDocument();
   });
 
   it('keeps an unavailable board tenant-neutral without a retry', async () => {
