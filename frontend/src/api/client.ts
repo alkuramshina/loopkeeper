@@ -89,7 +89,9 @@ export class ApiClient {
       );
     }
 
-    return response.status === 204 ? (undefined as T) : response.json() as Promise<T>;
+    // Some endpoints (e.g. several DELETEs) answer 200 with an empty body.
+    const text = await response.text();
+    return (text ? JSON.parse(text) : undefined) as T;
   }
 }
 

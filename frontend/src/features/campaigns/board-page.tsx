@@ -198,9 +198,7 @@ function CardEditor({
   const card = target.type === 'card' ? target.card : undefined;
   const link = target.type === 'link' ? target.link : undefined;
   const save = useMutation({
-    mutationFn: async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const form = new FormData(event.currentTarget);
+    mutationFn: async (form: FormData) => {
       if (isNew) {
         return api.request<BoardCard>(`/campaigns/${campaignId}/cards`, {
           method: 'POST',
@@ -287,7 +285,7 @@ function CardEditor({
           {t('common.cancel')}
         </button>
       </div>
-      <form onSubmit={(event) => save.mutate(event)}>
+      <form onSubmit={(event) => save.mutate(formData(event))}>
         {link ? (
           <label>
             {t('board.linkLabel')}
@@ -379,6 +377,12 @@ function CardEditor({
       )}
     </aside>
   );
+}
+
+// Mutations run asynchronously, so the form is read while the submit event is still live.
+function formData(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+  return new FormData(event.currentTarget);
 }
 
 function parseTags(value: string) {

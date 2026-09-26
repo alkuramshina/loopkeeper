@@ -1058,9 +1058,11 @@ textarea {
   position: relative;
   min-height: 68vh;
 }
+/* A definite height: React Flow sizes itself with an inline height: 100%,
+   which resolves to 0 against a min-height only. */
 .board-canvas {
   position: relative;
-  min-height: 68vh;
+  height: 68vh;
   overflow: hidden;
   border: 1px solid #d4cfc4;
   border-radius: 10px;
@@ -1637,7 +1639,7 @@ textarea {
     min-height: 65vh;
   }
   .board-canvas {
-    min-height: 65vh;
+    height: 65vh;
   }
   .board-inspector {
     position: fixed;

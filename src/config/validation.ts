@@ -15,6 +15,13 @@ export const validationSchema = Joi.object({
 
   THROTTLE_TTL: Joi.number().integer().min(1_000).default(60_000),
   THROTTLE_LIMIT: Joi.number().integer().min(1).default(100),
+  // Per-route limit for register/login/refresh/change-password. Raising it is
+  // only for automated browser tests, so production keeps the strict default.
+  AUTH_THROTTLE_LIMIT: Joi.number()
+    .integer()
+    .min(1)
+    .default(5)
+    .when('NODE_ENV', { is: 'production', then: Joi.number().max(5) }),
 
   MEDIA_STORAGE_PATH: Joi.string()
     .trim()

@@ -22,6 +22,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ApiCommonErrors } from '../common/swagger/api-errors.decorator';
+import appConfig from '../config/app.config';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import jwtConfig from './config/jwt.config';
@@ -34,7 +35,10 @@ import { Public } from './decorators/public.decorator';
 import { LocalAuthGuard } from './guards/local.guard';
 import { RefreshJwtAuthGuard } from './guards/refresh.guard';
 
-const AUTH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
+// Resolved per request so a browser-test server can raise the limit through the environment.
+const AUTH_THROTTLE = {
+  default: { limit: () => appConfig().authThrottleLimit, ttl: 60_000 },
+};
 
 @ApiTags('Authentication')
 @Controller('auth')

@@ -1,5 +1,12 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import {
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/auth-context';
 import { AuthPage } from '../auth/auth-page';
@@ -49,14 +56,27 @@ function ProtectedRoute() {
 function PublicOnlyRoute() {
   const { profile, loading } = useAuth();
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   if (loading) return <main className="page-state">{t('common.loading')}</main>;
-  return profile ? <Navigate to="/campaigns" replace /> : <Outlet />;
+  if (!profile) return <Outlet />;
+  // Signing in from an invitation link continues to that invitation.
+  const invitation = searchParams.get('invitation');
+  return (
+    <Navigate
+      to={
+        invitation
+          ? `/invitations/${encodeURIComponent(invitation)}`
+          : '/campaigns'
+      }
+      replace
+    />
+  );
 }
 
 function InvitationEntry() {
   const { profile, loading } = useAuth();
   const { t } = useTranslation();
-  const token = window.location.pathname.split('/').pop();
+  const { token } = useParams();
   if (loading) return <main className="page-state">{t('common.loading')}</main>;
   return profile ? (
     <InvitationPage />

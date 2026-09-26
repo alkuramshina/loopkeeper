@@ -31,17 +31,14 @@ export function CampaignSettingsPage() {
   });
   const isOwner = campaign.data?.currentUserRole === 'OWNER';
   const update = useMutation({
-    mutationFn: (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      const form = new FormData(event.currentTarget);
-      return api.request<Campaign>(`/campaigns/${campaignId}`, {
+    mutationFn: (form: FormData) =>
+      api.request<Campaign>(`/campaigns/${campaignId}`, {
         method: 'PATCH',
         body: JSON.stringify({
           title: form.get('title'),
           description: form.get('description'),
         }),
-      });
-    },
+      }),
     onSuccess: (updated) => {
       queryClient.setQueryData<Campaign>(['campaign', campaignId], updated);
       queryClient.setQueryData<Campaign[]>(['campaigns'], (campaigns) =>
@@ -87,7 +84,14 @@ export function CampaignSettingsPage() {
         <p>{t('common.loading')}</p>
       ) : (
         <div className="settings-grid">
-          <form className="panel" onSubmit={(event) => update.mutate(event)}>
+          <form
+            className="panel"
+            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+              // Read the form now: the mutation runs after the event is released.
+              event.preventDefault();
+              update.mutate(new FormData(event.currentTarget));
+            }}
+          >
             <div className="section-heading">
               <h2>{t('campaignSettings.details')}</h2>
               {saved && (

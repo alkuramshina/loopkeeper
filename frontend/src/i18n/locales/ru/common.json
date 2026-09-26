@@ -300,6 +300,7 @@
     "campaign.not_found": "Кампания недоступна.",
     "resource.not_found": "Ресурс недоступен.",
     "invitation.already_member": "Вы уже состоите в этой кампании.",
+    "invitation.not_found": "Приглашение недоступно.",
     "media.invalid_file": "Не удалось прочитать изображение.",
     "media.file_too_large": "Файл слишком большой: до 5 МБ, для карты локации — до 10 МБ.",
     "media.invalid_element_cover_dimensions": "Каждая сторона обложки должна быть от 256 до 4096 пикселей, пропорции — от 1:2 до 2:1.",

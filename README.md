@@ -16,7 +16,7 @@ Loopkeeper — веб-приложение для совместного вед�
 
 - Backend: NestJS, TypeScript, PostgreSQL, Prisma.
 - Frontend: React, Vite, TanStack Query, React Flow.
-- Тесты: Jest (backend), Vitest и Testing Library (frontend).
+- Тесты: Jest (backend), Vitest и Testing Library (frontend), Playwright (браузерные сценарии).
 
 ## Быстрый старт
 
@@ -70,6 +70,17 @@ cd frontend && npm test  # тесты интерфейса
 ```
 
 E2E-тесты работают только с базой `loopkeeper_test` и не трогают рабочие данные.
+
+### Браузерные тесты (Playwright)
+
+```sh
+npm run db:test:up
+cd frontend
+npx playwright install chromium   # один раз
+npm run test:e2e                  # или test:e2e:ui для интерактивного режима
+```
+
+Playwright сам поднимает отдельный API на порту `3100` (база `loopkeeper_test` мигрируется и очищается перед запуском) и Vite на порту `5174`, поэтому рабочие серверы и данные не затрагиваются. Если скачать Chromium нельзя, можно использовать установленный Chrome: `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`.
 
 ## Полезные команды
 

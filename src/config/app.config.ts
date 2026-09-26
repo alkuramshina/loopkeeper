@@ -6,5 +6,6 @@ export default registerAs('app', () => ({
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:5173',
   throttleTtl: Number(process.env.THROTTLE_TTL ?? 60_000),
   throttleLimit: Number(process.env.THROTTLE_LIMIT ?? 100),
+  authThrottleLimit: Number(process.env.AUTH_THROTTLE_LIMIT ?? 5),
   mediaStoragePath: process.env.MEDIA_STORAGE_PATH ?? 'data/media',
 }));

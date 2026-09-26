@@ -17,6 +17,7 @@ describe('validationSchema', () => {
       FRONTEND_URL: 'http://localhost:3000',
       THROTTLE_TTL: 60_000,
       THROTTLE_LIMIT: 100,
+      AUTH_THROTTLE_LIMIT: 5,
       MEDIA_STORAGE_PATH: 'data/media',
       REFRESH_COOKIE_NAME: 'refresh_token',
       REFRESH_COOKIE_SECURE: false,
@@ -51,5 +52,24 @@ describe('validationSchema', () => {
     });
 
     expect(error?.message).toContain('REFRESH_COOKIE_SECURE');
+  });
+
+  it('allows raising the auth limit for tests but not in production', () => {
+    expect(
+      validationSchema.validate({
+        ...validEnvironment,
+        NODE_ENV: 'test',
+        AUTH_THROTTLE_LIMIT: 10_000,
+      }).error,
+    ).toBeUndefined();
+
+    const { error } = validationSchema.validate({
+      ...validEnvironment,
+      NODE_ENV: 'production',
+      REFRESH_COOKIE_SECURE: true,
+      AUTH_THROTTLE_LIMIT: 10_000,
+    });
+
+    expect(error?.message).toContain('AUTH_THROTTLE_LIMIT');
   });
 });

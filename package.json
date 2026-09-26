@@ -18,6 +18,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --runInBand --config ./test/setup/jest-e2e.json",
+    "test:browser:prepare": "ts-node test/setup/browser-database.ts",
     "db:up": "docker compose --env-file .env -f deploy/docker-compose.yml up -d postgres",
     "db:test:up": "docker compose --env-file .env -f deploy/docker-compose.yml --profile test up -d postgres-test",
     "db:test:down": "docker compose --env-file .env -f deploy/docker-compose.yml --profile test stop postgres-test",

@@ -56,4 +56,50 @@ describe('ApiClient', () => {
 
     await expect(api.request<void>('/auth/logout', { method: 'POST' })).resolves.toBeUndefined();
   });
+
+  it('returns undefined for a successful response with an empty body', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 200 })));
+    const api = new ApiClient(() => 'access-token', async () => null);
+
+    await expect(
+      api.request<void>('/campaigns/campaign-1', { method: 'DELETE' }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('maps an error body to its stable code and violations', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            statusCode: 400,
+            code: 'validation.failed',
+            message: 'Request validation failed',
+            violations: [{ field: 'title', code: 'validation.required' }],
+          }),
+          { status: 400 },
+        ),
+      ),
+    );
+    const api = new ApiClient(() => 'access-token', async () => null);
+
+    await expect(api.request('/campaigns', { method: 'POST' })).rejects.toMatchObject({
+      status: 400,
+      code: 'validation.failed',
+      violations: [{ field: 'title', code: 'validation.required' }],
+    });
+  });
+
+  it('falls back to internal.error when the error body is not JSON', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('<html>Bad gateway</html>', { status: 502 })),
+    );
+    const api = new ApiClient(() => 'access-token', async () => null);
+
+    await expect(api.request('/campaigns')).rejects.toMatchObject({
+      status: 502,
+      code: 'internal.error',
+    });
+  });
 });

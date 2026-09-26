@@ -58,14 +58,9 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         password,
         name: isSignUp ? name : undefined,
       };
+      // On success PublicOnlyRoute redirects, keeping a pending invitation.
       if (isSignUp) await signUp(payload);
       else await signIn(payload);
-      const invitation = searchParams.get('invitation');
-      navigate(
-        invitation
-          ? `/invitations/${encodeURIComponent(invitation)}`
-          : '/campaigns',
-      );
     } catch (cause) {
       console.warn(cause);
       setError(
@@ -102,7 +97,10 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     navigate(`/invitations/${encodeURIComponent(token)}`);
   }
 
-  const switchPath = isSignUp ? '/sign-in' : '/sign-up';
+  // Keep a pending invitation when switching between sign-in and sign-up.
+  const switchPath = `${isSignUp ? '/sign-in' : '/sign-up'}${
+    searchParams.size ? `?${searchParams.toString()}` : ''
+  }`;
   const errorId = 'auth-form-error';
 
   return (
