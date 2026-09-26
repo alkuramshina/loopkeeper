@@ -133,14 +133,16 @@ export class CampaignService {
           OR: [
             { backgroundCampaignId: campaignId },
             { campaignCover: { campaignId } },
+            { characterAvatar: { campaignId } },
             { elementCover: { campaignId } },
             { elementMap: { campaignId } },
           ],
         },
         select: { assetId: true, storageKey: true },
       });
+      // Members, invitations, characters, elements and the board cascade.
       await tx.campaign.delete({ where: { campaignId } });
-      // Cover and element assets are only detached by the cascade.
+      // Cover, avatar and element assets are only detached by the cascade.
       await tx.mediaAsset.deleteMany({
         where: { assetId: { in: assets.map((asset) => asset.assetId) } },
       });
@@ -166,7 +168,7 @@ export class CampaignService {
       ...campaignData
     } = campaign;
     const currentUserRole: CurrentUserRole =
-      ownerId === userId ? 'OWNER' : members[0]!.campaignRole;
+      ownerId === userId ? 'OWNER' : members[0].campaignRole;
 
     return {
       ...campaignData,

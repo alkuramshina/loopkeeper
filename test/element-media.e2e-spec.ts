@@ -188,6 +188,24 @@ describe('Element media (e2e)', () => {
     await canReadMedia(viewer, coverUrl, true);
     await canReadMedia(outsider, coverUrl, false);
 
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(player)
+      .send({ cardKind: 'ELEMENT_REFERENCE', elementId })
+      .expect(201)
+      .expect((response) =>
+        expect(response.body.reference).toEqual({
+          kind: 'ELEMENT',
+          elementId,
+          coverUrl,
+        }),
+      );
+    const board = await request(app.getHttpServer())
+      .get(`/campaigns/${campaignId}/investigation-board`)
+      .set(viewer)
+      .expect(200);
+    expect(board.body.cards[0].reference.coverUrl).toBe(coverUrl);
+
     await setAccess(owner, elementId, 'MASTER_ONLY');
     await canReadMedia(player, coverUrl, false);
     await canReadMedia(viewer, coverUrl, false);
@@ -386,15 +404,7 @@ describe('Element media (e2e)', () => {
   });
 
   it('removes element media files when the element or the campaign is deleted', async () => {
-    // A campaign without members: deleting a campaign with members is
-    // currently rejected by the campaign_members foreign key.
-    const owner = await register('solo-owner@loopkeeper.dev');
-    const campaign = await request(app.getHttpServer())
-      .post('/campaigns')
-      .set(owner)
-      .send({ title: 'Solo', description: 'A campaign' })
-      .expect(201);
-    const campaignId: string = campaign.body.campaignId;
+    const { owner, campaignId } = await setupCampaign();
     const locationId = await createElement(owner, campaignId, {
       type: 'LOCATION',
       title: 'Lake',

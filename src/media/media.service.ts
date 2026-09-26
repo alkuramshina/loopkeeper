@@ -831,7 +831,7 @@ export class MediaService {
     await rm(this.storageFilePath(storageKey), { force: true });
   }
 
-  private async validateUpload(file: UploadedFile): Promise<void> {
+  private validateUpload(file: UploadedFile): void {
     if (!file?.buffer?.length) {
       throw this.invalidMedia(
         'media.invalid_file',
@@ -855,7 +855,7 @@ export class MediaService {
   }
 
   private async normalizeAvatar(file: UploadedFile): Promise<NormalizedAvatar> {
-    await this.validateUpload(file);
+    this.validateUpload(file);
     try {
       const image = sharp(file.buffer, {
         limitInputPixels: MAX_AVATAR_DIMENSION ** 2,
@@ -899,7 +899,7 @@ export class MediaService {
   }
 
   private async normalizeCover(file: UploadedFile): Promise<NormalizedAvatar> {
-    await this.validateUpload(file);
+    this.validateUpload(file);
     try {
       const image = sharp(file.buffer, {
         limitInputPixels: MAX_COVER_DIMENSION ** 2,
@@ -949,7 +949,7 @@ export class MediaService {
   private async normalizeBackground(
     file: UploadedFile,
   ): Promise<NormalizedAvatar> {
-    await this.validateUpload(file);
+    this.validateUpload(file);
     try {
       const image = sharp(file.buffer, {
         limitInputPixels: 2560 * 1440,
@@ -966,7 +966,7 @@ export class MediaService {
         );
       }
       const content = await image.webp().toBuffer();
-      return { content, width: rotatedWidth!, height: rotatedHeight! };
+      return { content, width: rotatedWidth, height: rotatedHeight };
     } catch (error) {
       if (error instanceof DomainException) throw error;
       throw this.invalidMedia(
@@ -979,7 +979,7 @@ export class MediaService {
   private async normalizeElementCover(
     file: UploadedFile,
   ): Promise<NormalizedAvatar> {
-    await this.validateUpload(file);
+    this.validateUpload(file);
     try {
       const image = sharp(file.buffer, {
         limitInputPixels: MAX_ELEMENT_COVER_DIMENSION ** 2,

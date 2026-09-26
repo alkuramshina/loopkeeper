@@ -83,7 +83,9 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @UseGuards(RefreshJwtAuthGuard)
-  @ApiOperation({ summary: 'Rotate the refresh session and return a new access token' })
+  @ApiOperation({
+    summary: 'Rotate the refresh session and return a new access token',
+  })
   @ApiOkResponse({ type: LoginResponseDto })
   @ApiCommonErrors({ badRequest: false, notFound: false })
   @Post('refresh')
@@ -104,7 +106,8 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(
-    @Request() request: { user: TokenPayloadDto; cookies?: Record<string, string> },
+    @Request()
+    request: { user: TokenPayloadDto; cookies?: Record<string, string> },
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     await this.authService.logout(

@@ -1,8 +1,4 @@
-import {
-  Inject,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { Inject, HttpStatus, Injectable } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
@@ -39,7 +35,10 @@ export class AuthService {
     });
   }
 
-  async validateUser(email: string, password: string): Promise<AuthenticatedUser | null> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<AuthenticatedUser | null> {
     const user = await this.userService.findByEmail(email);
 
     if (!user || !(await argon2.verify(user.passwordHash, password))) {
@@ -72,7 +71,10 @@ export class AuthService {
       include: { user: true },
     });
 
-    if (!session || !(await argon2.verify(session.refreshTokenHash, refreshToken))) {
+    if (
+      !session ||
+      !(await argon2.verify(session.refreshTokenHash, refreshToken))
+    ) {
       throw new DomainException(
         HttpStatus.UNAUTHORIZED,
         'auth.refresh_invalid',
@@ -124,8 +126,9 @@ export class AuthService {
       return;
     }
 
-    const decoded = this.jwtService.decode(refreshToken) as JwtPayload | null;
-    const sessionId = typeof decoded?.sid === 'string' ? decoded.sid : undefined;
+    const decoded = this.jwtService.decode<JwtPayload | null>(refreshToken);
+    const sessionId =
+      typeof decoded?.sid === 'string' ? decoded.sid : undefined;
 
     if (!sessionId) {
       return;
@@ -139,7 +142,10 @@ export class AuthService {
       },
     });
 
-    if (session && (await argon2.verify(session.refreshTokenHash, refreshToken))) {
+    if (
+      session &&
+      (await argon2.verify(session.refreshTokenHash, refreshToken))
+    ) {
       await this.prisma.authSession.update({
         where: { sessionId: session.sessionId },
         data: { revokedAt: new Date() },
@@ -153,7 +159,13 @@ export class AuthService {
   ): Promise<void> {
     const user = await this.userService.findById(userId);
 
-    if (!user || !(await argon2.verify(user.passwordHash, changePasswordDto.currentPassword))) {
+    if (
+      !user ||
+      !(await argon2.verify(
+        user.passwordHash,
+        changePasswordDto.currentPassword,
+      ))
+    ) {
       throw new DomainException(
         HttpStatus.UNAUTHORIZED,
         'auth.invalid_credentials',
@@ -194,17 +206,24 @@ export class AuthService {
     client: SessionClient = this.prisma,
   ): Promise<TokenDto> {
     const sessionId = randomUUID();
-    const payload = { username: user.username, sub: user.userId, sid: sessionId };
+    const payload = {
+      username: user.username,
+      sub: user.userId,
+      sid: sessionId,
+    };
     const refreshOptions: JwtSignOptions = {
       secret: this.jwtTokenConfig.refreshSecret,
-      expiresIn: this.jwtTokenConfig.refreshExpiresIn as JwtSignOptions['expiresIn'],
+      expiresIn: this.jwtTokenConfig
+        .refreshExpiresIn as JwtSignOptions['expiresIn'],
     };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload),
       this.jwtService.signAsync(payload, refreshOptions),
     ]);
-    const refreshPayload = this.jwtService.decode(refreshToken) as JwtPayload | null;
+    const refreshPayload = this.jwtService.decode<JwtPayload | null>(
+      refreshToken,
+    );
 
     if (!refreshPayload?.exp) {
       throw new Error('Refresh token has no expiration');

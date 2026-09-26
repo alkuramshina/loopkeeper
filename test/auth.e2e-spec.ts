@@ -101,7 +101,9 @@ describe('Auth (e2e)', () => {
 
     expect(refreshResponse.body).toHaveProperty('accessToken');
     expect(await getTestPrisma().authSession.count()).toBe(2);
-    expect(await getTestPrisma().authSession.count({ where: { revokedAt: null } })).toBe(1);
+    expect(
+      await getTestPrisma().authSession.count({ where: { revokedAt: null } }),
+    ).toBe(1);
 
     await request(app.getHttpServer())
       .post('/auth/refresh')
@@ -122,7 +124,9 @@ describe('Auth (e2e)', () => {
       .set('Authorization', `Bearer ${registerResponse.body.accessToken}`)
       .expect(204);
 
-    expect(logoutResponse.headers['set-cookie'][0]).toContain('refresh_token=;');
+    expect(logoutResponse.headers['set-cookie'][0]).toContain(
+      'refresh_token=;',
+    );
 
     await request(app.getHttpServer())
       .post('/auth/refresh')

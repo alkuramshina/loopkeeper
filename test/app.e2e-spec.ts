@@ -45,13 +45,10 @@ describe('HealthController (e2e)', () => {
   });
 
   it('requires a JWT for campaign routes', () => {
-    return request(app.getHttpServer())
-      .get('/campaigns')
-      .expect(401)
-      .expect({
-        statusCode: 401,
-        code: 'auth.invalid_token',
-        message: 'Authentication is required',
-      });
+    return request(app.getHttpServer()).get('/campaigns').expect(401).expect({
+      statusCode: 401,
+      code: 'auth.invalid_token',
+      message: 'Authentication is required',
+    });
   });
 });

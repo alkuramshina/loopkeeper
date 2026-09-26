@@ -23,7 +23,13 @@ import { UpdateInvestigationBoardNodeDto } from './dto/node.dto';
 const cardInclude = {
   node: true,
   element: {
-    select: { elementId: true, title: true, content: true, access: true },
+    select: {
+      elementId: true,
+      title: true,
+      content: true,
+      access: true,
+      coverUrl: true,
+    },
   },
   character: {
     select: {
@@ -289,7 +295,11 @@ export class InvestigationBoardService {
         ...cardData,
         title: element.title,
         content: this.preview(element.content),
-        reference: { kind: 'ELEMENT', elementId: element.elementId },
+        reference: {
+          kind: 'ELEMENT',
+          elementId: element.elementId,
+          coverUrl: element.coverUrl,
+        },
       };
     }
     if (

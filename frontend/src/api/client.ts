@@ -161,7 +161,12 @@ export type BoardCard = {
   color?: string | null;
   icon?: string | null;
   node?: { x: number; y: number; width: number; height: number } | null;
-  reference?: { kind: 'ELEMENT' | 'CHARACTER'; elementId?: string; characterId?: string };
+  reference?: {
+    kind: 'ELEMENT' | 'CHARACTER';
+    elementId?: string;
+    characterId?: string;
+    coverUrl?: string | null;
+  };
 };
 
 export type BoardLink = {

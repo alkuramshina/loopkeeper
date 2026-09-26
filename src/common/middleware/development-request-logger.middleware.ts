@@ -4,7 +4,7 @@ import type { NextFunction, Request, Response } from 'express';
 const logger = new Logger('HTTP');
 
 function routeLabel(request: Request): string {
-  const routePath = request.route?.path;
+  const routePath = (request.route as { path?: unknown } | undefined)?.path;
   if (typeof routePath === 'string') return `${request.baseUrl}${routePath}`;
   if (request.method === 'OPTIONS') return 'preflight';
   return 'unmatched';

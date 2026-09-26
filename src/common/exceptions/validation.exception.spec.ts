@@ -1,4 +1,3 @@
-import { ValidationError } from '@nestjs/common';
 import { ValidationException } from './validation.exception';
 
 describe('ValidationException', () => {
@@ -8,7 +7,7 @@ describe('ValidationException', () => {
         property: 'email',
         constraints: { isEmail: 'email must be an email' },
         children: [],
-      } as ValidationError,
+      },
       {
         property: 'profile',
         children: [
@@ -16,9 +15,9 @@ describe('ValidationException', () => {
             property: 'name',
             constraints: { isString: 'name must be a string' },
             children: [],
-          } as ValidationError,
+          },
         ],
-      } as ValidationError,
+      },
     ]);
 
     expect(exception.getResponse()).toEqual({

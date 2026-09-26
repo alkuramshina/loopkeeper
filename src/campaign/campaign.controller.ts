@@ -29,7 +29,9 @@ import { UpdateCampaignDto } from './dto/update-campaign.dto';
 export class CampaignController {
   constructor(private readonly campaignService: CampaignService) {}
 
-  @ApiOperation({ summary: 'Create a campaign owned by the authenticated user' })
+  @ApiOperation({
+    summary: 'Create a campaign owned by the authenticated user',
+  })
   @ApiBody({ type: CreateCampaignDto })
   @ApiCreatedResponse({ type: CampaignResponseDto })
   @ApiCommonErrors({ notFound: false })
@@ -41,7 +43,9 @@ export class CampaignController {
     return this.campaignService.create(request.user.userId, createDto);
   }
 
-  @ApiOperation({ summary: 'List campaigns owned by or shared with the authenticated user' })
+  @ApiOperation({
+    summary: 'List campaigns owned by or shared with the authenticated user',
+  })
   @ApiOkResponse({ type: CampaignResponseDto, isArray: true })
   @ApiCommonErrors({ badRequest: false, notFound: false })
   @Get()

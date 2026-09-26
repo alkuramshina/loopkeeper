@@ -19,12 +19,16 @@ describe('OpenAPI contract', () => {
   });
 
   it('documents critical protected routes and the access-token scheme', () => {
-    expect(document.components?.securitySchemes?.['access-token']).toMatchObject({
+    expect(
+      document.components?.securitySchemes?.['access-token'],
+    ).toMatchObject({
       type: 'http',
       scheme: 'bearer',
     });
     expect(document.paths['/campaigns']).toHaveProperty('get');
-    expect(document.paths['/campaigns/{campaignId}/cards']).toHaveProperty('post');
+    expect(document.paths['/campaigns/{campaignId}/cards']).toHaveProperty(
+      'post',
+    );
     expect(document.paths['/cards/{cardId}']).toHaveProperty('patch');
     expect(document.paths['/auth/login']).toHaveProperty('post');
     expect(document.paths['/health/live']).toHaveProperty('get');
@@ -34,7 +38,8 @@ describe('OpenAPI contract', () => {
     const loginOperation = document.paths['/auth/login'].post;
     const registerOperation = document.paths['/auth/register'].post;
     const campaignListOperation = document.paths['/campaigns'].get;
-    const boardOperation = document.paths['/campaigns/{campaignId}/investigation-board'].get;
+    const boardOperation =
+      document.paths['/campaigns/{campaignId}/investigation-board'].get;
 
     expect(loginOperation?.requestBody).toMatchObject({
       content: {
@@ -53,18 +58,24 @@ describe('OpenAPI contract', () => {
     expect(campaignListOperation?.responses?.['200']).toMatchObject({
       content: {
         'application/json': {
-          schema: { items: { $ref: '#/components/schemas/CampaignResponseDto' } },
+          schema: {
+            items: { $ref: '#/components/schemas/CampaignResponseDto' },
+          },
         },
       },
     });
     expect(boardOperation?.responses?.['200']).toMatchObject({
       content: {
         'application/json': {
-          schema: { $ref: '#/components/schemas/InvestigationBoardResponseDto' },
+          schema: {
+            $ref: '#/components/schemas/InvestigationBoardResponseDto',
+          },
         },
       },
     });
-    expect(document.paths['/elements/{elementId}/access'].patch?.requestBody).toMatchObject({
+    expect(
+      document.paths['/elements/{elementId}/access'].patch?.requestBody,
+    ).toMatchObject({
       content: {
         'application/json': {
           schema: { $ref: '#/components/schemas/UpdateElementAccessDto' },
@@ -91,7 +102,8 @@ describe('OpenAPI contract', () => {
 
   it('documents the locale-neutral error schema for critical operations', () => {
     const registerResponses = document.paths['/auth/register'].post?.responses;
-    const boardResponses = document.paths['/campaigns/{campaignId}/cards'].post?.responses;
+    const boardResponses =
+      document.paths['/campaigns/{campaignId}/cards'].post?.responses;
 
     expect(registerResponses).toHaveProperty('400');
     expect(registerResponses).toHaveProperty('409');

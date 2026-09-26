@@ -11,7 +11,6 @@ import {
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
-
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -63,7 +62,9 @@ export class CharacterController {
     return this.characters.findOne(request.user.userId, characterId);
   }
 
-  @ApiOperation({ summary: 'Update a character owned by the authenticated user' })
+  @ApiOperation({
+    summary: 'Update a character owned by the authenticated user',
+  })
   @ApiParam({ name: 'characterId', format: 'uuid' })
   @ApiOkResponse({ type: CharacterResponseDto })
   @Patch('characters/:characterId')
@@ -75,7 +76,9 @@ export class CharacterController {
     return this.characters.update(request.user.userId, characterId, updateDto);
   }
 
-  @ApiOperation({ summary: 'Delete a character owned by the authenticated user' })
+  @ApiOperation({
+    summary: 'Delete a character owned by the authenticated user',
+  })
   @ApiParam({ name: 'characterId', format: 'uuid' })
   @ApiOkResponse({ description: 'Character deleted' })
   @Delete('characters/:characterId')

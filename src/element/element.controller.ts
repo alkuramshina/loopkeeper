@@ -81,11 +81,7 @@ export class ElementController {
     @Body() dto: UpdateElementAccessDto,
     @Request() request: { user: TokenPayloadDto },
   ) {
-    return this.elements.setAccess(
-      request.user.userId,
-      elementId,
-      dto.access,
-    );
+    return this.elements.setAccess(request.user.userId, elementId, dto.access);
   }
 
   @Delete('elements/:elementId')

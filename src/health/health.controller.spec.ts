@@ -26,7 +26,9 @@ describe('HealthController', () => {
     });
     (health.check as jest.Mock).mockResolvedValue({ status: 'ok' });
 
-    await expect(controller.checkReadiness()).resolves.toEqual({ status: 'ok' });
+    await expect(controller.checkReadiness()).resolves.toEqual({
+      status: 'ok',
+    });
 
     const checks = (health.check as jest.Mock).mock.calls[0][0] as Array<
       () => Promise<unknown>

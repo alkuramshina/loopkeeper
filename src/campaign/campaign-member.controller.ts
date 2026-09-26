@@ -5,7 +5,6 @@ import {
   Get,
   Param,
   Patch,
-
   Request,
 } from '@nestjs/common';
 import {
@@ -26,7 +25,6 @@ import { UpdateMemberDto } from './dto/update-member.dto';
 @Controller('campaigns/:campaignId/members')
 export class CampaignMemberController {
   constructor(private readonly members: CampaignMemberService) {}
-
 
   @ApiOperation({ summary: 'List members of an owned campaign' })
   @ApiOkResponse({ type: CampaignMemberResponseDto, isArray: true })

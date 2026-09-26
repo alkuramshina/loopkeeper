@@ -38,6 +38,13 @@ export class InvestigationCardReferenceResponseDto {
 
   @ApiPropertyOptional({ format: 'uri', nullable: true })
   avatarUrl?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'ELEMENT only: authenticated /media/:assetId path of the element cover',
+  })
+  coverUrl?: string | null;
 }
 
 export class InvestigationCardResponseDto {

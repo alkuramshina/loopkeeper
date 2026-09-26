@@ -26,12 +26,8 @@ describe('JwtAuthGuard', () => {
 
   beforeEach(() => {
     guard = new JwtAuthGuard(new Reflector());
-    const parent = Object.getPrototypeOf(
-      JwtAuthGuard.prototype,
-    ) as GuardParent;
-    parentCanActivate = jest
-      .spyOn(parent, 'canActivate')
-      .mockReturnValue(true);
+    const parent = Object.getPrototypeOf(JwtAuthGuard.prototype) as GuardParent;
+    parentCanActivate = jest.spyOn(parent, 'canActivate').mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -44,10 +40,13 @@ describe('JwtAuthGuard', () => {
     [AuthController.prototype, AuthController.prototype.register],
     [AuthController.prototype, AuthController.prototype.login],
     [AuthController.prototype, AuthController.prototype.refresh],
-  ])('bypasses Passport JWT validation for public endpoints', (controller, handler) => {
-    expect(guard.canActivate(createContext(controller, handler))).toBe(true);
-    expect(parentCanActivate).not.toHaveBeenCalled();
-  });
+  ])(
+    'bypasses Passport JWT validation for public endpoints',
+    (controller, handler) => {
+      expect(guard.canActivate(createContext(controller, handler))).toBe(true);
+      expect(parentCanActivate).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     [AuthController.prototype, AuthController.prototype.getProfile],
@@ -56,8 +55,11 @@ describe('JwtAuthGuard', () => {
     [UserController.prototype, UserController.prototype.findMe],
     [UserController.prototype, UserController.prototype.updateMe],
     [CampaignController.prototype, CampaignController.prototype.findAll],
-  ])('delegates protected endpoints to Passport JWT validation', (controller, handler) => {
-    expect(guard.canActivate(createContext(controller, handler))).toBe(true);
-    expect(parentCanActivate).toHaveBeenCalledTimes(1);
-  });
+  ])(
+    'delegates protected endpoints to Passport JWT validation',
+    (controller, handler) => {
+      expect(guard.canActivate(createContext(controller, handler))).toBe(true);
+      expect(parentCanActivate).toHaveBeenCalledTimes(1);
+    },
+  );
 });

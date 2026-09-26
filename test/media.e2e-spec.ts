@@ -212,7 +212,13 @@ describe('Media (e2e)', () => {
       .expect(200);
     const playerTemplateId = templates.body[0].templateId;
     const player = await registerUser(app, 'limits-player@loopkeeper.dev');
-    await inviteAndAccept(app, owner, player, campaign.body.campaignId, 'PLAYER');
+    await inviteAndAccept(
+      app,
+      owner,
+      player,
+      campaign.body.campaignId,
+      'PLAYER',
+    );
     const character = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.body.campaignId}/characters`)
       .set(authenticate(player))
@@ -251,7 +257,6 @@ describe('Media (e2e)', () => {
     }
     expect(await getTestPrisma().mediaAsset.count()).toBe(0);
   });
-
 
   it('requires authentication and allows authenticated users to read avatars', async () => {
     const owner = await registerUser(app, 'owner-media@loopkeeper.dev');
@@ -345,9 +350,11 @@ describe('Media (e2e)', () => {
           .get(response.body.imageUrl)
           .set(authenticate(member))
           .expect(200);
-        await expect(sharp(delivered.body).metadata()).resolves.toMatchObject(
-          { width, height, format: 'webp' },
-        );
+        await expect(sharp(delivered.body).metadata()).resolves.toMatchObject({
+          width,
+          height,
+          format: 'webp',
+        });
       }
       await request(app.getHttpServer())
         .get(response.body.imageUrl)
@@ -623,7 +630,6 @@ describe('Media (e2e)', () => {
       .send({ role: 'PLAYER' })
       .expect(200);
 
-
     await request(app.getHttpServer())
       .get(firstCharacterAvatar.body.avatarUrl)
       .set(authenticate(player))
@@ -756,7 +762,13 @@ describe('Media (e2e)', () => {
       })
       .expect(201);
     const player = await registerUser(app, 'legacy-player@loopkeeper.dev');
-    await inviteAndAccept(app, owner, player, campaign.body.campaignId, 'PLAYER');
+    await inviteAndAccept(
+      app,
+      owner,
+      player,
+      campaign.body.campaignId,
+      'PLAYER',
+    );
     const templates = await request(app.getHttpServer())
       .get('/game-systems/TALES_FROM_THE_LOOP/templates')
       .set(authenticate(owner))

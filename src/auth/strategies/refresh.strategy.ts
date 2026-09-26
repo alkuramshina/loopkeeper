@@ -9,7 +9,10 @@ import jwtConfig from '../config/jwt.config';
 import { TokenPayloadDto } from '../dto/token-payload.dto';
 
 @Injectable()
-export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
+export class RefreshJwtStrategy extends PassportStrategy(
+  Strategy,
+  'jwt-refresh',
+) {
   constructor(
     @Inject(jwtConfig.KEY)
     private readonly jwtTokenConfig: ConfigType<typeof jwtConfig>,
@@ -17,7 +20,8 @@ export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (request) => request?.cookies?.[jwtTokenConfig.refreshCookieName],
+        (request: { cookies?: Record<string, string> } | undefined) =>
+          request?.cookies?.[jwtTokenConfig.refreshCookieName] ?? null,
       ]),
       secretOrKey: jwtTokenConfig.refreshSecret,
       ignoreExpiration: false,
@@ -30,7 +34,7 @@ export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     payload: JwtPayload,
   ): Promise<TokenPayloadDto> {
     const userId = payload.sub;
-    const sessionId = payload.sid;
+    const sessionId: unknown = payload.sid;
     const refreshToken =
       request.cookies?.[this.jwtTokenConfig.refreshCookieName];
 
@@ -46,6 +50,10 @@ export class RefreshJwtStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       );
     }
 
-    return this.authService.validateRefreshSession(userId, sessionId, refreshToken);
+    return this.authService.validateRefreshSession(
+      userId,
+      sessionId,
+      refreshToken,
+    );
   }
 }

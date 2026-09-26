@@ -28,6 +28,9 @@ export class CampaignInvitationResponseDto {
 }
 
 export class CreatedCampaignInvitationResponseDto extends CampaignInvitationResponseDto {
-  @ApiProperty({ description: 'Secret invitation token. Store it securely; it cannot be retrieved later.' })
+  @ApiProperty({
+    description:
+      'Secret invitation token. Store it securely; it cannot be retrieved later.',
+  })
   token!: string;
 }

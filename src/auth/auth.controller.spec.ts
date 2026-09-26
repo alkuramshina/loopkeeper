@@ -14,10 +14,7 @@ describe('AuthController', () => {
       refreshCookieSecure: false,
       refreshCookieSameSite: 'lax',
     };
-    const controller = new AuthController(
-      {} as AuthService,
-      jwtTokenConfig,
-    );
+    const controller = new AuthController({} as AuthService, jwtTokenConfig);
 
     expect(controller).toBeDefined();
   });

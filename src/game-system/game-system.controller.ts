@@ -25,7 +25,9 @@ export class GameSystemController {
     return this.gameSystems.findAll();
   }
 
-  @ApiOperation({ summary: 'List active character templates for a game system' })
+  @ApiOperation({
+    summary: 'List active character templates for a game system',
+  })
   @ApiParam({ name: 'systemId', enum: ['TALES_FROM_THE_LOOP'] })
   @ApiOkResponse({ type: CharacterTemplateResponseDto, isArray: true })
   @Get(':systemId/templates')

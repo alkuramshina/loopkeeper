@@ -6,10 +6,12 @@ import '../../i18n';
 import { BoardPage } from './board-page';
 
 const request = vi.fn();
+const requestBlob = vi.fn();
 let role: 'OWNER' | 'PLAYER' | 'VIEWER' = 'VIEWER';
+let cards: unknown[] = [];
 vi.mock('../../auth/auth-context', () => ({
   useAuth: () => ({
-    api: { request },
+    api: { request, requestBlob },
     profile: { userId: 'user' },
     signOut: vi.fn(),
   }),
@@ -43,6 +45,11 @@ describe('BoardPage', () => {
 
   beforeEach(() => {
     role = 'VIEWER';
+    cards = [];
+    requestBlob.mockReset();
+    requestBlob.mockResolvedValue(new Blob(['image'], { type: 'image/webp' }));
+    URL.createObjectURL = vi.fn(() => 'blob:cover');
+    URL.revokeObjectURL = vi.fn();
     request.mockReset();
     request.mockImplementation((path: string) => {
       if (path === '/campaigns/c')
@@ -60,7 +67,7 @@ describe('BoardPage', () => {
         return Promise.resolve({
           boardId: 'b',
           campaignId: 'c',
-          cards: [],
+          cards,
           links: [],
         });
       throw new Error(`Unexpected request: ${path}`);
@@ -78,6 +85,32 @@ describe('BoardPage', () => {
     expect(
       document.querySelector('.campaign-background-layer'),
     ).not.toBeNull();
+  });
+
+  it('shows the element cover on its reference card through protected media', async () => {
+    cards = [
+      {
+        cardId: 'card',
+        cardKind: 'ELEMENT_REFERENCE',
+        title: 'Power plant',
+        content: 'Humming at night',
+        tags: [],
+        node: { x: 0, y: 0, width: 240, height: 200 },
+        reference: {
+          kind: 'ELEMENT',
+          elementId: 'element',
+          coverUrl: '/media/cover',
+        },
+      },
+    ];
+    renderBoard();
+    expect(await screen.findByText('Power plant')).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(
+        document.querySelector('.flow-card-cover')?.getAttribute('src'),
+      ).toBe('blob:cover'),
+    );
+    expect(requestBlob).toHaveBeenCalledWith('/media/cover');
   });
 
   it('keeps editing controls for contributors', async () => {

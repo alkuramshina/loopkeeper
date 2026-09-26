@@ -107,7 +107,7 @@ model CampaignMember {
   updatedAt    DateTime     @updatedAt
   user         User         @relation("CampaignMemberships", fields: [userId], references: [userId])
   userId       String
-  campaign     Campaign     @relation("CampaignMembers", fields: [campaignId], references: [campaignId])
+  campaign     Campaign     @relation("CampaignMembers", fields: [campaignId], references: [campaignId], onDelete: Cascade)
   campaignId   String
   campaignRole CampaignRole @default(PLAYER)
 
@@ -164,7 +164,7 @@ model InvestigationBoard {
   boardId    String              @id @default(uuid())
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
-  campaign   Campaign            @relation(fields: [campaignId], references: [campaignId])
+  campaign   Campaign            @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
   campaignId String              @unique
   cards      InvestigationCard[]
   links      InvestigationLink[]
@@ -189,7 +189,7 @@ model InvestigationCard {
   characterId String?
   board       InvestigationBoard      @relation(fields: [boardId], references: [boardId], onDelete: Cascade)
   boardId     String
-  campaign    Campaign                @relation(fields: [campaignId], references: [campaignId])
+  campaign    Campaign                @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
   campaignId  String
   createdBy   User                    @relation("InvestigationCardCreator", fields: [createdById], references: [userId])
   createdById String
@@ -210,7 +210,7 @@ model InvestigationLink {
   label       String?
   board       InvestigationBoard @relation(fields: [boardId], references: [boardId], onDelete: Cascade)
   boardId     String
-  campaign    Campaign           @relation(fields: [campaignId], references: [campaignId])
+  campaign    Campaign           @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
   campaignId  String
   fromCard    InvestigationCard  @relation("InvestigationLinkFrom", fields: [fromCardId], references: [cardId], onDelete: Cascade)
   fromCardId  String
@@ -279,7 +279,7 @@ model Character {
   data          Json        @default("{}")
 
   isActive           Boolean             @default(true)
-  campaign           Campaign            @relation(fields: [campaignId], references: [campaignId])
+  campaign           Campaign            @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
   campaignId         String
   owner              User                @relation(fields: [ownerId], references: [userId])
   ownerId            String

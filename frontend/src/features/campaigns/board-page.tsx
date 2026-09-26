@@ -29,6 +29,7 @@ import {
   Campaign,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import { ProtectedImage } from '../../components/protected-image';
 import {
   CampaignBackgroundLayer,
   useCampaignBackground,
@@ -106,6 +107,14 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
         onResizeEnd={(_event, dimensions) => data.onResizeEnd(dimensions)}
       />
       <Handle type="target" position={Position.Top} />
+      {card.reference?.coverUrl && (
+        <ProtectedImage
+          alt=""
+          className="flow-card-cover"
+          draggable={false}
+          imageUrl={card.reference.coverUrl}
+        />
+      )}
       <p className="kicker">{t(`board.cardKinds.${card.cardKind}`)}</p>
       <h3>{card.title}</h3>
       {card.content && <p>{card.content}</p>}

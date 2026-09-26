@@ -66,7 +66,10 @@ export class UpdateCampaignBackgroundSettingsDto {
   selectionMode!: CampaignBackgroundSelectionMode;
 
   @ApiPropertyOptional({ format: 'uuid', nullable: true })
-  @ValidateIf((object) => object.fixedBackgroundId !== null)
+  @ValidateIf(
+    (object: UpdateCampaignBackgroundSettingsDto) =>
+      object.fixedBackgroundId !== null,
+  )
   @IsUUID('all')
   fixedBackgroundId!: string | null;
 

@@ -116,7 +116,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     };
   }
 
-  private defaultCodeForStatus(statusCode: number): string {
+  private defaultCodeForStatus(statusCode: HttpStatus): string {
     switch (statusCode) {
       case HttpStatus.BAD_REQUEST:
         return 'validation.failed';
@@ -133,7 +133,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
   }
 
-  private defaultMessageForStatus(statusCode: number): string {
+  private defaultMessageForStatus(statusCode: HttpStatus): string {
     switch (statusCode) {
       case HttpStatus.BAD_REQUEST:
         return 'Request validation failed';
@@ -160,11 +160,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return (
       Array.isArray(violations) &&
       violations.every(
-        (violation) =>
+        (violation: unknown) =>
           typeof violation === 'object' &&
           violation !== null &&
-          typeof violation.field === 'string' &&
-          typeof violation.code === 'string',
+          typeof (violation as Record<string, unknown>).field === 'string' &&
+          typeof (violation as Record<string, unknown>).code === 'string',
       )
     );
   }

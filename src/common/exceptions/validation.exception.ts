@@ -16,13 +16,20 @@ function collectViolations(
   parentPath = '',
 ): ErrorViolation[] {
   return errors.flatMap((error) => {
-    const field = parentPath ? `${parentPath}.${error.property}` : error.property;
-    const ownViolations = Object.keys(error.constraints ?? {}).map((constraint) => ({
-      field,
-      code: constraintCode(constraint),
-    }));
+    const field = parentPath
+      ? `${parentPath}.${error.property}`
+      : error.property;
+    const ownViolations = Object.keys(error.constraints ?? {}).map(
+      (constraint) => ({
+        field,
+        code: constraintCode(constraint),
+      }),
+    );
 
-    return [...ownViolations, ...collectViolations(error.children ?? [], field)];
+    return [
+      ...ownViolations,
+      ...collectViolations(error.children ?? [], field),
+    ];
   });
 }
 

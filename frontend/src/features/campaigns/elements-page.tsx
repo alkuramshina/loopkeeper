@@ -463,10 +463,17 @@ export function ElementsPage() {
             </label>
             {visible.map((item) => (
               <Link
-                className={`note-list-item ${elementId === item.elementId ? 'selected' : ''}`}
+                className={`note-list-item ${item.coverUrl ? 'with-cover' : ''} ${elementId === item.elementId ? 'selected' : ''}`}
                 to={`/campaigns/${campaignId}/elements/${item.elementId}`}
                 key={item.elementId}
               >
+                {item.coverUrl && (
+                  <ProtectedImage
+                    alt=""
+                    className="note-list-cover"
+                    imageUrl={item.coverUrl}
+                  />
+                )}
                 <strong>{item.title}</strong>
                 <small>{t(`elements.types.${item.type}`)}</small>
                 {showAccess(item) && (

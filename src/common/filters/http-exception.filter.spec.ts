@@ -126,7 +126,10 @@ describe('HttpExceptionFilter', () => {
   it('does not expose details for unknown errors', () => {
     const response = createResponse();
 
-    filter.catch(new Error('database password is secret'), createHost(response));
+    filter.catch(
+      new Error('database password is secret'),
+      createHost(response),
+    );
 
     expect(response.json).toHaveBeenCalledWith({
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

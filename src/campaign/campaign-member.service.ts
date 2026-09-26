@@ -1,11 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { CampaignRole } from '@prisma/client';
 
 import { CampaignAccessService } from './access/campaign-access.service';
 
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { PrismaService } from '../prisma/prisma.service';
-
 
 const memberSelect = {
   memberId: true,
@@ -30,7 +28,6 @@ export class CampaignMemberService {
     private readonly campaignAccess: CampaignAccessService,
   ) {}
 
-
   async findAll(ownerId: string, campaignId: string) {
     await this.campaignAccess.requireOwner(ownerId, campaignId);
 
@@ -51,7 +48,7 @@ export class CampaignMemberService {
 
     return this.prisma.campaignMember.update({
       where: { userId_campaignId: { userId, campaignId } },
-      data: { campaignRole: updateDto.role as CampaignRole },
+      data: { campaignRole: updateDto.role },
       select: memberSelect,
     });
   }

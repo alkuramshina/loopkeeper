@@ -32,7 +32,9 @@ describe('CampaignService', () => {
     };
     (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(campaign);
 
-    await expect(service.findOne('user-id', campaign.campaignId)).resolves.toMatchObject({
+    await expect(
+      service.findOne('user-id', campaign.campaignId),
+    ).resolves.toMatchObject({
       campaignId: campaign.campaignId,
       title: campaign.title,
       currentUserRole: 'OWNER',

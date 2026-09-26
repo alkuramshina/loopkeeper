@@ -20,12 +20,10 @@ import { RefreshJwtStrategy } from './strategies/refresh.strategy';
     UserModule,
     PrismaModule,
     JwtModule.registerAsync({
-      useFactory: (
-        config: ConfigType<typeof jwtConfig>,
-      ) => ({
+      useFactory: (config: ConfigType<typeof jwtConfig>) => ({
         secret: config.secret,
         signOptions: {
-          expiresIn: config.expiresIn as SignOptions['expiresIn']
+          expiresIn: config.expiresIn as SignOptions['expiresIn'],
         },
       }),
       imports: [ConfigModule],
@@ -33,12 +31,16 @@ import { RefreshJwtStrategy } from './strategies/refresh.strategy';
     }),
   ],
   providers: [
-    AuthService, LocalStrategy, JwtStrategy, RefreshJwtStrategy,
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    RefreshJwtStrategy,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
-    }],
+    },
+  ],
   controllers: [AuthController],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

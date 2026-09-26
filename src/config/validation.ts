@@ -19,7 +19,7 @@ export const validationSchema = Joi.object({
   MEDIA_STORAGE_PATH: Joi.string()
     .trim()
     .min(1)
-    .custom((value, helpers) =>
+    .custom((value: string, helpers) =>
       /(^|[\\/])public([\\/]|$)/i.test(value)
         ? helpers.error('any.invalid')
         : value,
