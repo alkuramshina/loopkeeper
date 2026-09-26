@@ -24,7 +24,7 @@ model User {
   authSessions               AuthSession[]
   createdCampaignInvitations CampaignInvitation[] @relation("CampaignInvitationCreator")
 
-  createdElements            CampaignElement[]
+  createdElements CampaignElement[]
 
   investigationCards InvestigationCard[] @relation("InvestigationCardCreator")
   investigationLinks InvestigationLink[] @relation("InvestigationLinkCreator")
@@ -49,7 +49,6 @@ model MediaAsset {
   backgroundCampaignId String?
 
   @@index([backgroundCampaignId])
-
   @@index([purpose])
   @@map("media_assets")
 }
@@ -70,21 +69,21 @@ model AuthSession {
 }
 
 model Campaign {
-  campaignId              String                          @id @default(uuid())
-  createdAt               DateTime                        @default(now())
-  updatedAt               DateTime                        @updatedAt
-  title                   String
-  system                  System?
-  description             String?
-  coverUrl                String?
-  coverAsset              MediaAsset?                     @relation("CampaignCover", fields: [coverAssetId], references: [assetId], onDelete: SetNull)
-  coverAssetId            String?                         @unique
-  owner                   User                            @relation("GameMaster", fields: [ownerId], references: [userId])
-  ownerId                 String
-  gameSystem              GameSystem?                     @relation(fields: [system], references: [slug])
-  characters              Character[]
-  members                 CampaignMember[]                @relation("CampaignMembers")
-  invitations             CampaignInvitation[]
+  campaignId   String               @id @default(uuid())
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  title        String
+  system       System?
+  description  String?
+  coverUrl     String?
+  coverAsset   MediaAsset?          @relation("CampaignCover", fields: [coverAssetId], references: [assetId], onDelete: SetNull)
+  coverAssetId String?              @unique
+  owner        User                 @relation("GameMaster", fields: [ownerId], references: [userId])
+  ownerId      String
+  gameSystem   GameSystem?          @relation(fields: [system], references: [slug])
+  characters   Character[]
+  members      CampaignMember[]     @relation("CampaignMembers")
+  invitations  CampaignInvitation[]
 
   elements                CampaignElement[]
   backgrounds             Json                            @default("[]")
@@ -133,30 +132,28 @@ model CampaignInvitation {
   @@map("campaign_invitations")
 }
 
-
 model CampaignElement {
-  elementId    String                @id @default(uuid())
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
-  campaign     Campaign              @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
-  campaignId   String
-  createdBy    User                  @relation(fields: [createdById], references: [userId])
-  createdById  String
-  type         CampaignElementType
-  title        String
-  content      String?
-  access       CampaignElementAccess @default(MASTER_ONLY)
-  typeData     Json                  @default("{}")
-  sortOrder    Int                   @default(0)
-  imageUrl     String?
-  coverAssetId String?               @unique
-  mapAssetId   String?               @unique
-  investigationCards InvestigationCard[] @relation("InvestigationCardElement")
+  elementId          String                @id @default(uuid())
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  campaign           Campaign              @relation(fields: [campaignId], references: [campaignId], onDelete: Cascade)
+  campaignId         String
+  createdBy          User                  @relation(fields: [createdById], references: [userId])
+  createdById        String
+  type               CampaignElementType
+  title              String
+  content            String?
+  access             CampaignElementAccess @default(MASTER_ONLY)
+  typeData           Json                  @default("{}")
+  sortOrder          Int                   @default(0)
+  imageUrl           String?
+  coverAssetId       String?               @unique
+  mapAssetId         String?               @unique
+  investigationCards InvestigationCard[]   @relation("InvestigationCardElement")
 
   @@index([campaignId, type, access])
   @@map("campaign_elements")
 }
-
 
 model InvestigationBoard {
   boardId    String              @id @default(uuid())
@@ -171,15 +168,15 @@ model InvestigationBoard {
 }
 
 model InvestigationCard {
-  cardId      String                  @id @default(uuid())
-  createdAt   DateTime                @default(now())
-  updatedAt   DateTime                @updatedAt
-  cardKind    InvestigationCardKind   @default(FREE)
-  title       String?
-  content     String?
-  tags        String[]
-  color       String?
-  icon        String?
+  cardId    String                @id @default(uuid())
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  cardKind  InvestigationCardKind @default(FREE)
+  title     String?
+  content   String?
+  tags      String[]
+  color     String?
+  icon      String?
 
   element     CampaignElement?        @relation("InvestigationCardElement", fields: [elementId], references: [elementId], onDelete: Cascade)
   elementId   String?
@@ -196,7 +193,6 @@ model InvestigationCard {
   linksTo     InvestigationLink[]     @relation("InvestigationLinkTo")
 
   @@index([campaignId])
-
   @@index([elementId])
   @@index([characterId])
   @@map("investigation_cards")
@@ -249,17 +245,17 @@ model GameSystem {
 }
 
 model CharacterTemplate {
-  templateId    String                @id @default(uuid())
-  createdAt     DateTime              @default(now())
-  updatedAt     DateTime              @updatedAt
-  name          String
-  schema        Json
-  version       Int                   @default(1)
+  templateId String   @id @default(uuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  name       String
+  schema     Json
+  version    Int      @default(1)
 
-  isActive      Boolean               @default(true)
-  system        GameSystem            @relation(fields: [systemSlug], references: [slug])
-  systemSlug    System
-  characters    Character[]
+  isActive   Boolean     @default(true)
+  system     GameSystem  @relation(fields: [systemSlug], references: [slug])
+  systemSlug System
+  characters Character[]
 
   @@unique([systemSlug, name, version])
   @@index([systemSlug, isActive])
@@ -267,15 +263,15 @@ model CharacterTemplate {
 }
 
 model Character {
-  characterId        String              @id @default(uuid())
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  name               String
-  description        String?
-  avatarUrl          String?
-  avatarAsset        MediaAsset?         @relation("CharacterAvatar", fields: [avatarAssetId], references: [assetId], onDelete: SetNull)
-  avatarAssetId      String?             @unique
-  data               Json                @default("{}")
+  characterId   String      @id @default(uuid())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  name          String
+  description   String?
+  avatarUrl     String?
+  avatarAsset   MediaAsset? @relation("CharacterAvatar", fields: [avatarAssetId], references: [assetId], onDelete: SetNull)
+  avatarAssetId String?     @unique
+  data          Json        @default("{}")
 
   isActive           Boolean             @default(true)
   campaign           Campaign            @relation(fields: [campaignId], references: [campaignId])
@@ -302,7 +298,6 @@ enum MediaAssetPurpose {
   CAMPAIGN_BACKGROUND
 }
 
-
 enum CampaignBackgroundSelectionMode {
   FIXED
   RANDOM
@@ -328,10 +323,10 @@ enum CampaignElementType {
 }
 
 enum CampaignElementAccess {
+  PRIVATE
   MASTER_ONLY
   SHARED
 }
-
 
 enum ApplicationRole {
   USER

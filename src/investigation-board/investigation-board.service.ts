@@ -47,7 +47,8 @@ export class InvestigationBoardService {
   ) {}
 
   async getBoard(userId: string, campaignId: string) {
-    await this.access.requireBoardContributor(userId, campaignId);
+    // Every member reads the board; only contributors change it.
+    await this.access.requireMember(userId, campaignId);
     const board = await this.getOrCreate(campaignId);
     const result = await this.prisma.investigationBoard.findUniqueOrThrow({
       where: { boardId: board.boardId },

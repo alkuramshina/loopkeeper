@@ -131,7 +131,7 @@ export type Campaign = {
 };
 
 export type CampaignElementType = 'NOTE' | 'LOCATION' | 'NPC' | 'OTHER';
-export type CampaignElementAccess = 'MASTER_ONLY' | 'SHARED';
+export type CampaignElementAccess = 'PRIVATE' | 'MASTER_ONLY' | 'SHARED';
 export type CampaignElement = {
   elementId: string;
   campaignId: string;
@@ -143,6 +143,8 @@ export type CampaignElement = {
   typeData: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+  createdById: string;
+  createdBy: { userId: string; name: string | null };
 };
 export type CampaignElementInput = Pick<CampaignElement, 'type' | 'access' | 'title' | 'content'> & {
   imageUrl?: string | null;

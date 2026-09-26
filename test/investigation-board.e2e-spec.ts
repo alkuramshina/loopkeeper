@@ -56,7 +56,7 @@ describe('Investigation board (e2e)', () => {
   afterEach(async () => app.close());
   afterAll(async () => closeTestDatabase());
 
-  it('is collaborative for owner and players while isolating other users and campaigns', async () => {
+  it('is collaborative for owner and players, read-only for viewers and isolated from other users and campaigns', async () => {
     const owner = await register(app, 'owner@loopkeeper.dev');
     const player = await register(app, 'player@loopkeeper.dev');
     const viewer = await register(app, 'viewer@loopkeeper.dev');
@@ -74,10 +74,16 @@ describe('Investigation board (e2e)', () => {
     await request(app.getHttpServer())
       .get(`/campaigns/${campaignId}/investigation-board`)
       .set(auth(viewer))
-      .expect(404);
+      .expect(200)
+      .expect((response) => expect(response.body.cards).toEqual([]));
     await request(app.getHttpServer())
       .get(`/campaigns/${campaignId}/investigation-board`)
       .set(auth(outsider))
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(auth(viewer))
+      .send({ title: 'Viewer card' })
       .expect(404);
     await request(app.getHttpServer())
       .get(`/campaigns/${campaignId}/investigation-board`)
@@ -166,6 +172,37 @@ describe('Investigation board (e2e)', () => {
       .set(auth(viewer))
       .send({ title: 'No access' })
       .expect(404);
+    await request(app.getHttpServer())
+      .patch(`/investigation-board/nodes/${playerCard.body.cardId}`)
+      .set(auth(viewer))
+      .send({ x: 1, y: 1 })
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/investigation-links`)
+      .set(auth(viewer))
+      .send({ cardAId: ownerCard.body.cardId, cardBId: playerCard.body.cardId })
+      .expect(404);
+    await request(app.getHttpServer())
+      .patch(`/investigation-links/${link.body.linkId}`)
+      .set(auth(viewer))
+      .send({ label: 'No access' })
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`/investigation-links/${link.body.linkId}`)
+      .set(auth(viewer))
+      .expect(404);
+    await request(app.getHttpServer())
+      .delete(`/cards/${playerCard.body.cardId}`)
+      .set(auth(viewer))
+      .expect(404);
+    await request(app.getHttpServer())
+      .get(`/campaigns/${campaignId}/investigation-board`)
+      .set(auth(viewer))
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.cards).toHaveLength(2);
+        expect(response.body.links).toHaveLength(1);
+      });
 
     await request(app.getHttpServer())
       .delete(`/cards/${ownerCard.body.cardId}`)
@@ -366,7 +403,7 @@ describe('Investigation board (e2e)', () => {
       .send({ title: 'Attempt to replace source' })
       .expect(400);
     await request(app.getHttpServer())
-      .patch(`/elements/${sharedElement.body.elementId}`)
+      .patch(`/elements/${sharedElement.body.elementId}/access`)
       .set(auth(owner))
       .send({ access: 'MASTER_ONLY' })
       .expect(200);

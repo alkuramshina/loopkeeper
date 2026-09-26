@@ -272,7 +272,7 @@ describe('Media (e2e)', () => {
       .expect(200);
   });
 
-  it('stores only attached local backgrounds and delivers them to owners and players', async () => {
+  it('stores only attached local backgrounds and delivers them to every campaign member', async () => {
     const owner = await registerUser(app, 'background-owner@loopkeeper.dev');
     const player = await registerUser(app, 'background-player@loopkeeper.dev');
     const viewer = await registerUser(app, 'background-viewer@loopkeeper.dev');
@@ -340,21 +340,19 @@ describe('Media (e2e)', () => {
         imageUrl: `/media/${response.body.backgroundId}`,
         isEnabled: true,
       });
-      const delivered = await request(app.getHttpServer())
-        .get(response.body.imageUrl)
-        .set(authenticate(player))
-        .expect(200);
-      await expect(sharp(delivered.body).metadata()).resolves.toMatchObject({
-        width,
-        height,
-        format: 'webp',
-      });
-      for (const user of [viewer, outsider]) {
-        await request(app.getHttpServer())
+      for (const member of [player, viewer]) {
+        const delivered = await request(app.getHttpServer())
           .get(response.body.imageUrl)
-          .set(authenticate(user))
-          .expect(404);
+          .set(authenticate(member))
+          .expect(200);
+        await expect(sharp(delivered.body).metadata()).resolves.toMatchObject(
+          { width, height, format: 'webp' },
+        );
       }
+      await request(app.getHttpServer())
+        .get(response.body.imageUrl)
+        .set(authenticate(outsider))
+        .expect(404);
       await request(app.getHttpServer())
         .get(response.body.imageUrl)
         .expect(401);

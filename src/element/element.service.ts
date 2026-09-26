@@ -2,6 +2,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   CampaignElementAccess,
   CampaignElementType,
+  CampaignRole,
   Prisma,
 } from '@prisma/client';
 import { CampaignAccessService } from '../campaign/access/campaign-access.service';
@@ -17,6 +18,19 @@ const npcFields: Record<string, number> = {
   relationship: 500,
 };
 
+const elementInclude = {
+  createdBy: { select: { userId: true, name: true } },
+} satisfies Prisma.CampaignElementInclude;
+
+// Authors keep rights on their elements only while they remain the campaign
+// owner or a PLAYER member.
+const authorCampaignWhere = (userId: string): Prisma.CampaignWhereInput => ({
+  OR: [
+    { ownerId: userId },
+    { members: { some: { userId, campaignRole: CampaignRole.PLAYER } } },
+  ],
+});
+
 @Injectable()
 export class ElementService {
   constructor(
@@ -25,7 +39,22 @@ export class ElementService {
   ) {}
 
   async create(userId: string, campaignId: string, dto: CreateElementDto) {
-    await this.access.requireOwner(userId, campaignId);
+    const { isOwner, campaignRole } = await this.access.getAccess(
+      userId,
+      campaignId,
+    );
+    if (!isOwner && campaignRole !== CampaignRole.PLAYER) {
+      throw this.campaignNotFound();
+    }
+    if (!isOwner && dto.type !== CampaignElementType.NOTE) {
+      throw this.invalid('type');
+    }
+    const access =
+      dto.access ??
+      (isOwner
+        ? CampaignElementAccess.MASTER_ONLY
+        : CampaignElementAccess.PRIVATE);
+    this.validateAccess(isOwner, access);
     if (!dto.title.trim()) throw this.invalid();
     this.validateTypeData(dto.type, dto.typeData, dto.imageUrl);
     return this.prisma.campaignElement.create({
@@ -35,11 +64,12 @@ export class ElementService {
         type: dto.type,
         title: dto.title,
         content: dto.content,
-        access: dto.access ?? CampaignElementAccess.MASTER_ONLY,
+        access,
         typeData: (dto.typeData ?? {}) as Prisma.InputJsonValue,
         sortOrder: dto.sortOrder,
         imageUrl: dto.imageUrl,
       },
+      include: elementInclude,
     });
   }
 
@@ -48,13 +78,28 @@ export class ElementService {
     campaignId: string,
     type?: CampaignElementType,
   ) {
-    const access = await this.access.getAccess(userId, campaignId);
+    const { isOwner, campaignRole } = await this.access.getAccess(
+      userId,
+      campaignId,
+    );
+    let visibility: Prisma.CampaignElementWhereInput;
+    if (isOwner) {
+      visibility = {
+        OR: [
+          { access: { not: CampaignElementAccess.PRIVATE } },
+          { createdById: userId },
+        ],
+      };
+    } else if (campaignRole === CampaignRole.PLAYER) {
+      visibility = {
+        OR: [{ access: CampaignElementAccess.SHARED }, { createdById: userId }],
+      };
+    } else {
+      visibility = { access: CampaignElementAccess.SHARED };
+    }
     return this.prisma.campaignElement.findMany({
-      where: {
-        campaignId,
-        type,
-        ...(!access.isOwner ? { access: CampaignElementAccess.SHARED } : {}),
-      },
+      where: { campaignId, type, ...visibility },
+      include: elementInclude,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
   }
@@ -64,46 +109,44 @@ export class ElementService {
       where: {
         elementId,
         OR: [
-          { campaign: { ownerId: userId } },
           {
             access: CampaignElementAccess.SHARED,
-            campaign: { members: { some: { userId } } },
+            campaign: {
+              OR: [{ ownerId: userId }, { members: { some: { userId } } }],
+            },
           },
+          {
+            access: CampaignElementAccess.MASTER_ONLY,
+            campaign: { ownerId: userId },
+          },
+          { createdById: userId, campaign: authorCampaignWhere(userId) },
         ],
       },
+      include: elementInclude,
     });
     if (!element) throw this.notFound();
     return element;
   }
 
   async update(userId: string, elementId: string, dto: UpdateElementDto) {
-    const element = await this.requireOwner(userId, elementId);
+    const element = await this.requireAuthor(userId, elementId);
     if (dto.title !== undefined && !dto.title.trim()) throw this.invalid();
+    if (dto.type && dto.type !== element.type) throw this.invalid('type');
     this.validateTypeData(
-      dto.type ?? element.type,
+      element.type,
       dto.typeData ?? (element.typeData as Record<string, unknown>),
       dto.imageUrl ?? element.imageUrl ?? undefined,
     );
-    if (dto.type && dto.type !== element.type) throw this.invalid();
-    return this.prisma.$transaction(async (tx) => {
-      if (dto.access !== undefined) {
-        await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
-      }
-      // Removing reference cards also cascades their nodes and links.
-      if (dto.access === CampaignElementAccess.MASTER_ONLY) {
-        await tx.investigationCard.deleteMany({ where: { elementId } });
-      }
-      return tx.campaignElement.update({
-        where: { elementId },
-        data: {
-          title: dto.title,
-          content: dto.content,
-          access: dto.access,
-          sortOrder: dto.sortOrder,
-          imageUrl: dto.imageUrl,
-          typeData: dto.typeData as Prisma.InputJsonValue | undefined,
-        },
-      });
+    return this.prisma.campaignElement.update({
+      where: { elementId },
+      data: {
+        title: dto.title,
+        content: dto.content,
+        sortOrder: dto.sortOrder,
+        imageUrl: dto.imageUrl,
+        typeData: dto.typeData as Prisma.InputJsonValue | undefined,
+      },
+      include: elementInclude,
     });
   }
 
@@ -112,30 +155,45 @@ export class ElementService {
     elementId: string,
     access: CampaignElementAccess,
   ) {
-    await this.requireOwner(userId, elementId);
+    const element = await this.requireAuthor(userId, elementId);
+    this.validateAccess(element.campaign.ownerId === userId, access);
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
-      if (access === CampaignElementAccess.MASTER_ONLY) {
+      // Leaving SHARED removes reference cards; their nodes and links cascade.
+      if (access !== CampaignElementAccess.SHARED) {
         await tx.investigationCard.deleteMany({ where: { elementId } });
       }
       return tx.campaignElement.update({
         where: { elementId },
         data: { access },
+        include: elementInclude,
       });
     });
   }
 
   async remove(userId: string, elementId: string) {
-    await this.requireOwner(userId, elementId);
+    await this.requireAuthor(userId, elementId);
     await this.prisma.campaignElement.delete({ where: { elementId } });
   }
 
-  private async requireOwner(userId: string, elementId: string) {
+  private async requireAuthor(userId: string, elementId: string) {
     const element = await this.prisma.campaignElement.findFirst({
-      where: { elementId, campaign: { ownerId: userId } },
+      where: {
+        elementId,
+        createdById: userId,
+        campaign: authorCampaignWhere(userId),
+      },
+      include: { campaign: { select: { ownerId: true } } },
     });
     if (!element) throw this.notFound();
     return element;
+  }
+
+  private validateAccess(isOwner: boolean, access: CampaignElementAccess) {
+    // For the owner MASTER_ONLY already means "only me"; PRIVATE is for players.
+    if (isOwner && access === CampaignElementAccess.PRIVATE) {
+      throw this.invalid('access');
+    }
   }
 
   private validateTypeData(
@@ -168,11 +226,12 @@ export class ElementService {
     }
   }
 
-  private invalid() {
+  private invalid(field?: string) {
     return new DomainException(
       HttpStatus.BAD_REQUEST,
       'validation.failed',
       'Request validation failed',
+      field ? [{ field, code: 'validation.invalid_value' }] : undefined,
     );
   }
 
@@ -181,6 +240,14 @@ export class ElementService {
       HttpStatus.NOT_FOUND,
       'resource.not_found',
       'Element not found',
+    );
+  }
+
+  private campaignNotFound() {
+    return new DomainException(
+      HttpStatus.NOT_FOUND,
+      'campaign.not_found',
+      'Campaign not found',
     );
   }
 }

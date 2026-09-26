@@ -157,24 +157,16 @@ export class CampaignService {
     const currentUserRole: CurrentUserRole =
       ownerId === userId ? 'OWNER' : members[0]!.campaignRole;
 
-    const response = { ...campaignData, currentUserRole };
-
-    if (
-      currentUserRole === 'OWNER' ||
-      currentUserRole === CampaignRole.PLAYER
-    ) {
-      return {
-        ...response,
-        backgroundConfig: {
-          selectionMode: backgroundSelectionMode,
-          fixedBackgroundId,
-          backgrounds: (
-            backgrounds as unknown as CampaignBackgroundDto[]
-          ).filter((background) => background.isEnabled),
-        },
-      };
-    }
-
-    return response;
+    return {
+      ...campaignData,
+      currentUserRole,
+      backgroundConfig: {
+        selectionMode: backgroundSelectionMode,
+        fixedBackgroundId,
+        backgrounds: (
+          backgrounds as unknown as CampaignBackgroundDto[]
+        ).filter((background) => background.isEnabled),
+      },
+    };
   }
 }

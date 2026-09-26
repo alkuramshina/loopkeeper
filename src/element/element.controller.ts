@@ -17,11 +17,12 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { CampaignElementAccess, CampaignElementType } from '@prisma/client';
+import { CampaignElementType } from '@prisma/client';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import {
   CreateElementDto,
   ElementResponseDto,
+  UpdateElementAccessDto,
   UpdateElementDto,
 } from './dto/element.dto';
 import { ElementService } from './element.service';
@@ -73,22 +74,18 @@ export class ElementController {
     return this.elements.update(request.user.userId, elementId, dto);
   }
 
-  @Post('elements/:elementId/publish')
-  @ApiCreatedResponse({ type: ElementResponseDto })
-  publish(
+  @Patch('elements/:elementId/access')
+  @ApiOkResponse({ type: ElementResponseDto })
+  setAccess(
     @Param('elementId') elementId: string,
+    @Body() dto: UpdateElementAccessDto,
     @Request() request: { user: TokenPayloadDto },
   ) {
-    return this.elements.setAccess(request.user.userId, elementId, CampaignElementAccess.SHARED);
-  }
-
-  @Post('elements/:elementId/hide')
-  @ApiCreatedResponse({ type: ElementResponseDto })
-  hide(
-    @Param('elementId') elementId: string,
-    @Request() request: { user: TokenPayloadDto },
-  ) {
-    return this.elements.setAccess(request.user.userId, elementId, CampaignElementAccess.MASTER_ONLY);
+    return this.elements.setAccess(
+      request.user.userId,
+      elementId,
+      dto.access,
+    );
   }
 
   @Delete('elements/:elementId')

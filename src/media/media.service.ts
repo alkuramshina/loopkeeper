@@ -475,14 +475,7 @@ export class MediaService {
                   { backgroundId: assetId, imageUrl: `/media/${assetId}` },
                 ],
               },
-              OR: [
-                { ownerId: userId },
-                {
-                  members: {
-                    some: { userId, campaignRole: CampaignRole.PLAYER },
-                  },
-                },
-              ],
+              OR: [{ ownerId: userId }, { members: { some: { userId } } }],
             },
           },
           {

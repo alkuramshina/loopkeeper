@@ -27,6 +27,6 @@ export class CampaignResponseDto {
   @ApiProperty({ enum: ['OWNER', ...Object.values(CampaignRole)] })
   currentUserRole!: 'OWNER' | CampaignRole;
 
-  @ApiPropertyOptional({ type: CampaignBackgroundRenderConfigDto })
-  backgroundConfig?: CampaignBackgroundRenderConfigDto;
+  @ApiProperty({ type: CampaignBackgroundRenderConfigDto })
+  backgroundConfig!: CampaignBackgroundRenderConfigDto;
 }

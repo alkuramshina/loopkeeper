@@ -64,6 +64,22 @@ describe('OpenAPI contract', () => {
         },
       },
     });
+    expect(document.paths['/elements/{elementId}/access'].patch?.requestBody).toMatchObject({
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/UpdateElementAccessDto' },
+        },
+      },
+    });
+    expect(document.paths).not.toHaveProperty('/elements/{elementId}/publish');
+    expect(document.components?.schemas?.ElementResponseDto).toMatchObject({
+      properties: expect.objectContaining({
+        createdBy: { $ref: '#/components/schemas/ElementAuthorDto' },
+      }),
+    });
+    expect(document.components?.schemas?.UpdateElementDto).not.toHaveProperty(
+      'properties.access',
+    );
     expect(document.components?.schemas?.LoginDto).toMatchObject({
       properties: expect.objectContaining({
         email: expect.any(Object),

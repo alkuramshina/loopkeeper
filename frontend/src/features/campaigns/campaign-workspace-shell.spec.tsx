@@ -40,15 +40,15 @@ describe('CampaignWorkspaceShell', () => {
     vi.clearAllMocks();
   });
 
-  it('does not expose the board or owner settings to a viewer', () => {
+  it('shows the board but not owner settings to a viewer', () => {
     renderShell(baseCampaign);
 
     expect(
       screen.getAllByRole('navigation', { name: 'Кампании' }),
     ).toHaveLength(2);
     expect(
-      screen.queryByRole('link', { name: 'Доска расследования' }),
-    ).not.toBeInTheDocument();
+      screen.getAllByRole('link', { name: 'Доска расследования' }),
+    ).toHaveLength(2);
     expect(
       screen.queryByRole('link', { name: 'Участники' }),
     ).not.toBeInTheDocument();

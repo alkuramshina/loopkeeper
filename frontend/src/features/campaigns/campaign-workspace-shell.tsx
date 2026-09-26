@@ -26,9 +26,7 @@ export function CampaignWorkspaceShell({
 
   const basePath = `/campaigns/${campaign.campaignId}`;
   const navigationItems: NavigationItem[] = [
-    ...(campaign.currentUserRole !== 'VIEWER'
-      ? [{ to: `${basePath}/board`, label: t('workspace.board') }]
-      : []),
+    { to: `${basePath}/board`, label: t('workspace.board') },
     { to: `${basePath}/characters`, label: t('workspace.characters') },
     { to: `${basePath}/elements`, label: t('workspace.elements') },
     ...(campaign.currentUserRole === 'OWNER'

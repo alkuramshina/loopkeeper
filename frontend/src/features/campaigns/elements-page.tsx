@@ -12,6 +12,7 @@ import {
   ApiError,
   Campaign,
   CampaignElement,
+  CampaignElementAccess,
   CampaignElementInput,
   CampaignElementType,
 } from '../../api/client';
@@ -55,13 +56,29 @@ const npcLimits = {
   relationship: 500,
 };
 
+const ownerAccess: CampaignElementAccess[] = ['MASTER_ONLY', 'SHARED'];
+const playerAccess: CampaignElementAccess[] = [
+  'PRIVATE',
+  'MASTER_ONLY',
+  'SHARED',
+];
+
+// MASTER_ONLY reads "master only" on master materials and "to the master" on
+// player notes.
+function accessLabelKey(access: CampaignElementAccess, playerNote: boolean) {
+  return access === 'MASTER_ONLY' && playerNote
+    ? 'elements.access.TO_MASTER'
+    : `elements.access.${access}`;
+}
+
 function draftFor(
-  element?: CampaignElement,
-  type: CampaignElementType = 'NOTE',
+  element: CampaignElement | undefined,
+  type: CampaignElementType,
+  owner: boolean,
 ): Draft {
   return {
     type: element?.type ?? type,
-    access: element?.access ?? 'MASTER_ONLY',
+    access: element?.access ?? (owner ? 'MASTER_ONLY' : 'PRIVATE'),
     title: element?.title ?? '',
     content: element?.content ?? '',
     imageUrl: element?.imageUrl ?? '',
@@ -81,18 +98,22 @@ function message(
 function ElementEditor({
   element,
   initialType,
+  owner,
   onClose,
   onSaved,
 }: {
   element?: CampaignElement;
   initialType: CampaignElementType;
+  owner: boolean;
   onClose: () => void;
   onSaved: (element: CampaignElement) => void;
 }) {
   const { campaignId } = useParams();
   const { api } = useAuth();
   const { t } = useTranslation();
-  const [draft, setDraft] = useState(() => draftFor(element, initialType));
+  const [draft, setDraft] = useState(() =>
+    draftFor(element, owner ? initialType : 'NOTE', owner),
+  );
   const [error, setError] = useState<string>();
   const save = useMutation({
     mutationFn: () => {
@@ -100,7 +121,7 @@ function ElementEditor({
         type: draft.type,
         title: draft.title.trim(),
         content: draft.content,
-        ...(element ? {} : { access: 'MASTER_ONLY' }),
+        ...(element ? {} : { access: draft.access }),
         ...(draft.type === 'LOCATION'
           ? { imageUrl: draft.imageUrl || (element ? null : undefined) }
           : {}),
@@ -137,10 +158,14 @@ function ElementEditor({
           {t('elements.type')}
           <select
             value={draft.type}
-            disabled={Boolean(element)}
+            disabled={Boolean(element) || !owner}
             onChange={(event) =>
               setDraft(
-                draftFor(undefined, event.target.value as CampaignElementType),
+                draftFor(
+                  undefined,
+                  event.target.value as CampaignElementType,
+                  owner,
+                ),
               )
             }
           >
@@ -151,6 +176,26 @@ function ElementEditor({
             ))}
           </select>
         </label>
+        {!element && (
+          <label>
+            {t('elements.accessLabel')}
+            <select
+              value={draft.access}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  access: event.target.value as CampaignElementAccess,
+                })
+              }
+            >
+              {(owner ? ownerAccess : playerAccess).map((access) => (
+                <option key={access} value={access}>
+                  {t(accessLabelKey(access, !owner))}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label>
           {t('elements.name')}
           <input
@@ -220,7 +265,7 @@ export function ElementsPage() {
   const { campaignId, elementId } = useParams();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const { api } = useAuth();
+  const { api, profile } = useAuth();
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -245,7 +290,15 @@ export function ElementsPage() {
     enabled: Boolean(elementId && campaign.data),
     retry: false,
   });
-  const owner = campaign.data?.currentUserRole === 'OWNER';
+  const role = campaign.data?.currentUserRole;
+  const owner = role === 'OWNER';
+  const contributor = owner || role === 'PLAYER';
+  const isAuthor = (item: CampaignElement) =>
+    Boolean(profile) && item.createdById === profile?.userId;
+  // Badges are shown only where the element is the viewer's own or the viewer
+  // is the master; there, "not written by the current master" means a player note.
+  const isPlayerNote = (item: CampaignElement) => !(owner && isAuthor(item));
+  const showAccess = (item: CampaignElement) => owner || isAuthor(item);
   const type = types.includes(params.get('type') as CampaignElementType)
     ? (params.get('type') as CampaignElementType)
     : undefined;
@@ -253,13 +306,12 @@ export function ElementsPage() {
     () =>
       (elements.data ?? []).filter(
         (item) =>
-          (owner || item.access === 'SHARED') &&
           (!type || item.type === type) &&
           `${item.title} ${item.content}`
             .toLocaleLowerCase(i18n.language)
             .includes(search.trim().toLocaleLowerCase(i18n.language)),
       ),
-    [elements.data, owner, type, search, i18n.language],
+    [elements.data, type, search, i18n.language],
   );
   const selected =
     elementId && detail.data?.campaignId === campaignId
@@ -269,9 +321,11 @@ export function ElementsPage() {
     mutationFn: ({
       id,
       verb,
+      access,
     }: {
       id: string;
-      verb: 'publish' | 'hide' | 'delete' | 'board';
+      verb: 'access' | 'delete' | 'board';
+      access?: CampaignElementAccess;
     }) =>
       verb === 'board'
         ? api.request(`/campaigns/${campaignId}/cards`, {
@@ -281,10 +335,12 @@ export function ElementsPage() {
               elementId: id,
             }),
           })
-        : api.request<void>(
-            `/elements/${id}${verb === 'delete' ? '' : `/${verb}`}`,
-            { method: verb === 'delete' ? 'DELETE' : 'POST' },
-          ),
+        : verb === 'access'
+          ? api.request<CampaignElement>(`/elements/${id}/access`, {
+              method: 'PATCH',
+              body: JSON.stringify({ access }),
+            })
+          : api.request<void>(`/elements/${id}`, { method: 'DELETE' }),
     onSuccess: (_result, variables) => {
       setError(undefined);
       void queryClient.invalidateQueries({
@@ -312,8 +368,10 @@ export function ElementsPage() {
           <p className="kicker">{t('workspace.elements')}</p>
           <h2>{t('elements.title')}</h2>
         </div>
-        {owner && (
-          <button onClick={() => setEditor('new')}>{t('elements.new')}</button>
+        {contributor && (
+          <button onClick={() => setEditor('new')}>
+            {t(owner ? 'elements.new' : 'elements.newNote')}
+          </button>
         )}
       </section>
       {editor && (
@@ -321,6 +379,7 @@ export function ElementsPage() {
           key={editor === 'new' ? 'new' : editor.elementId}
           element={editor === 'new' ? undefined : editor}
           initialType={type ?? 'NOTE'}
+          owner={owner}
           onClose={() => setEditor(undefined)}
           onSaved={(saved) => {
             setEditor(undefined);
@@ -376,11 +435,11 @@ export function ElementsPage() {
               >
                 <strong>{item.title}</strong>
                 <small>{t(`elements.types.${item.type}`)}</small>
-                {owner && (
+                {showAccess(item) && (
                   <small
                     className={`visibility-badge visibility-${item.access.toLowerCase()}`}
                   >
-                    {t(`elements.access.${item.access}`)}
+                    {t(accessLabelKey(item.access, isPlayerNote(item)))}
                   </small>
                 )}
               </Link>
@@ -390,7 +449,7 @@ export function ElementsPage() {
             )}
           </div>
           <article className="panel note-detail">
-            {selected && (owner || selected.access === 'SHARED') ? (
+            {selected ? (
               <>
                 <div className="section-heading">
                   <div>
@@ -398,12 +457,26 @@ export function ElementsPage() {
                       {t(`elements.types.${selected.type}`)}
                     </p>
                     <h2>{selected.title}</h2>
-                    {owner && (
+                    {showAccess(selected) && (
                       <span
                         className={`visibility-badge visibility-${selected.access.toLowerCase()}`}
                       >
-                        {t(`elements.access.${selected.access}`)}
+                        {t(
+                          accessLabelKey(
+                            selected.access,
+                            isPlayerNote(selected),
+                          ),
+                        )}
                       </span>
+                    )}
+                    {!isAuthor(selected) && (
+                      <p className="muted">
+                        {t('elements.author', {
+                          name:
+                            selected.createdBy.name ??
+                            t('elements.unnamedAuthor'),
+                        })}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -428,34 +501,39 @@ export function ElementsPage() {
                       </p>
                     ) : null,
                   )}
-                {campaign.data?.currentUserRole !== 'VIEWER' && (
+                {contributor && (
                   <div className="action-row">
-                    {owner &&
-                      (selected.access === 'MASTER_ONLY' ? (
-                        <button
+                    {isAuthor(selected) && (
+                      <label className="element-access-control">
+                        {t('elements.accessLabel')}
+                        <select
+                          value={selected.access}
                           disabled={action.isPending}
-                          onClick={() =>
+                          onChange={(event) => {
+                            const access = event.target
+                              .value as CampaignElementAccess;
+                            if (
+                              selected.access === 'SHARED' &&
+                              !window.confirm(t('elements.unshareConfirmation'))
+                            )
+                              return;
                             action.mutate({
                               id: selected.elementId,
-                              verb: 'publish',
-                            })
-                          }
+                              verb: 'access',
+                              access,
+                            });
+                          }}
                         >
-                          {t('elements.publish')}
-                        </button>
-                      ) : (
-                        <button
-                          disabled={action.isPending}
-                          onClick={() =>
-                            action.mutate({
-                              id: selected.elementId,
-                              verb: 'hide',
-                            })
-                          }
-                        >
-                          {t('elements.hide')}
-                        </button>
-                      ))}
+                          {(owner ? ownerAccess : playerAccess).map(
+                            (access) => (
+                              <option key={access} value={access}>
+                                {t(accessLabelKey(access, !owner))}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
+                    )}
                     {selected.access === 'SHARED' && (
                       <button
                         disabled={action.isPending}
@@ -469,7 +547,7 @@ export function ElementsPage() {
                         {t('elements.addToBoard')}
                       </button>
                     )}
-                    {owner && (
+                    {isAuthor(selected) && (
                       <button
                         className="button-ghost"
                         onClick={() => setEditor(selected)}
@@ -477,7 +555,7 @@ export function ElementsPage() {
                         {t('common.edit')}
                       </button>
                     )}
-                    {owner && (
+                    {isAuthor(selected) && (
                       <button
                         className="button-danger"
                         disabled={action.isPending}

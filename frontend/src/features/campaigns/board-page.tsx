@@ -43,6 +43,7 @@ type NodeDimensions = {
 };
 type BoardNodeData = {
   card: BoardCard;
+  canManage: boolean;
   onResizeEnd: (dimensions: NodeDimensions) => void;
 };
 type EditorTarget =
@@ -58,6 +59,7 @@ function apiErrorMessage(cause: unknown, t: TFunction) {
 
 function boardNodes(
   cards: BoardCard[],
+  canManage: boolean,
   onResizeEnd: (cardId: string, dimensions: NodeDimensions) => void,
 ): Node<BoardNodeData>[] {
   return cards.map((card, index) => ({
@@ -71,6 +73,7 @@ function boardNodes(
     height: card.node?.height ?? 160,
     data: {
       card,
+      canManage,
       onResizeEnd: (dimensions) => onResizeEnd(card.cardId, dimensions),
     },
   }));
@@ -95,7 +98,7 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
       style={{ borderLeftColor: card.color ?? undefined }}
     >
       <NodeResizer
-        isVisible={selected}
+        isVisible={selected && data.canManage}
         maxHeight={2000}
         maxWidth={2000}
         minHeight={60}
@@ -394,9 +397,12 @@ export function BoardPage() {
     queryKey: ['board', campaignId],
     queryFn: () =>
       api.request<Board>(`/campaigns/${campaignId}/investigation-board`),
-    enabled: Boolean(campaignId) && campaign.data?.currentUserRole !== 'VIEWER',
+    enabled: Boolean(campaignId && campaign.data),
     retry: false,
   });
+  const canManage =
+    campaign.data?.currentUserRole === 'OWNER' ||
+    campaign.data?.currentUserRole === 'PLAYER';
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BoardNodeData>>(
     [],
   );
@@ -425,9 +431,9 @@ export function BoardPage() {
 
   useEffect(() => {
     if (!board.data) return;
-    setNodes(boardNodes(board.data.cards, persistNodeDimensions));
+    setNodes(boardNodes(board.data.cards, canManage, persistNodeDimensions));
     setEdges(boardEdges(board.data.links));
-  }, [board.data, persistNodeDimensions, setEdges, setNodes]);
+  }, [board.data, canManage, persistNodeDimensions, setEdges, setNodes]);
   const createLink = useMutation({
     mutationFn: (connection: Connection) =>
       api.request<BoardLink>(`/campaigns/${campaignId}/investigation-links`, {
@@ -473,19 +479,13 @@ export function BoardPage() {
   );
 
   const data = campaign.data;
-  const background = useCampaignBackground(
-    campaignId,
-    data?.backgroundConfig,
-    data?.currentUserRole,
-  );
-  if (campaign.isError || board.isError || data?.currentUserRole === 'VIEWER')
+  const background = useCampaignBackground(campaignId, data?.backgroundConfig);
+  if (campaign.isError || board.isError)
     return (
       <main className="page-state" role="alert">
         {t('workspace.boardUnavailable')}
       </main>
     );
-  const canManage =
-    data?.currentUserRole === 'OWNER' || data?.currentUserRole === 'PLAYER';
 
   return (
     <CampaignWorkspaceShell campaign={data}>
@@ -493,7 +493,9 @@ export function BoardPage() {
         <section className="board-toolbar">
           <div>
             <h2>{t('board.title')}</h2>
-            <p className="muted">{t('board.restNotice')}</p>
+            <p className="muted">
+              {t(canManage ? 'board.restNotice' : 'board.readOnlyNotice')}
+            </p>
           </div>
           <div className="action-row">
             <button
@@ -522,11 +524,10 @@ export function BoardPage() {
           </section>
         ) : (
           <section className="board-workspace">
-            <div className="board-canvas">
-              {(data?.currentUserRole === 'OWNER' ||
-                data?.currentUserRole === 'PLAYER') && (
-                <CampaignBackgroundLayer background={background} />
-              )}
+            <div
+              className={`board-canvas ${canManage ? '' : 'board-canvas-readonly'}`}
+            >
+              <CampaignBackgroundLayer background={background} />
               <ReactFlow
                 edges={edges}
                 fitView
@@ -534,6 +535,8 @@ export function BoardPage() {
                 nodeTypes={nodeTypes}
                 nodesConnectable={canManage}
                 nodesDraggable={canManage}
+                elementsSelectable={canManage}
+                deleteKeyCode={canManage ? undefined : null}
                 onConnect={canManage ? onConnect : undefined}
                 onEdgesChange={onEdgesChange}
                 onEdgeClick={

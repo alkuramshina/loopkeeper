@@ -1,4 +1,9 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PartialType,
+} from '@nestjs/swagger';
 import { CampaignElementAccess, CampaignElementType } from '@prisma/client';
 import {
   IsEnum,
@@ -31,7 +36,8 @@ export class CreateElementDto {
 
   @ApiPropertyOptional({
     enum: CampaignElementAccess,
-    default: CampaignElementAccess.MASTER_ONLY,
+    description:
+      'Defaults to MASTER_ONLY for the campaign owner and PRIVATE for a player. PRIVATE is available to players only.',
   })
   @IsOptional()
   @IsEnum(CampaignElementAccess)
@@ -57,7 +63,23 @@ export class CreateElementDto {
   imageUrl?: string;
 }
 
-export class UpdateElementDto extends PartialType(CreateElementDto) {}
+export class UpdateElementDto extends PartialType(
+  OmitType(CreateElementDto, ['access'] as const),
+) {}
+
+export class UpdateElementAccessDto {
+  @ApiProperty({ enum: CampaignElementAccess })
+  @IsEnum(CampaignElementAccess)
+  access!: CampaignElementAccess;
+}
+
+export class ElementAuthorDto {
+  @ApiProperty({ format: 'uuid' })
+  userId!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  name!: string | null;
+}
 
 export class ElementResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -101,4 +123,7 @@ export class ElementResponseDto {
 
   @ApiProperty({ format: 'uuid' })
   createdById!: string;
+
+  @ApiProperty({ type: ElementAuthorDto })
+  createdBy!: ElementAuthorDto;
 }

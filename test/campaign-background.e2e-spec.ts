@@ -105,32 +105,28 @@ describe('Campaign background settings (e2e)', () => {
     await inviteAndAccept(app, owner, player, campaignId, 'PLAYER');
     await inviteAndAccept(app, owner, viewer, campaignId, 'VIEWER');
 
-    await request(app.getHttpServer())
-      .get(`/campaigns/${campaignId}`)
-      .set(authenticate(player))
-      .expect(200)
-      .expect((response) => {
-        expect(response.body.backgroundConfig).toEqual({
-          selectionMode: 'FIXED',
-          fixedBackgroundId: backgroundId,
-          backgrounds: [settings().backgrounds[0]],
+    for (const member of [player, viewer]) {
+      await request(app.getHttpServer())
+        .get(`/campaigns/${campaignId}`)
+        .set(authenticate(member))
+        .expect(200)
+        .expect((response) => {
+          expect(response.body.backgroundConfig).toEqual({
+            selectionMode: 'FIXED',
+            fixedBackgroundId: backgroundId,
+            backgrounds: [settings().backgrounds[0]],
+          });
         });
-      });
+    }
 
-    await request(app.getHttpServer())
-      .get(`/campaigns/${campaignId}`)
-      .set(authenticate(viewer))
-      .expect(200)
-      .expect((response) => {
-        expect(response.body).not.toHaveProperty('backgroundConfig');
-      });
-
-    for (const method of ['get', 'patch'] as const) {
-      const testRequest = request(app.getHttpServer())
-        [method](`/campaigns/${campaignId}/background-settings`)
-        .set(authenticate(player));
-      if (method === 'patch') testRequest.send(settings('RANDOM'));
-      await testRequest.expect(404);
+    for (const member of [player, viewer]) {
+      for (const method of ['get', 'patch'] as const) {
+        const testRequest = request(app.getHttpServer())
+          [method](`/campaigns/${campaignId}/background-settings`)
+          .set(authenticate(member));
+        if (method === 'patch') testRequest.send(settings('RANDOM'));
+        await testRequest.expect(404);
+      }
     }
   });
 

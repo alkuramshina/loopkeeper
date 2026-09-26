@@ -9,15 +9,11 @@ function storageKey(campaignId: string) {
 export function useCampaignBackground(
   campaignId: string | undefined,
   config: CampaignBackgroundConfig | undefined,
-  role: 'OWNER' | 'PLAYER' | 'VIEWER' | undefined,
 ) {
   const enabled = useMemo(
     () =>
-      role === 'OWNER' || role === 'PLAYER'
-        ? (config?.backgrounds.filter((background) => background.isEnabled) ??
-          [])
-        : [],
-    [config, role],
+      config?.backgrounds.filter((background) => background.isEnabled) ?? [],
+    [config],
   );
   const fixedBackground = enabled.find(
     (background) => background.backgroundId === config?.fixedBackgroundId,
@@ -46,7 +42,6 @@ export function useCampaignBackground(
     setRandomBackgroundId(currentId);
   }, [campaignId, config?.selectionMode, enabled]);
 
-  if (role !== 'OWNER' && role !== 'PLAYER') return undefined;
   if (config?.selectionMode === 'FIXED') return fixedBackground;
   return enabled.find(
     (background) => background.backgroundId === randomBackgroundId,

@@ -671,6 +671,7 @@ textarea {
 .action-row,
 .filter-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
 }
@@ -892,6 +893,11 @@ textarea {
   background: #dce4d1;
   color: #3f5424;
 }
+.element-access-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
 .preview-panel {
   padding: 1rem;
   border: 1px dashed #aaa396;
@@ -1049,6 +1055,10 @@ textarea {
 .board-canvas .react-flow {
   position: relative;
   z-index: 1;
+}
+/* Edges still need handles to anchor, so read-only boards only hide them. */
+.board-canvas-readonly .react-flow__handle {
+  visibility: hidden;
 }
 .background-settings {
   max-width: 46rem;
