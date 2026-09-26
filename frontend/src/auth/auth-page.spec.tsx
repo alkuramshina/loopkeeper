@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import '../i18n';
+import i18n from '../i18n';
 import { ApiError } from '../api/client';
-import { AuthPage } from './auth-page';
+import { AuthPage, brandVariantKeys, brandVariantStorageKey } from './auth-page';
 
 const signIn = vi.fn();
 const signUp = vi.fn();
@@ -107,12 +107,87 @@ describe('AuthPage', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/invitations/token-2');
   });
 
-  it('keeps the brand copy variant stable within the tab', () => {
+  it('keeps the brand copy variant stable within the tab', async () => {
     renderAuth('/sign-in');
-    const variant = window.sessionStorage.getItem('loopkeeper.auth-brand-variant');
+    const variant = window.sessionStorage.getItem(brandVariantStorageKey);
 
-    expect(variant).toMatch(/^(focus|threads|table)$/);
+    expect(brandVariantKeys).toContain(variant);
+    expect(
+      screen.getByText(i18n.t(`auth.brandVariants.${variant}.signIn.title`)),
+    ).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('link', { name: 'Создать аккаунт' }));
-    expect(window.sessionStorage.getItem('loopkeeper.auth-brand-variant')).toBe(variant);
+
+    expect(
+      await screen.findByText(i18n.t(`auth.brandVariants.${variant}.signUp.title`)),
+    ).toBeInTheDocument();
+    expect(window.sessionStorage.getItem(brandVariantStorageKey)).toBe(variant);
+  });
+
+  it('keeps the form title as the only top-level heading', () => {
+    renderAuth('/sign-in');
+
+    expect(screen.getAllByRole('heading', { level: 1 })).toEqual([
+      screen.getByRole('heading', { name: 'Войдите в Loopkeeper' }),
+    ]);
+  });
+
+  it('reuses a stored brand copy variant', () => {
+    window.sessionStorage.setItem(brandVariantStorageKey, 'threads');
+    renderAuth('/sign-in');
+
+    expect(
+      screen.getByText('Все нити расследования — на одном столе'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Возвращайтесь к заметкам, персонажам и связям вашей кампании без лишнего шума.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('replaces an unknown stored brand copy variant', () => {
+    window.sessionStorage.setItem(brandVariantStorageKey, 'retired');
+    renderAuth('/sign-in');
+
+    expect(brandVariantKeys).toContain(
+      window.sessionStorage.getItem(brandVariantStorageKey),
+    );
+  });
+
+  it('still renders when session storage is unavailable', () => {
+    const denied = () => {
+      throw new DOMException('Storage is disabled', 'SecurityError');
+    };
+    const getItem = vi
+      .spyOn(Storage.prototype, 'getItem')
+      .mockImplementation(denied);
+    const setItem = vi
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(denied);
+
+    try {
+      renderAuth('/sign-in');
+      expect(screen.getByRole('button', { name: 'Войти' })).toBeInTheDocument();
+      const shownTitles = brandVariantKeys
+        .map((key) => i18n.t(`auth.brandVariants.${key}.signIn.title`))
+        .filter((title) => screen.queryByText(title));
+      expect(shownTitles).toHaveLength(1);
+    } finally {
+      getItem.mockRestore();
+      setItem.mockRestore();
+    }
+  });
+
+  it('defines copy for every brand variant and auth mode', () => {
+    const missing = brandVariantKeys.flatMap((key) =>
+      ['signIn', 'signUp'].flatMap((mode) =>
+        ['title', 'body']
+          .map((field) => `auth.brandVariants.${key}.${mode}.${field}`)
+          .filter((path) => !i18n.exists(path)),
+      ),
+    );
+
+    expect(missing).toEqual([]);
   });
 });

@@ -98,14 +98,15 @@ textarea {
   background: currentColor;
   transform: translate(0.5rem, 0.5rem) rotate(45deg);
 }
-.auth-brand h1 {
+.auth-brand-title {
   max-width: 21rem;
   margin: clamp(3rem, 8vw, 7rem) 0 0;
   font-size: clamp(2.4rem, 4vw, 3rem);
+  font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.03em;
 }
-.auth-brand > div > p {
+.auth-brand-body {
   max-width: 20rem;
   margin: 1.4rem 0 0;
   color: #c9c5bd;

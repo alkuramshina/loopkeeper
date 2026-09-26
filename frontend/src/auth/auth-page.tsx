@@ -4,20 +4,30 @@ import { ApiError } from '../api/client';
 import { useAuth } from './auth-context';
 import { useTranslation } from 'react-i18next';
 
-const brandVariantKeys = ['focus', 'threads', 'table'] as const;
-const brandVariantStorageKey = 'loopkeeper.auth-brand-variant';
+export const brandVariantKeys = ['focus', 'threads', 'table'] as const;
+export const brandVariantStorageKey = 'loopkeeper.auth-brand-variant';
 
 type BrandVariantKey = (typeof brandVariantKeys)[number];
 
+// Storage access throws when the browser blocks it; the auth page must still
+// render, so fall back to an unsaved random variant.
 function selectBrandVariant(): BrandVariantKey {
-  const stored = window.sessionStorage.getItem(brandVariantStorageKey);
-  if (stored && brandVariantKeys.includes(stored as BrandVariantKey)) {
-    return stored as BrandVariantKey;
+  try {
+    const stored = window.sessionStorage.getItem(brandVariantStorageKey);
+    if (stored && brandVariantKeys.includes(stored as BrandVariantKey)) {
+      return stored as BrandVariantKey;
+    }
+  } catch {
+    // Ignore and pick a fresh variant below.
   }
 
   const variant =
     brandVariantKeys[Math.floor(Math.random() * brandVariantKeys.length)];
-  window.sessionStorage.setItem(brandVariantStorageKey, variant);
+  try {
+    window.sessionStorage.setItem(brandVariantStorageKey, variant);
+  } catch {
+    // The variant then stays stable only for this component instance.
+  }
   return variant;
 }
 
@@ -112,8 +122,8 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
               <span className="brand-mark" aria-hidden="true" />
               {t('appName')}
             </div>
-            <h1>{t(`${brandCopyPath}.title`)}</h1>
-            <p>{t(`${brandCopyPath}.body`)}</p>
+            <p className="auth-brand-title">{t(`${brandCopyPath}.title`)}</p>
+            <p className="auth-brand-body">{t(`${brandCopyPath}.body`)}</p>
           </div>
           <p className="auth-note">
             {t(isSignUp ? 'auth.signUpPrivacyNote' : 'auth.signInPrivacyNote')}
