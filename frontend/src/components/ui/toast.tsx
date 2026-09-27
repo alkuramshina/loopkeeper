@@ -16,6 +16,8 @@ type ToastInput = {
   message: string;
   /** Reverses the action; reversible actions ask no confirmation. */
   onUndo?: () => void;
+  /** Commits a pending action when the notification expires or is closed. */
+  onExpire?: () => void;
 };
 type Toast = ToastInput & { id: number };
 
@@ -62,13 +64,17 @@ function ToastItem({
 }) {
   const { t } = useTranslation();
   const [paused, setPaused] = useState(false);
+  const finish = useCallback(() => {
+    toast.onExpire?.();
+    onDismiss(toast.id);
+  }, [onDismiss, toast]);
 
   // Hover or keyboard focus keeps the toast, so "Undo" never escapes the user.
   useEffect(() => {
     if (paused) return;
-    const timer = window.setTimeout(() => onDismiss(toast.id), toastDuration);
+    const timer = window.setTimeout(finish, toastDuration);
     return () => window.clearTimeout(timer);
-  }, [paused, onDismiss, toast.id]);
+  }, [paused, finish]);
 
   return (
     <div
@@ -95,7 +101,7 @@ function ToastItem({
       <button
         aria-label={t('common.close')}
         className="ui-icon-button"
-        onClick={() => onDismiss(toast.id)}
+        onClick={finish}
         type="button"
       >
         <X {...iconProps} />

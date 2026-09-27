@@ -8,8 +8,11 @@ import {
   IsString,
   IsUUID,
   Matches,
+  IsIn,
   MaxLength,
 } from 'class-validator';
+import { CARD_COLOR_KEYS } from '../card-colors';
+import type { CardColorKey } from '../card-colors';
 
 export class CreateInvestigationCardDto {
   @ApiPropertyOptional({ enum: InvestigationCardKind })
@@ -47,10 +50,10 @@ export class CreateInvestigationCardDto {
   @MaxLength(50, { each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ pattern: '^#[0-9a-fA-F]{3,8}$' })
+  @ApiPropertyOptional({ enum: CARD_COLOR_KEYS })
   @IsOptional()
-  @Matches(/^#[0-9a-fA-F]{3,8}$/)
-  color?: string;
+  @IsIn(CARD_COLOR_KEYS)
+  color?: CardColorKey;
 
   @ApiPropertyOptional({ pattern: '^[a-z0-9-]{1,40}$' })
   @IsOptional()
@@ -79,10 +82,10 @@ export class UpdateInvestigationCardDto {
   @MaxLength(50, { each: true })
   tags?: string[];
 
-  @ApiPropertyOptional({ pattern: '^#[0-9a-fA-F]{3,8}$' })
+  @ApiPropertyOptional({ enum: CARD_COLOR_KEYS })
   @IsOptional()
-  @Matches(/^#[0-9a-fA-F]{3,8}$/)
-  color?: string;
+  @IsIn(CARD_COLOR_KEYS)
+  color?: CardColorKey;
 
   @ApiPropertyOptional({ pattern: '^[a-z0-9-]{1,40}$' })
   @IsOptional()

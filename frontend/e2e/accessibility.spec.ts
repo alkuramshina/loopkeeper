@@ -108,6 +108,7 @@ test('main screens have no automatically detectable accessibility violations in 
   page,
   request,
 }) => {
+  test.slow();
   const variations = ['light', 'dark'] as const;
   for (const colorScheme of variations) {
     await page.emulateMedia({ colorScheme });

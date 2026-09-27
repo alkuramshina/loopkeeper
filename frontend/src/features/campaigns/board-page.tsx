@@ -2,7 +2,6 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addEdge,
-  Background,
   Connection,
   Controls,
   Edge,
@@ -12,13 +11,17 @@ import {
   NodeProps,
   OnNodeDrag,
   NodeResizer,
+  Panel,
   Position,
   ReactFlow,
+  useReactFlow,
+  useViewport,
   useEdgesState,
   useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useParams } from 'react-router-dom';
+import './board-redesign.css';
+import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Board, BoardCard, BoardLink, Campaign } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
@@ -30,6 +33,10 @@ import {
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { errorMessage, PageError } from '../../components/page-error';
 import { formText } from '../../components/form-text';
+import { TypeTag } from '../../components/ui/type-tag';
+import { AccessBadge } from '../../components/ui/access-badge';
+import { useToast } from '../../components/ui/toast';
+import { ArrowUpRight, Link2, Maximize2, Plus, Search } from 'lucide-react';
 
 type NodeDimensions = {
   x: number;
@@ -39,6 +46,7 @@ type NodeDimensions = {
 };
 type BoardNodeData = {
   card: BoardCard;
+  linkCount: number;
   canManage: boolean;
   onResizeEnd: (dimensions: NodeDimensions) => void;
 };
@@ -51,6 +59,7 @@ const apiErrorMessage = errorMessage;
 
 function boardNodes(
   cards: BoardCard[],
+  links: BoardLink[],
   canManage: boolean,
   onResizeEnd: (cardId: string, dimensions: NodeDimensions) => void,
 ): Node<BoardNodeData>[] {
@@ -65,6 +74,10 @@ function boardNodes(
     height: card.node?.height ?? 160,
     data: {
       card,
+      linkCount: links.filter(
+        (link) =>
+          link.fromCardId === card.cardId || link.toCardId === card.cardId,
+      ).length,
       canManage,
       onResizeEnd: (dimensions) => onResizeEnd(card.cardId, dimensions),
     },
@@ -72,23 +85,36 @@ function boardNodes(
 }
 
 function boardEdges(links: BoardLink[]): Edge[] {
+  const pathStrategy: Edge['type'] = 'default';
   return links.map((link) => ({
     id: link.linkId,
     source: link.fromCardId,
     target: link.toCardId,
     label: link.label,
-    type: 'smoothstep',
+    type: pathStrategy,
   }));
+}
+
+function BoardPattern() {
+  const { x, y, zoom } = useViewport();
+  return (
+    <div
+      aria-hidden="true"
+      className="board-pattern"
+      style={{
+        backgroundPosition: `${x}px ${y}px`,
+        backgroundSize: `calc(var(--board-pattern-size) * ${zoom})`,
+      }}
+    />
+  );
 }
 
 function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
   const { t } = useTranslation();
+  const { campaignId } = useParams();
   const { card } = data;
   return (
-    <article
-      className={`flow-card ${selected ? 'selected' : ''}`}
-      style={{ borderLeftColor: card.color ?? undefined }}
-    >
+    <article className={`flow-card ${selected ? 'selected' : ''}`}>
       <NodeResizer
         isVisible={selected && data.canManage}
         maxHeight={2000}
@@ -106,11 +132,53 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
           imageUrl={card.reference.coverUrl}
         />
       )}
-      <p className="kicker">{t(`board.cardKinds.${card.cardKind}`)}</p>
+      <div className="flow-card-top">
+        <TypeTag
+          type={
+            card.cardKind === 'FREE'
+              ? 'FREE'
+              : card.reference?.kind === 'CHARACTER'
+                ? 'CHARACTER'
+                : card.reference?.type || 'OTHER'
+          }
+        />
+        {card.color && (
+          <span
+            className={`board-color-mark board-color-${card.color}`}
+            aria-label={t(`board.colors.${card.color}`)}
+          />
+        )}
+      </div>
       <h3>{card.title}</h3>
-      {card.content && <p>{card.content}</p>}
+      {card.content && <p className="flow-card-preview">{card.content}</p>}
       {card.tags.length > 0 && (
-        <small>{card.tags.map((tag) => `#${tag}`).join(' ')}</small>
+        <small className="flow-card-tags">
+          {card.tags.map((tag) => `#${tag}`).join(' ')}
+        </small>
+      )}
+      <div className="flow-card-meta">
+        <span>
+          {card.createdBy?.name || t('board.unknownAuthor')} ·{' '}
+          {card.createdAt
+            ? new Intl.DateTimeFormat('ru', {
+                day: 'numeric',
+                month: 'short',
+              }).format(new Date(card.createdAt))
+            : ''}
+        </span>
+        {data.linkCount > 0 && (
+          <span>{t('board.linkCount', { count: data.linkCount })}</span>
+        )}
+      </div>
+      {card.reference?.kind === 'ELEMENT' && card.reference.elementId && (
+        <Link
+          className="flow-card-source nodrag"
+          to={`/campaigns/${campaignId}/elements/${card.reference.elementId}`}
+          aria-label={t('board.openSource')}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <ArrowUpRight aria-hidden="true" size={16} />
+        </Link>
       )}
       <Handle type="source" position={Position.Bottom} />
     </article>
@@ -119,8 +187,50 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
 
 const nodeTypes = { card: InvestigationCard };
 
-const cardColors = ['#6d1f25', '#c36b3d', '#39726a', '#436b9c', '#6e5a92'];
+const cardColors = ['ochre', 'rose', 'blue', 'olive', 'grey'] as const;
 const cardIcons = ['clue', 'person', 'place', 'question', 'warning'];
+
+function BoardTools({
+  canManage,
+  onNewCard,
+  linking,
+  onLinkingChange,
+}: {
+  canManage: boolean;
+  onNewCard: () => void;
+  linking: boolean;
+  onLinkingChange: () => void;
+}) {
+  const { t } = useTranslation();
+  const { fitView } = useReactFlow();
+  return (
+    <Panel position="bottom-left" className="board-tools">
+      {canManage && (
+        <>
+          <button type="button" onClick={onNewCard}>
+            <Plus aria-hidden="true" size={16} />
+            {t('board.cardAction')}
+          </button>
+          <button
+            type="button"
+            className={linking ? 'active' : ''}
+            onClick={onLinkingChange}
+          >
+            <Link2 aria-hidden="true" size={16} />
+            {t('board.linkAction')}
+          </button>
+        </>
+      )}
+      <button
+        type="button"
+        onClick={() => void fitView({ duration: 250, padding: 0.15 })}
+      >
+        <Maximize2 aria-hidden="true" size={16} />
+        {t('board.fitAll')}
+      </button>
+    </Panel>
+  );
+}
 
 function TagComposer({ initialTags }: { initialTags: string[] }) {
   const { t } = useTranslation();
@@ -176,18 +286,28 @@ function TagComposer({ initialTags }: { initialTags: string[] }) {
 function CardEditor({
   target,
   onClose,
+  onLinkStart,
 }: {
   target: EditorTarget;
   onClose: () => void;
+  onLinkStart: (cardId: string) => void;
 }) {
   const { campaignId } = useParams();
   const { api } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [error, setError] = useState<string>();
   const isNew = target.type === 'new-card';
   const card = target.type === 'card' ? target.card : undefined;
   const link = target.type === 'link' ? target.link : undefined;
+  const boardSnapshot = queryClient.getQueryData<Board>(['board', campaignId]);
+  const cardLinks = card
+    ? (boardSnapshot?.links.filter(
+        (item) =>
+          item.fromCardId === card.cardId || item.toCardId === card.cardId,
+      ) ?? [])
+    : [];
   const save = useMutation({
     mutationFn: async (form: FormData) => {
       if (isNew) {
@@ -250,18 +370,25 @@ function CardEditor({
     },
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });
-  const remove = useMutation({
-    mutationFn: () =>
-      api.request<void>(
-        card ? `/cards/${card.cardId}` : `/investigation-links/${link?.linkId}`,
-        { method: 'DELETE' },
-      ),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
-      onClose();
-    },
-    onError: (cause) => setError(apiErrorMessage(cause, t)),
-  });
+  function scheduleRemoval() {
+    const path = card
+      ? `/cards/${card.cardId}`
+      : `/investigation-links/${link?.linkId}`;
+    const commitRemoval = () => {
+      void api
+        .request<void>(path, { method: 'DELETE' })
+        .then(() =>
+          queryClient.invalidateQueries({ queryKey: ['board', campaignId] }),
+        )
+        .catch((cause) => toast.show({ message: apiErrorMessage(cause, t) }));
+    };
+    toast.show({
+      message: t(card ? 'board.cardRemoved' : 'board.linkRemoved'),
+      onUndo: () => undefined,
+      onExpire: commitRemoval,
+    });
+    onClose();
+  }
 
   // Move keyboard focus into the inspector and give it back on close.
   const inspectorRef = useRef<HTMLElement>(null);
@@ -297,6 +424,59 @@ function CardEditor({
           {t('common.cancel')}
         </button>
       </div>
+      {card && (
+        <div className="board-inspector-summary">
+          <TypeTag
+            type={
+              card.cardKind === 'FREE'
+                ? 'FREE'
+                : card.reference?.kind === 'CHARACTER'
+                  ? 'CHARACTER'
+                  : card.reference?.type || 'OTHER'
+            }
+          />
+          <h3>{card.title}</h3>
+          {card.reference?.kind === 'ELEMENT' && (
+            <>
+              <AccessBadge access="SHARED" />
+              <Link
+                to={`/campaigns/${campaignId}/elements/${card.reference.elementId}`}
+              >
+                {t('board.openSource')}{' '}
+                <ArrowUpRight aria-hidden="true" size={15} />
+              </Link>
+            </>
+          )}
+          {card.createdBy && (
+            <p>
+              {card.createdBy.name || t('board.unknownAuthor')} ·{' '}
+              {new Intl.DateTimeFormat('ru', { dateStyle: 'medium' }).format(
+                new Date(card.createdAt),
+              )}
+            </p>
+          )}
+          {cardLinks.length > 0 && (
+            <div className="board-inspector-links">
+              <strong>{t('board.links')}</strong>
+              {cardLinks.map((item) => {
+                const other = boardSnapshot?.cards.find(
+                  (candidate) =>
+                    candidate.cardId ===
+                    (item.fromCardId === card.cardId
+                      ? item.toCardId
+                      : item.fromCardId),
+                );
+                return (
+                  <span key={item.linkId}>
+                    {other?.title || t('board.unavailableCard')}
+                    {item.label ? ` · ${item.label}` : ''}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
       <form onSubmit={(event) => save.mutate(formData(event))}>
         {link ? (
           <label>
@@ -341,7 +521,7 @@ function CardEditor({
                 <option value="">{t('board.notSelected')}</option>
                 {cardColors.map((color) => (
                   <option key={color} value={color}>
-                    {color}
+                    {t(`board.colors.${color}`)}
                   </option>
                 ))}
               </select>
@@ -367,25 +547,25 @@ function CardEditor({
         <button disabled={save.isPending}>{t('common.save')}</button>
       </form>
       {!isNew && (
-        <button
-          className="button-danger"
-          type="button"
-          disabled={remove.isPending}
-          onClick={() => {
-            if (
-              window.confirm(
-                t(
-                  card
-                    ? 'board.deleteCardConfirmation'
-                    : 'board.deleteLinkConfirmation',
-                ),
-              )
-            )
-              remove.mutate();
-          }}
-        >
-          {t('common.delete')}
-        </button>
+        <div className="board-inspector-actions">
+          {card && (
+            <button
+              type="button"
+              className="button-ghost"
+              onClick={() => card && onLinkStart(card.cardId)}
+            >
+              <Link2 aria-hidden="true" size={16} />
+              {t('board.linkAction')}
+            </button>
+          )}
+          <button
+            className="button-danger"
+            type="button"
+            onClick={scheduleRemoval}
+          >
+            {t(card ? 'board.removeCard' : 'board.removeLink')}
+          </button>
+        </div>
       )}
     </aside>
   );
@@ -412,6 +592,24 @@ export function BoardPage() {
   const queryClient = useQueryClient();
   const [editor, setEditor] = useState<EditorTarget>();
   const [error, setError] = useState<string>();
+  const [search, setSearch] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+  const [linking, setLinking] = useState(false);
+  const [linkSourceId, setLinkSourceId] = useState<string>();
+  const [isPhone, setPhone] = useState(
+    () => window.matchMedia?.('(max-width: 700px)').matches ?? false,
+  );
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    const media = window.matchMedia?.('(max-width: 700px)');
+    if (!media) return;
+    const update = () => setPhone(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   const campaign = useQuery({
     queryKey: ['campaign', campaignId],
     queryFn: () => api.request<Campaign>(`/campaigns/${campaignId}`),
@@ -483,6 +681,7 @@ export function BoardPage() {
     if (!board.data) return;
     const nextNodes = boardNodes(
       board.data.cards,
+      board.data.links,
       canManage,
       persistNodeDimensions,
     );
@@ -543,6 +742,8 @@ export function BoardPage() {
         return;
       setEdges((current) => addEdge(connection, current));
       createLink.mutate(connection);
+      setLinking(false);
+      setLinkSourceId(undefined);
     },
     [createLink, setEdges],
   );
@@ -559,6 +760,39 @@ export function BoardPage() {
   );
 
   const data = campaign.data;
+  const selectedCardId = nodes.find((node) => node.selected)?.id;
+  const searchTerm = search.trim().toLocaleLowerCase('ru');
+  const visibleNodes = nodes.map((node) => ({
+    ...node,
+    className: [
+      node.className,
+      selectedCardId &&
+      node.id !== selectedCardId &&
+      !board.data?.links.some(
+        (link) =>
+          (link.fromCardId === selectedCardId && link.toCardId === node.id) ||
+          (link.toCardId === selectedCardId && link.fromCardId === node.id),
+      )
+        ? 'board-node-dimmed'
+        : '',
+      searchTerm &&
+      !`${node.data.card.title} ${node.data.card.content || ''}`
+        .toLocaleLowerCase('ru')
+        .includes(searchTerm)
+        ? 'board-node-dimmed'
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
+  }));
+  const visibleEdges = edges.map((edge) => ({
+    ...edge,
+    className: selectedCardId
+      ? edge.source === selectedCardId || edge.target === selectedCardId
+        ? 'board-edge-connected'
+        : 'board-edge-dimmed'
+      : '',
+  }));
   const background = useCampaignBackground(campaignId, data?.backgroundConfig);
   // A failed refresh keeps the last snapshot on screen; only a board that
   // never loaded is replaced by the page state.
@@ -583,21 +817,34 @@ export function BoardPage() {
           <div>
             <h2>{t('board.title')}</h2>
             <p className="muted">
-              {t(canManage ? 'board.restNotice' : 'board.readOnlyNotice')}
+              {!canManage && <span>{t('board.readOnlyNotice')} · </span>}
+              {board.dataUpdatedAt
+                ? t('board.updatedAgo', {
+                    count: Math.max(
+                      0,
+                      Math.floor((now - board.dataUpdatedAt) / 60000),
+                    ),
+                  })
+                : t('common.loading')}{' '}
+              ·{' '}
+              <button
+                className="board-refresh-link"
+                onClick={() => void board.refetch()}
+              >
+                {t('board.refresh')}
+              </button>
             </p>
           </div>
           <div className="action-row">
-            <button
-              className="button-ghost"
-              onClick={() => void board.refetch()}
-            >
-              {t('board.refresh')}
-            </button>
-            {canManage && (
-              <button onClick={() => setEditor({ type: 'new-card' })}>
-                {t('board.newCard')}
-              </button>
-            )}
+            <label className="board-search">
+              <Search aria-hidden="true" size={16} />
+              <span className="sr-only">{t('board.search')}</span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t('board.search')}
+              />
+            </label>
           </div>
         </section>
         {(error ?? refreshError) && (
@@ -606,8 +853,11 @@ export function BoardPage() {
           </p>
         )}
         {board.data && !board.data.cards.length && (
-          <p className="muted">{t('workspace.boardEmpty')}</p>
+          <div className="board-empty">
+            <p>{t('workspace.boardEmpty')}</p>
+          </div>
         )}
+        {linking && <p className="board-link-hint">{t('board.linkHint')}</p>}
         {board.isLoading || campaign.isLoading ? (
           <section className="board-loading" aria-label={t('common.loading')}>
             <span />
@@ -615,26 +865,27 @@ export function BoardPage() {
             <span />
           </section>
         ) : (
-          <section className="board-workspace">
+          <section
+            className={`board-workspace ${editor ? 'board-workspace-inspecting' : ''}`}
+          >
             <div
               className={`board-canvas ${canManage ? '' : 'board-canvas-readonly'}`}
             >
               <CampaignBackgroundLayer background={background} />
               <ReactFlow
-                edges={edges}
+                edges={visibleEdges}
                 fitView
-                nodes={nodes}
+                nodes={visibleNodes}
                 nodeTypes={nodeTypes}
-                nodesConnectable={canManage}
-                nodesDraggable={canManage}
-                elementsSelectable={canManage}
-                // Deletion goes through the inspector with a confirmation;
-                // the shortcut would only remove the card locally.
+                nodesConnectable={canManage && !isPhone}
+                nodesDraggable={canManage && !isPhone}
+                elementsSelectable
+                // Deletion goes through the inspector; the shortcut would only remove the card locally.
                 deleteKeyCode={null}
-                onConnect={canManage ? onConnect : undefined}
+                onConnect={canManage && !isPhone ? onConnect : undefined}
                 onEdgesChange={onEdgesChange}
                 onEdgeClick={
-                  canManage
+                  canManage && !isPhone
                     ? (_event, edge) => {
                         const link = board.data?.links.find(
                           (item) => item.linkId === edge.id,
@@ -644,23 +895,51 @@ export function BoardPage() {
                     : undefined
                 }
                 onNodeClick={
-                  canManage
-                    ? (_event, node) =>
-                        setEditor({ type: 'card', card: node.data.card })
+                  canManage && !isPhone
+                    ? (_event, node) => {
+                        if (linking) {
+                          if (!linkSourceId) setLinkSourceId(node.id);
+                          else if (linkSourceId !== node.id)
+                            onConnect({
+                              source: linkSourceId,
+                              target: node.id,
+                              sourceHandle: null,
+                              targetHandle: null,
+                            });
+                          return;
+                        }
+                        setEditor({ type: 'card', card: node.data.card });
+                      }
                     : undefined
                 }
-                onNodeDragStop={canManage ? onNodeDragStop : undefined}
+                onNodeDragStop={
+                  canManage && !isPhone ? onNodeDragStop : undefined
+                }
                 onNodesChange={onNodesChange}
               >
-                <Background gap={20} />
+                <BoardPattern />
                 <Controls />
                 <MiniMap />
+                <BoardTools
+                  canManage={Boolean(canManage)}
+                  onNewCard={() => setEditor({ type: 'new-card' })}
+                  linking={linking}
+                  onLinkingChange={() => {
+                    setLinkSourceId(undefined);
+                    setLinking((value) => !value);
+                  }}
+                />
               </ReactFlow>
             </div>
             {canManage && editor && (
               <CardEditor
                 target={editor}
                 onClose={() => setEditor(undefined)}
+                onLinkStart={(cardId) => {
+                  setLinking(true);
+                  setLinkSourceId(cardId);
+                  setEditor(undefined);
+                }}
               />
             )}
           </section>

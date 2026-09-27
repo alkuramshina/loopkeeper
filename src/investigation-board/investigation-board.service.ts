@@ -23,9 +23,11 @@ import { memberCampaignWhere } from '../campaign/access/campaign-membership';
 
 const cardInclude = {
   node: true,
+  createdBy: { select: { userId: true, name: true } },
   element: {
     select: {
       elementId: true,
+      type: true,
       title: true,
       content: true,
       access: true,
@@ -298,6 +300,7 @@ export class InvestigationBoardService {
         content: this.preview(element.content),
         reference: {
           kind: 'ELEMENT',
+          type: element.type,
           elementId: element.elementId,
           coverUrl: element.coverUrl,
         },

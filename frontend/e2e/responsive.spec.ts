@@ -43,6 +43,11 @@ async function expectNoHorizontalOverflow(page: Page, where: string) {
 /** The control is on screen and nothing (e.g. the bottom navigation) covers it. */
 async function expectClickable(page: Page, control: Locator) {
   await control.scrollIntoViewIfNeeded();
+  // Native scrolling accounts for the fixed mobile navigation only when the
+  // target is placed above the viewport edge, not merely intersecting it.
+  await control.evaluate((element) =>
+    element.scrollIntoView({ block: 'center' }),
+  );
   const box = await control.boundingBox();
   if (!box) throw new Error('Control is not visible');
   const covered = await page.evaluate(

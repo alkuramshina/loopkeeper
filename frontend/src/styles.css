@@ -2172,7 +2172,7 @@ summary {
     white-space: nowrap;
   }
   .campaign-workspace-shell-content {
-    padding: 1rem;
+    padding: 1rem 1rem 5.5rem;
   }
   .campaign-workspace-shell-mobile-navigation {
     position: fixed;

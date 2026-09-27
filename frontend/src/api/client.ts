@@ -173,13 +173,16 @@ export type BoardCard = {
   cardId: string;
   cardKind: 'FREE' | 'ELEMENT_REFERENCE' | 'CHARACTER_REFERENCE';
   title: string;
+  createdAt: string;
+  createdBy: { userId: string; name: string | null };
   content?: string | null;
   tags: string[];
-  color?: string | null;
+  color?: 'ochre' | 'rose' | 'blue' | 'olive' | 'grey' | null;
   icon?: string | null;
   node?: { x: number; y: number; width: number; height: number } | null;
   reference?: {
     kind: 'ELEMENT' | 'CHARACTER';
+    type?: 'NOTE' | 'LOCATION' | 'NPC' | 'OTHER';
     elementId?: string;
     characterId?: string;
     coverUrl?: string | null;

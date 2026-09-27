@@ -91,6 +91,12 @@ describe('Investigation board (e2e)', () => {
       .expect(200)
       .expect((response) => expect(response.body.cards).toEqual([]));
 
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/cards`)
+      .set(auth(owner))
+      .send({ title: 'Old hex color', color: '#436b9c' })
+      .expect(400);
+
     const playerCard = await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/cards`)
       .set(auth(player))
@@ -98,7 +104,7 @@ describe('Investigation board (e2e)', () => {
         title: 'The old factory',
         content: 'Saw lights at night.',
         tags: ['location', 'lead'],
-        color: '#2f80ed',
+        color: 'blue',
         icon: 'factory',
       })
       .expect(201);
@@ -108,6 +114,15 @@ describe('Investigation board (e2e)', () => {
       width: 240,
       height: 160,
     });
+    expect(playerCard.body.createdBy).toMatchObject({
+      name: 'player@loopkeeper.dev',
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/cards/${playerCard.body.cardId}`)
+      .set(auth(player))
+      .send({ color: '#436b9c' })
+      .expect(400);
 
     await request(app.getHttpServer())
       .patch(`/investigation-board/nodes/${playerCard.body.cardId}`)
@@ -283,7 +298,7 @@ describe('Investigation board (e2e)', () => {
     await request(app.getHttpServer())
       .patch(`/cards/${referenceCard.body.cardId}`)
       .set(auth(player))
-      .send({ tags: ['lead'], color: '#39726a' })
+      .send({ tags: ['lead'], color: 'olive' })
       .expect(200);
     await request(app.getHttpServer())
       .delete(`/cards/${referenceCard.body.cardId}`)

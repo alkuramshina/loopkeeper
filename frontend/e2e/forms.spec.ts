@@ -244,7 +244,7 @@ test('the tag composer refuses empty, repeated, overlong and extra tags; colour 
     .locator('.react-flow__node', { hasText: 'Много тегов' })
     .locator('h3')
     .click();
-  await page.getByLabel('Цвет карточки').selectOption('#436b9c');
+  await page.getByLabel('Цвет карточки').selectOption('blue');
   await page.getByLabel('Иконка карточки').selectOption({ label: 'Улика' });
   const saved = page.waitForResponse(
     (item) =>
@@ -257,5 +257,5 @@ test('the tag composer refuses empty, repeated, overlong and extra tags; colour 
       headers: owner.headers,
     })
   ).json()) as { cards: Array<{ color: string; icon: string }> };
-  expect(updated.cards[0]).toMatchObject({ color: '#436b9c', icon: 'clue' });
+  expect(updated.cards[0]).toMatchObject({ color: 'blue', icon: 'clue' });
 });

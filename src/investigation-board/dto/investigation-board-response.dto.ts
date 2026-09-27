@@ -1,4 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CARD_COLOR_KEYS } from '../card-colors';
+import type { CardColorKey } from '../card-colors';
 
 export class InvestigationBoardNodeResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -29,6 +31,9 @@ export class InvestigationBoardNodeResponseDto {
 export class InvestigationCardReferenceResponseDto {
   @ApiProperty({ enum: ['ELEMENT', 'CHARACTER'] })
   kind!: 'ELEMENT' | 'CHARACTER';
+
+  @ApiPropertyOptional({ enum: ['NOTE', 'LOCATION', 'NPC', 'OTHER'] })
+  type?: 'NOTE' | 'LOCATION' | 'NPC' | 'OTHER';
 
   @ApiPropertyOptional({ format: 'uuid' })
   elementId?: string;
@@ -69,8 +74,8 @@ export class InvestigationCardResponseDto {
   @ApiProperty({ type: [String] })
   tags!: string[];
 
-  @ApiPropertyOptional({ nullable: true })
-  color!: string | null;
+  @ApiPropertyOptional({ enum: CARD_COLOR_KEYS, nullable: true })
+  color!: CardColorKey | null;
 
   @ApiPropertyOptional({ nullable: true })
   icon!: string | null;
@@ -89,6 +94,15 @@ export class InvestigationCardResponseDto {
 
   @ApiProperty({ format: 'uuid' })
   createdById!: string;
+
+  @ApiProperty({
+    type: 'object',
+    properties: {
+      userId: { type: 'string' },
+      name: { type: 'string', nullable: true },
+    },
+  })
+  createdBy!: { userId: string; name: string | null };
 
   @ApiProperty({
     type: () => InvestigationBoardNodeResponseDto,

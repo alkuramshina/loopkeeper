@@ -113,11 +113,19 @@ describe('Toast', () => {
     vi.useRealTimers();
   });
 
-  function Trigger({ onUndo }: { onUndo: () => void }) {
+  function Trigger({
+    onUndo,
+    onExpire,
+  }: {
+    onUndo: () => void;
+    onExpire?: () => void;
+  }) {
     const toast = useToast();
     return (
       <button
-        onClick={() => toast.show({ message: 'Карточка убрана', onUndo })}
+        onClick={() =>
+          toast.show({ message: 'Карточка убрана', onUndo, onExpire })
+        }
         type="button"
       >
         Убрать
@@ -141,9 +149,10 @@ describe('Toast', () => {
 
   it('dismisses itself after a while, but not while hovered', async () => {
     vi.useFakeTimers();
+    const onExpire = vi.fn();
     render(
       <ToastProvider>
-        <Trigger onUndo={vi.fn()} />
+        <Trigger onUndo={vi.fn()} onExpire={onExpire} />
       </ToastProvider>,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Убрать' }));
@@ -151,8 +160,10 @@ describe('Toast', () => {
     fireEvent.mouseEnter(toast);
     await act(() => vi.advanceTimersByTimeAsync(toastDuration * 2));
     expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(onExpire).not.toHaveBeenCalled();
     fireEvent.mouseLeave(toast);
     await act(() => vi.advanceTimersByTimeAsync(toastDuration));
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(onExpire).toHaveBeenCalledTimes(1);
   });
 });

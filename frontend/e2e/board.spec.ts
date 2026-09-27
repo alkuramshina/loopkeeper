@@ -50,7 +50,7 @@ test('M6: the owner creates a card with tags that survives refresh and reload', 
   await tagInput.fill('улика');
   await tagInput.press('Enter');
   await expect(page.getByRole('button', { name: '#улика ×' })).toHaveCount(1);
-  await page.getByLabel('Цвет карточки').selectOption('#39726a');
+  await page.getByLabel('Цвет карточки').selectOption('olive');
   await page.getByRole('button', { name: 'Сохранить' }).click();
 
   const card = boardCard(page, 'Следы на снегу');
@@ -99,7 +99,7 @@ test('M6: a player drags, resizes and links cards; the layout persists', async (
 
   // Drag: the saved node moves down, the other card keeps its place.
   const dragged = nodeSaved(page);
-  await dragBy(page, radio.locator('h3'), 0, 150);
+  await dragBy(page, radio.locator('h3'), 0, 90);
   await dragged;
   let board = await getBoard(request, player, campaignId);
   const movedNode = board.cards.find((card) => card.cardId === radioId)?.node;
@@ -121,31 +121,16 @@ test('M6: a player drags, resizes and links cards; the layout persists', async (
   const resizedNode = board.cards.find((card) => card.cardId === radioId)?.node;
   expect(resizedNode?.width).toBeGreaterThan(260);
 
-  // Link: drag from the source handle of one card to the target handle of the
-  // other. Links are undirected; the moved card's bottom handle is off-canvas.
+  // Link the two cards with the board's linking tool.
   const linked = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
       response.url().endsWith('/investigation-links') &&
       response.ok(),
   );
-  await farm.scrollIntoViewIfNeeded();
-  const source = await farm.locator('.react-flow__handle-bottom').boundingBox();
-  const target = await radio.locator('.react-flow__handle-top').boundingBox();
-  if (!source || !target) throw new Error('Handles are not visible');
-  await page.mouse.move(
-    source.x + source.width / 2,
-    source.y + source.height / 2,
-  );
-  await page.mouse.down();
-  await page.mouse.move(
-    target.x + target.width / 2,
-    target.y + target.height / 2,
-    {
-      steps: 10,
-    },
-  );
-  await page.mouse.up();
+  await page.getByRole('button', { name: 'Связать' }).click();
+  await farm.locator('h3').click();
+  await radio.locator('h3').click();
   await linked;
 
   await page.getByRole('button', { name: 'Обновить' }).click();
