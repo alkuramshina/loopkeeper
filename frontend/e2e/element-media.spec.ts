@@ -143,7 +143,6 @@ test('a player adds a cover to their own note', async ({ page, request }) => {
 
   await signInAs(page, player);
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
-  await page.getByRole('button', { name: 'Изменить' }).click();
   await expect(page.getByLabel('Файл карты')).toHaveCount(0);
   expect((await upload(page, 'Обложка', 600, 900)).ok()).toBeTruthy();
   await expect(

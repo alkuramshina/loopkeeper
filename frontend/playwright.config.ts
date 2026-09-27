@@ -2,8 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 // Browser tests run against their own API and Vite servers so they never touch
 // the development database or a developer's running servers.
-const apiPort = 3100;
-const webPort = 5174;
+const apiPort = Number(process.env.PLAYWRIGHT_API_PORT ?? 3100);
+const webPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? 5174);
 const webUrl = `http://localhost:${webPort}`;
 
 export default defineConfig({

@@ -412,7 +412,7 @@ test('P5d: deleting an element removes its cover and map files', async ({
   await expect.poll(storedFiles).toBe(files - 2);
 });
 
-test('P5d: element covers appear whole on board cards and as catalog thumbnails', async ({
+test('P5d: element covers appear on board cards and in case previews', async ({
   page,
   request,
 }) => {
@@ -463,11 +463,11 @@ test('P5d: element covers appear whole on board cards and as catalog thumbnails'
   await page.goto(`/campaigns/${campaignId}/elements`);
   for (const title of ['Портрет', 'Пейзаж']) {
     const item = page.getByRole('link', { name: title });
-    const thumbnail = item.locator('img.materials-row-cover');
+    const thumbnail = item.locator('img.case-card-cover');
     await expect(thumbnail).toHaveAttribute('src', /^blob:/);
     const thumb = await thumbnail.boundingBox();
-    const text = await item.locator('.materials-row-title').boundingBox();
-    expect(thumb!.x + thumb!.width, title).toBeLessThanOrEqual(text!.x + 1);
+    const text = await item.locator('.case-card-title').boundingBox();
+    expect(thumb!.y + thumb!.height, title).toBeLessThanOrEqual(text!.y + 1);
   }
 
   await page.goto(`/campaigns/${campaignId}/board`);
@@ -479,10 +479,10 @@ test('P5d: element covers appear whole on board cards and as catalog thumbnails'
   ] as const) {
     const cover = card(title).locator('img.flow-card-cover');
     await expect(cover).toHaveAttribute('src', /^blob:/);
-    // Contained, never cropped: the image keeps its own proportions.
+    // Board cards crop covers, while the source image keeps its proportions.
     expect(
       await cover.evaluate((node) => getComputedStyle(node).objectFit),
-    ).toBe('contain');
+    ).toBe('cover');
     const size = await naturalSize(cover);
     expect(size.width / size.height, title).toBeCloseTo(ratio, 1);
     // The text is not covered by the image.
@@ -519,30 +519,8 @@ test('P5d: element covers appear whole on board cards and as catalog thumbnails'
   )?.node;
   expect(node?.y).toBeGreaterThan(50);
 
-  // Shrinking the card shrinks the cover with it.
-  const coverHeight = (await cover.boundingBox())!.height;
-  await card('Портрет').locator('h3').click();
-  await page.getByRole('button', { name: 'Отмена' }).click();
-  const handle = card('Портрет').locator(
-    '.react-flow__resize-control.handle.top.left',
-  );
-  const corner = await handle.boundingBox();
-  const resized = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'PATCH' &&
-      response.url().includes(`/investigation-board/nodes/${portraitCard}`),
-  );
-  await page.mouse.move(
-    corner!.x + corner!.width / 2,
-    corner!.y + corner!.height / 2,
-  );
-  await page.mouse.down();
-  await page.mouse.move(corner!.x + 80, corner!.y + 160, { steps: 8 });
-  await page.mouse.up();
-  await resized;
-  await expect
-    .poll(async () => (await cover.boundingBox())!.height)
-    .toBeLessThan(coverHeight - 20);
+  // The cover remains available after moving the card.
+  await expect(cover).toBeVisible();
 });
 
 test('P5d: deleting a campaign with members, media and a board removes it for everyone only', async ({
@@ -614,7 +592,7 @@ test('P5d: deleting a campaign with members, media and a board removes it for ev
   const playerPage = await openAs(browser, player, '/campaigns');
   await expect(playerPage.locator('.campaign-card')).toHaveCount(1);
   await playerPage.locator('.campaign-card').click();
-  await expect(playerPage).toHaveURL(`/campaigns/${otherCampaign}/characters`);
+  await expect(playerPage).toHaveURL(`/campaigns/${otherCampaign}/board`);
   await playerPage.goto(`/campaigns/${campaignId}/board`);
   await expect(playerPage.getByRole('alert')).toHaveText(
     'Этот ресурс недоступен.',

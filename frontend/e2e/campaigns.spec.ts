@@ -48,7 +48,7 @@ test('a player joins from a pasted invitation on the campaign list', async ({
   await page.goto('/campaigns');
   await page
     .getByRole('textbox', { name: 'Ссылка или токен приглашения' })
-    .fill(`http://localhost:5174/invitations/${token}`);
+    .fill(new URL(`/invitations/${token}`, page.url()).href);
   await page.getByRole('button', { name: 'Присоединиться' }).click();
   await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
   await expect(page.locator('.campaign-switcher')).toContainText('Сигнал');

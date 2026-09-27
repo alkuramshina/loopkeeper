@@ -24,7 +24,7 @@ test('M4: accepts an invitation exactly once under Strict Mode', async ({
   await signInAs(page, player);
   await page.goto(`/invitations/${token}`);
 
-  await expect(page).toHaveURL(`/campaigns/${campaignId}/characters`);
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
   expect(accepts).toBe(1);
 
   // Replace navigation: going back must not return to the accept screen.

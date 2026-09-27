@@ -196,6 +196,7 @@ describe('Element media (e2e)', () => {
       .expect((response) =>
         expect(response.body.reference).toEqual({
           kind: 'ELEMENT',
+          type: 'NPC',
           elementId,
           coverUrl,
         }),

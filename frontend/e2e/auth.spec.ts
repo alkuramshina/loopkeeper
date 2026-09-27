@@ -45,6 +45,7 @@ test('signs up, restores the session on reload and signs out', async ({
   await expect(page).toHaveURL(/\/campaigns$/);
   expect(refreshes.value).toBe(1);
 
+  await page.locator('.campaign-list-account summary').click();
   await page.getByRole('button', { name: 'Выйти' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
   await page.reload();
@@ -71,7 +72,12 @@ test('signs in through the form and reports wrong credentials by code', async ({
   await page.getByLabel('Пароль').fill(user.password);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
-  await expect(page.getByRole('link', { name: user.name })).toBeVisible();
+  await page.locator('.campaign-list-account summary').click();
+  await expect(
+    page
+      .locator('.campaign-list-account')
+      .getByRole('link', { name: user.name }),
+  ).toBeVisible();
 });
 
 test('M2: a lost refresh session redirects to sign-in without a refresh loop', async ({
@@ -81,14 +87,19 @@ test('M2: a lost refresh session redirects to sign-in without a refresh loop', a
   const user = await registerUser(request, 'Потерянный');
   await signInAs(page, user);
   await page.goto('/campaigns');
-  await expect(page.getByRole('link', { name: user.name })).toBeVisible();
+  await page.locator('.campaign-list-account summary').click();
+  await expect(
+    page
+      .locator('.campaign-list-account')
+      .getByRole('link', { name: user.name }),
+  ).toBeVisible();
 
   await page.context().clearCookies();
   const refreshes = countRefreshRequests(page);
   await page.reload();
 
   await expect(page).toHaveURL(/\/sign-in$/);
-  await expect(page.getByRole('link', { name: user.name })).toHaveCount(0);
+  await expect(page.locator('.campaign-list-account summary')).toHaveCount(0);
   expect(refreshes.value).toBe(1);
 });
 
@@ -108,11 +119,11 @@ test('keeps the invitation through sign-in and joins the campaign', async ({
   await page.getByLabel('Пароль').fill(invited.password);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
 
-  await expect(page).toHaveURL(`/campaigns/${campaignId}/characters`);
-  await expect(
-    page.getByRole('heading', { name: 'Кампания по ссылке' }),
-  ).toBeVisible();
-  await expect(page.getByText('Игрок', { exact: true }).first()).toBeVisible();
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
+  await expect(page.locator('.campaign-switcher')).toContainText(
+    'Кампания по ссылке',
+  );
+  await expect(page.locator('.campaign-switcher')).toContainText('Игрок');
 });
 
 test('a new user signs up from an invitation link and joins the campaign', async ({
@@ -138,8 +149,9 @@ test('a new user signs up from an invitation link and joins the campaign', async
     .getByRole('button', { name: 'Создать аккаунт', exact: true })
     .click();
 
-  await expect(page).toHaveURL(`/campaigns/${campaignId}/characters`);
-  await expect(
-    page.getByText('Наблюдатель', { exact: true }).first(),
-  ).toBeVisible();
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
+  await expect(page.locator('.campaign-switcher')).toContainText(
+    'Кампания для новичка',
+  );
+  await expect(page.locator('.campaign-switcher')).toContainText('Наблюдатель');
 });

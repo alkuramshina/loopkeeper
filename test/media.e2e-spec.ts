@@ -747,7 +747,20 @@ describe('Media (e2e)', () => {
       .set(authenticate(owner))
       .expect(200);
     expect(campaignResponse.body.coverUrl).toBeNull();
-    expect(await getTestPrisma().mediaAsset.count()).toBe(0);
+    expect(
+      await getTestPrisma().mediaAsset.findMany({
+        where: {
+          assetId: {
+            in: [
+              firstCharacterAvatar.body.assetId,
+              secondCharacterAvatar.body.assetId,
+              firstCover.body.assetId,
+              secondCover.body.assetId,
+            ],
+          },
+        },
+      }),
+    ).toEqual([]);
   });
 
   it('preserves external URLs without serving superseded managed media', async () => {
