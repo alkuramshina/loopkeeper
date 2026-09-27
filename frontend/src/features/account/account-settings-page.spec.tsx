@@ -3,7 +3,10 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
 import { ApiError } from '../../api/client';
-import { AccountSettingsPage } from './account-settings-page';
+import {
+  AccountSettingsPage,
+  PasswordSettingsPage,
+} from './account-settings-page';
 
 const request = vi.fn();
 const signOut = vi.fn();
@@ -17,11 +20,12 @@ vi.mock('../../auth/auth-context', () => ({
   }),
 }));
 
-function renderPage() {
+function renderPage(path = '/settings/account') {
   render(
-    <MemoryRouter initialEntries={['/settings/account']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/settings/account" element={<AccountSettingsPage />} />
+        <Route path="/settings/password" element={<PasswordSettingsPage />} />
         <Route path="/sign-in" element={<p>Страница входа</p>} />
       </Routes>
     </MemoryRouter>,
@@ -48,6 +52,29 @@ describe('AccountSettingsPage', () => {
     updateProfile.mockReset();
   });
 
+  it('switches between the settings and the password from the side menu', async () => {
+    renderPage();
+    const navigation = screen.getByRole('navigation', {
+      name: 'Разделы аккаунта',
+    });
+
+    expect(screen.getByRole('link', { name: 'Настройки' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(navigation).toContainElement(
+      screen.getByRole('link', { name: 'Пароль' }),
+    );
+    expect(screen.queryByLabelText('Текущий пароль')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Пароль' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Пароль' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Текущий пароль')).toBeInTheDocument();
+  });
+
   it('shows the email read-only and saves a trimmed name', async () => {
     updateProfile.mockResolvedValue(undefined);
     renderPage();
@@ -63,7 +90,7 @@ describe('AccountSettingsPage', () => {
   });
 
   it('catches mismatched passwords before calling the API', () => {
-    renderPage();
+    renderPage('/settings/password');
 
     fillPasswords('current-password', 'new-password-1', 'new-password-2');
 
@@ -82,7 +109,7 @@ describe('AccountSettingsPage', () => {
         undefined,
       ),
     );
-    renderPage();
+    renderPage('/settings/password');
 
     fillPasswords('wrong-password', 'new-password-1', 'new-password-1');
 
@@ -98,7 +125,7 @@ describe('AccountSettingsPage', () => {
   it('signs out and returns to sign-in after a password change', async () => {
     request.mockResolvedValue(undefined);
     signOut.mockResolvedValue(undefined);
-    renderPage();
+    renderPage('/settings/password');
 
     fillPasswords('current-password', 'new-password-1', 'new-password-1');
 

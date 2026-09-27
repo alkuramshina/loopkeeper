@@ -21,6 +21,13 @@ test('M9: renames the account and changes the password', async ({
   await page.reload();
   await expect(page.getByLabel('Имя')).toHaveValue('Новое имя');
 
+  // The password has its own section in the side menu.
+  await page
+    .getByRole('navigation', { name: 'Разделы аккаунта' })
+    .getByRole('link', { name: 'Пароль' })
+    .click();
+  await expect(page).toHaveURL(/\/settings\/password$/);
+
   const passwordForm = page
     .locator('form')
     .filter({ hasText: 'Текущий пароль' });
@@ -51,7 +58,7 @@ test('M9: renames the account and changes the password', async ({
   await expect(passwordForm.getByRole('alert')).toHaveText(
     'Не удалось войти. Проверьте почту и пароль.',
   );
-  await expect(page).toHaveURL(/\/settings\/account$/);
+  await expect(page).toHaveURL(/\/settings\/password$/);
 
   await passwordForm.getByLabel('Текущий пароль').fill(user.password);
   await passwordForm.getByRole('button', { name: 'Изменить пароль' }).click();

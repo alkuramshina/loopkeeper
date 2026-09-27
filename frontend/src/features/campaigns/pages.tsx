@@ -65,9 +65,9 @@ export function CampaignListPage() {
   return (
     <main className="app-page">
       <AppTopbar />
-      <section className="campaigns-bg">
+      <section className="app-content">
         <OfflineNotice />
-        <header className="campaigns-top">
+        <header className="page-header campaigns-top">
           <h1>{t('campaigns.title')}</h1>
           {campaigns.data?.length ? (
             <button

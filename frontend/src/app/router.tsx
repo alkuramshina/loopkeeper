@@ -59,6 +59,10 @@ const AccountSettingsPage = lazy(async () => ({
   default: (await import('../features/account/account-settings-page'))
     .AccountSettingsPage,
 }));
+const PasswordSettingsPage = lazy(async () => ({
+  default: (await import('../features/account/account-settings-page'))
+    .PasswordSettingsPage,
+}));
 
 function ProtectedRoute() {
   const { profile, loading } = useAuth();
@@ -116,6 +120,7 @@ export function AppRouter() {
         <Route element={<ProtectedRoute />}>
           <Route path="/campaigns" element={<CampaignListPage />} />
           <Route path="/settings/account" element={<AccountSettingsPage />} />
+          <Route path="/settings/password" element={<PasswordSettingsPage />} />
           <Route
             path="/campaigns/:campaignId"
             element={<Navigate to="board" replace />}
