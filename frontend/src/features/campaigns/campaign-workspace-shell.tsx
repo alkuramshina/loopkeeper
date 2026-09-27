@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Campaign } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { OfflineNotice } from '../../components/offline-notice';
+import { Logo } from '../../components/brand/logo';
 
 type CampaignWorkspaceShellProps = {
   campaign?: Campaign;
@@ -55,8 +56,7 @@ export function CampaignWorkspaceShell({
     <div className="campaign-workspace-shell">
       <header className="campaign-workspace-shell-topbar">
         <Link className="brand-lock" to="/campaigns">
-          <span className="brand-mark" aria-hidden="true" />
-          {t('appName')}
+          <Logo label={t('appName')} />
         </Link>
         <div className="campaign-workspace-shell-topbar-actions">
           <p className="campaign-workspace-shell-title">{campaign.title}</p>
@@ -76,8 +76,7 @@ export function CampaignWorkspaceShell({
       </header>
       <header className="campaign-workspace-shell-mobile-header">
         <Link className="brand-lock" to="/campaigns">
-          <span className="brand-mark" aria-hidden="true" />
-          {t('appName')}
+          <Logo label={t('appName')} />
         </Link>
         <div className="campaign-workspace-shell-mobile-context">
           <p>{campaign.title}</p>

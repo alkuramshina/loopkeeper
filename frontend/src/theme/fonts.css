@@ -1,0 +1,29 @@
+/* Self-hosted fonts; each file carries unicode ranges, so only the needed
+   Cyrillic and Latin subsets are downloaded. */
+@import '@fontsource/golos-text/400.css';
+@import '@fontsource/golos-text/500.css';
+@import '@fontsource/golos-text/600.css';
+@import '@fontsource/golos-text/700.css';
+@import '@fontsource/lora/500.css';
+@import '@fontsource/lora/600.css';
+@import '@fontsource/lora/500-italic.css';
+
+/* Metric-matched fallbacks (Capsize) keep the layout still while the web
+   fonts load or when a theme swaps a font. */
+@font-face {
+  font-family: 'Golos Text Fallback';
+  src: local('Arial'), local('ArialMT');
+  ascent-override: 90.2654%;
+  descent-override: 20.2637%;
+  line-gap-override: 0%;
+  size-adjust: 108.5687%;
+}
+
+@font-face {
+  font-family: 'Lora Fallback';
+  src: local('Times New Roman'), local('TimesNewRomanPSMT');
+  ascent-override: 87.3264%;
+  descent-override: 23.7847%;
+  line-gap-override: 0%;
+  size-adjust: 115.2%;
+}

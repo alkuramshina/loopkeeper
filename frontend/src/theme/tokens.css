@@ -1,0 +1,188 @@
+/*
+ * Design tokens of the base theme "Clear table".
+ *
+ * Components read only these semantic roles and never raw values. A future
+ * theme is another set of values for the same names, not a component change
+ * (see resources/plans/frontend/THEME-REQUIREMENTS.md).
+ *
+ * Every colour is one light-dark() pair, so the variation follows
+ * `color-scheme`: the system preference by default, or a later explicit
+ * choice through `data-variation` on <html>.
+ *
+ * Breakpoints cannot be custom properties inside @media; their values live in
+ * src/theme/breakpoints.ts and are repeated in media queries:
+ * phone < 600px, tablet 600–1023px, small laptop 1024–1279px,
+ * laptop 1280–1439px, wide >= 1440px.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --color-bg: light-dark(#f4f3f0, #17171a);
+  --color-surface: light-dark(#ffffff, #202024);
+  --color-sunken: light-dark(#eceae6, #111113);
+  --color-muted-bg: light-dark(#eceae6, #2a2a2f);
+  --color-hover: light-dark(#e6e4df, #2c2c31);
+
+  /* Lines */
+  --color-line: light-dark(#d9d6d0, #313036);
+  --color-line-strong: light-dark(#c9c5be, #45434b);
+  /* Form control borders need 3:1 against their surroundings. */
+  --color-line-control: light-dark(#8c8893, #74717b);
+
+  /* Text */
+  --color-text: light-dark(#212024, #eceae6);
+  --color-text-secondary: light-dark(#45434b, #c9c6ce);
+  --color-text-muted: light-dark(#625f68, #9c99a3);
+
+  /* Accent "Loop": the one colour for the main action, selection and focus */
+  --color-accent: light-dark(#1d6378, #72c2d6);
+  --color-accent-hover: light-dark(#174f60, #8fd0e0);
+  --color-on-accent: light-dark(#ffffff, #0b2229);
+  --color-accent-soft: light-dark(#e3eef1, #1b3139);
+  --color-focus: var(--color-accent);
+
+  /* Danger: only destructive actions and errors */
+  --color-danger: light-dark(#9e2a20, #ff8a7a);
+  --color-danger-hover: light-dark(#80221a, #ffa597);
+  --color-on-danger: light-dark(#ffffff, #2a0c08);
+  --color-danger-soft: light-dark(#f8e8e6, #3a1f1c);
+  --color-danger-line: light-dark(#e4b7b1, #6b3530);
+
+  /* Warning: connection and stale-data notices */
+  --color-warning: light-dark(#6e4a12, #e8c387);
+  --color-warning-soft: light-dark(#f7eedf, #33291b);
+
+  /* Access statuses are reserved: icon + word everywhere, nowhere else */
+  --access-shared: light-dark(#22603b, #7fd19f);
+  --access-shared-bg: light-dark(#e1eee5, #1e3328);
+  --access-hidden: light-dark(#45434b, #b7b4bd);
+  --access-hidden-bg: light-dark(#eceae6, #2a2a2f);
+  --access-hidden-line: var(--color-line-strong);
+  --access-private: light-dark(#7a3388, #d9a0e4);
+  --access-private-bg: light-dark(#f1e4f3, #35243a);
+
+  /* Soft "new since your last visit" mark */
+  --new-mark: var(--color-accent);
+
+  /* Initials avatars */
+  --color-avatar-bg: light-dark(#f3e6d2, #3a2e1f);
+  --color-avatar-text: light-dark(#7a4e1c, #e5c79c);
+
+  /* Overlays and media */
+  --color-scrim: light-dark(rgb(23 23 26 / 45%), rgb(0 0 0 / 62%));
+  --color-shadow: light-dark(rgb(33 32 36 / 22%), rgb(0 0 0 / 55%));
+  --color-shadow-soft: light-dark(rgb(33 32 36 / 6%), rgb(0 0 0 / 35%));
+  --color-media-backdrop: light-dark(#212024, #111113);
+  --color-media-line: light-dark(#3a393f, #313036);
+  --color-on-media: #ecebe8;
+  --color-on-media-muted: #c9c6ce;
+  --color-on-image: #ffffff;
+  --color-on-image-line: rgb(255 255 255 / 55%);
+  --image-scrim: linear-gradient(
+    180deg,
+    rgb(7 24 35 / 66%) 0%,
+    rgb(7 24 35 / 44%) 45%,
+    rgb(7 24 35 / 85%) 100%
+  );
+
+  /* Logo: lines follow the text colour, the face is filled only on dark */
+  --logo-ink: var(--color-text);
+  --logo-face: light-dark(transparent, #26252a);
+
+  /* Board */
+  --board-bg: var(--color-bg);
+  --board-dot: light-dark(rgb(33 32 36 / 13%), rgb(236 234 230 / 9%));
+  --board-pattern: radial-gradient(var(--board-dot) 1px, transparent 1.5px);
+  --board-pattern-size: 20px;
+  --board-unrelated-opacity: 0.45;
+  --link-color: light-dark(#9a97a0, #5e5b66);
+  --link-selected-color: var(--color-accent);
+  --link-width: 1.5px;
+  --link-dash: none;
+  --link-end-radius: 50%;
+  --card-radius: var(--radius-lg);
+  --card-shape: none;
+  --card-title-size: 1.125rem;
+  /* Texture of material hidden from players; shown to the master only */
+  --hidden-texture: none;
+  /* Card colour marks: stored as keys, painted by the theme */
+  --card-mark-ochre: #c27a2c;
+  --card-mark-rose: #c4506e;
+  --card-mark-blue: #4f7bc4;
+  --card-mark-olive: #7e8c3a;
+  --card-mark-grey: #85818c;
+
+  /* Typography */
+  --font-body: 'Golos Text', 'Golos Text Fallback', system-ui, sans-serif;
+  --font-heading: 'Lora', 'Lora Fallback', Georgia, serif;
+  /* Short labels, statuses and metadata; a theme may set it apart */
+  --font-meta: var(--font-body);
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --label-transform: none;
+  --label-tracking: normal;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1rem;
+  --text-reading: 1.0625rem;
+  --text-h3: clamp(1.125rem, 1.05rem + 0.3vw, 1.25rem);
+  --text-h2: clamp(1.375rem, 1.2rem + 0.6vw, 1.625rem);
+  --text-h1: clamp(1.75rem, 1.45rem + 1.2vw, 2.25rem);
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-reading: 1.7;
+  --measure-reading: 68ch;
+
+  /* Space: a 4px scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Shape */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* Depth: soft, offset and blurred */
+  --shadow-sm: 0 1px 2px var(--color-shadow-soft);
+  --shadow-md:
+    0 1px 2px var(--color-shadow-soft), 0 10px 22px -14px var(--color-shadow);
+  --shadow-lg:
+    0 2px 6px var(--color-shadow-soft), 0 24px 60px -20px var(--color-shadow);
+  --focus-ring: 0 0 0 3px
+    color-mix(in srgb, var(--color-focus) 40%, transparent);
+
+  /* Controls */
+  --control-height: 2.5rem;
+  --control-height-lg: 2.75rem;
+  --touch-target: 2.75rem;
+
+  /* Motion: short and quiet */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --reveal-animation: lk-reveal;
+  --reveal-duration: 240ms;
+
+  /* Layers */
+  --z-navigation: 10;
+  --z-overlay: 20;
+  --z-toast: 30;
+}
+
+:root[data-variation='light'] {
+  color-scheme: light;
+}
+
+:root[data-variation='dark'] {
+  color-scheme: dark;
+}

@@ -57,9 +57,23 @@ async function expectClickable(page: Page, control: Locator) {
   expect(covered).toBe(await control.textContent());
 }
 
-for (const width of [320, 768]) {
-  test.describe(`${width}px`, () => {
-    test.use({ viewport: { width, height: 720 } });
+// Every layout range from the redesign plan, plus low laptop screens where
+// headers and bottom bars eat the working area. Long dialogs are checked where
+// the height is tight.
+const viewports = [
+  { width: 320, height: 720, dialogs: true },
+  { width: 390, height: 844, dialogs: false },
+  { width: 768, height: 720, dialogs: true },
+  { width: 1024, height: 768, dialogs: false },
+  { width: 1280, height: 720, dialogs: true },
+  { width: 1366, height: 768, dialogs: false },
+  { width: 1440, height: 900, dialogs: false },
+  { width: 1920, height: 1080, dialogs: false },
+];
+
+for (const { width, height, dialogs } of viewports) {
+  test.describe(`${width}×${height}`, () => {
+    test.use({ viewport: { width, height } });
 
     test('workspace pages fit the screen and dialogs stay usable', async ({
       page,
@@ -123,6 +137,8 @@ for (const width of [320, 768]) {
       await page.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);
     });
+
+    if (!dialogs) return;
 
     test('long dialogs scroll inside the screen and keep their submit button reachable', async ({
       page,

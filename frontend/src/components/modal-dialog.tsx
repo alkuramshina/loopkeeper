@@ -1,5 +1,7 @@
 import { MouseEvent, ReactNode, useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { X } from 'lucide-react';
+import { iconProps } from './ui/icon';
 
 type ModalDialogProps = {
   title: string;
@@ -65,11 +67,11 @@ export function ModalDialog({ title, children, onClose }: ModalDialogProps) {
         <h2 id={titleId}>{title}</h2>
         <button
           aria-label={t('common.close')}
-          className="button-ghost"
+          className="ui-icon-button"
           onClick={onClose}
           type="button"
         >
-          ×
+          <X {...iconProps} size={18} />
         </button>
       </div>
       {children}

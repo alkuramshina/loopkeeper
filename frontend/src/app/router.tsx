@@ -37,6 +37,14 @@ const BackgroundSettingsPage = lazy(async () => ({
     .BackgroundSettingsPage,
 }));
 
+// Development only: `import.meta.env.DEV` is false in a production build, so
+// the gallery and its styles are dropped from the bundle.
+const UiGalleryPage = import.meta.env.DEV
+  ? lazy(async () => ({
+      default: (await import('../dev/ui-gallery-page')).UiGalleryPage,
+    }))
+  : null;
+
 const CampaignSettingsPage = lazy(async () => ({
   default: (await import('../features/campaigns/campaign-settings-page'))
     .CampaignSettingsPage,
@@ -135,6 +143,7 @@ export function AppRouter() {
           />
         </Route>
         <Route path="/invitations/:token" element={<InvitationEntry />} />
+        {UiGalleryPage && <Route path="/dev/ui" element={<UiGalleryPage />} />}
         <Route path="*" element={<Navigate to="/campaigns" replace />} />
       </Routes>
     </Suspense>

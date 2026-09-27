@@ -146,7 +146,9 @@ describe('AuthPage', () => {
       ),
     ).toBeInTheDocument();
     expect(window.sessionStorage.getItem(brandVariantStorageKey)).toBe(variant);
-    expect(window.sessionStorage.getItem(brandImageStorageKey)).toBe(imageVariant);
+    expect(window.sessionStorage.getItem(brandImageStorageKey)).toBe(
+      imageVariant,
+    );
     expect(image).toHaveAttribute('src', imageSrc);
   });
 
@@ -163,9 +165,7 @@ describe('AuthPage', () => {
     window.sessionStorage.setItem(brandImageStorageKey, 'bridge');
     renderAuth('/sign-in');
 
-    expect(
-      screen.getByText('Не упускайте нить истории.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Не упускайте нить истории.')).toBeInTheDocument();
     expect(document.querySelector('.auth-brand-image')).toHaveAttribute(
       'src',
       expect.stringContaining('bridge-winter.png'),
@@ -182,19 +182,22 @@ describe('AuthPage', () => {
     ['substation', 'substation-autumn.png'],
     ['bridge', 'bridge-winter.png'],
     ['radio', 'radio-field.png'],
-  ])('shows the %s illustration with independently chosen copy', (imageVariant, imageName) => {
-    window.sessionStorage.setItem(brandVariantStorageKey, 'focus');
-    window.sessionStorage.setItem(brandImageStorageKey, imageVariant);
-    renderAuth('/sign-in');
+  ])(
+    'shows the %s illustration with independently chosen copy',
+    (imageVariant, imageName) => {
+      window.sessionStorage.setItem(brandVariantStorageKey, 'focus');
+      window.sessionStorage.setItem(brandImageStorageKey, imageVariant);
+      renderAuth('/sign-in');
 
-    expect(document.querySelector('.auth-brand-image')).toHaveAttribute(
-      'src',
-      expect.stringContaining(imageName),
-    );
-    expect(
-      screen.getByText(i18n.t('auth.brandVariants.focus.signIn.title')),
-    ).toBeInTheDocument();
-  });
+      expect(document.querySelector('.auth-brand-image')).toHaveAttribute(
+        'src',
+        expect.stringContaining(imageName),
+      );
+      expect(
+        screen.getByText(i18n.t('auth.brandVariants.focus.signIn.title')),
+      ).toBeInTheDocument();
+    },
+  );
 
   it('replaces an unknown stored brand copy variant', () => {
     window.sessionStorage.setItem(brandVariantStorageKey, 'retired');

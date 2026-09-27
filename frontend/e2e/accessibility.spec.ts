@@ -17,9 +17,6 @@ import {
 async function expectNoAxeViolations(page: Page, where: string) {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    // Colours belong to the design system that is still being finalised;
-    // contrast is checked manually per theme (see DESIGN.md).
-    .disableRules(['color-contrast'])
     .analyze();
   const violations = results.violations.map(
     (violation) =>
@@ -107,13 +104,17 @@ test('a campaign element is created with the keyboard only; errors are announced
   );
 });
 
-test('main screens have no automatically detectable accessibility violations', async ({
+test('main screens have no automatically detectable accessibility violations in both variations', async ({
   page,
   request,
 }) => {
-  await page.goto('/sign-in');
-  await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible();
-  await expectNoAxeViolations(page, 'sign-in');
+  const variations = ['light', 'dark'] as const;
+  for (const colorScheme of variations) {
+    await page.emulateMedia({ colorScheme });
+    await page.goto('/sign-in');
+    await expect(page.getByRole('button', { name: 'Войти' })).toBeVisible();
+    await expectNoAxeViolations(page, `sign-in, ${colorScheme}`);
+  }
 
   const { campaignId, owner, player } = await createCampaignWithRoles(request);
   await createPlayerCharacter(request, player, campaignId, 'Ольга');
@@ -142,10 +143,13 @@ test('main screens have no automatically detectable accessibility violations', a
     ['campaign settings', `/campaigns/${campaignId}/settings`, 'Настройки'],
     ['account', '/settings/account', 'Аккаунт'],
   ];
-  for (const [where, path, marker] of screens) {
-    await page.goto(path);
-    await expect(page.getByText(marker).first()).toBeVisible();
-    await expectNoAxeViolations(page, where);
+  for (const colorScheme of variations) {
+    await page.emulateMedia({ colorScheme });
+    for (const [where, path, marker] of screens) {
+      await page.goto(path);
+      await expect(page.getByText(marker).first()).toBeVisible();
+      await expectNoAxeViolations(page, `${where}, ${colorScheme}`);
+    }
   }
 });
 

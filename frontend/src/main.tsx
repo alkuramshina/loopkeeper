@@ -6,6 +6,11 @@ import './i18n';
 import { AuthProvider } from './auth/auth-context';
 import { AppRouter } from './app/router';
 import { AppErrorBoundary } from './app/error-boundary';
+import { ToastProvider } from './components/ui/toast';
+import './theme/fonts.css';
+import './theme/tokens.css';
+import './theme/base.css';
+import './components/ui/ui.css';
 import './styles.css';
 
 const queryClient = new QueryClient({
@@ -16,11 +21,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            <AppRouter />
-          </AuthProvider>
-        </BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <AppRouter />
+            </AuthProvider>
+          </BrowserRouter>
+        </ToastProvider>
       </QueryClientProvider>
     </AppErrorBoundary>
   </StrictMode>,

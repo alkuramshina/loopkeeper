@@ -2,15 +2,26 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useAuth } from './auth-context';
+import { Logo } from '../components/brand/logo';
 import { useTranslation } from 'react-i18next';
 import lakeNight from '../assets/auth/lake-night.png';
 import substationAutumn from '../assets/auth/substation-autumn.png';
 import bridgeWinter from '../assets/auth/bridge-winter.png';
 import radioField from '../assets/auth/radio-field.png';
 
-export const brandVariantKeys = ['focus', 'threads', 'table', 'signals'] as const;
+export const brandVariantKeys = [
+  'focus',
+  'threads',
+  'table',
+  'signals',
+] as const;
 export const brandVariantStorageKey = 'loopkeeper.auth-brand-variant';
-export const brandImageKeys = ['lake', 'substation', 'bridge', 'radio'] as const;
+export const brandImageKeys = [
+  'lake',
+  'substation',
+  'bridge',
+  'radio',
+] as const;
 export const brandImageStorageKey = 'loopkeeper.auth-brand-image';
 
 type BrandImageKey = (typeof brandImageKeys)[number];
@@ -144,10 +155,7 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             src={brandImages[brandImage]}
           />
           <div>
-            <div className="brand-lock">
-              <span className="brand-mark" aria-hidden="true" />
-              {t('appName')}
-            </div>
+            <Logo className="brand-lock" label={t('appName')} />
             <p className="auth-brand-title">{t(`${brandCopyPath}.title`)}</p>
             <p className="auth-brand-body">{t(`${brandCopyPath}.body`)}</p>
           </div>
@@ -157,10 +165,7 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         </aside>
         <section className="auth-main" aria-labelledby="auth-page-title">
           <div className="auth-card">
-            <div className="auth-mobile-brand">
-              <span className="brand-mark" aria-hidden="true" />
-              {t('appName')}
-            </div>
+            <Logo className="auth-mobile-brand" label={t('appName')} />
             <p className="kicker">
               {t(isSignUp ? 'auth.signUpKicker' : 'auth.signInKicker')}
             </p>

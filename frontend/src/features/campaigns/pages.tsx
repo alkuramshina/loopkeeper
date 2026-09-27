@@ -9,6 +9,7 @@ import { ModalDialog } from '../../components/modal-dialog';
 import { ProtectedImage } from '../../components/protected-image';
 import { errorMessage } from '../../components/page-error';
 import { OfflineNotice } from '../../components/offline-notice';
+import { Logo } from '../../components/brand/logo';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -63,8 +64,7 @@ export function CampaignListPage() {
     <main className="campaign-page">
       <header className="campaign-topbar">
         <Link className="brand-lock" to="/campaigns">
-          <span className="brand-mark" aria-hidden="true" />
-          {t('appName')}
+          <Logo label={t('appName')} />
         </Link>
         <div className="campaign-account">
           <Link to="/settings/account">{profile?.name ?? profile?.email}</Link>

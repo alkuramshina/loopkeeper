@@ -1,0 +1,100 @@
+/* Element defaults and browser states, built only from tokens. */
+:root {
+  font-family: var(--font-body);
+  font-size: 100%;
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  background: var(--color-bg);
+  scrollbar-color: var(--color-line-strong) transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-size: var(--text-base);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--text-h1);
+}
+
+h2 {
+  font-size: var(--text-h2);
+}
+
+h3 {
+  font-size: var(--text-h3);
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+::selection {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-accent) 28%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+/* Numbers in tables, counters and times line up. */
+table,
+time,
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--color-line);
+}
+
+/* Touch targets depend on the input device, not the viewport width. */
+@media (pointer: coarse) {
+  button,
+  select,
+  input:not([type='checkbox'], [type='radio'], [type='file']) {
+    min-height: var(--touch-target);
+  }
+}
+
+@keyframes lk-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
