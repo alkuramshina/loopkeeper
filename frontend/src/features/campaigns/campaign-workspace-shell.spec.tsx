@@ -98,4 +98,30 @@ describe('CampaignWorkspaceShell', () => {
     ).toHaveAttribute('href', '/campaigns/campaign-1/notes');
     expect(screen.queryByRole('link', { name: 'Материалы' })).toBeNull();
   });
+
+  it('marks the case only when this member has new visible materials', () => {
+    const { container, rerender } = renderShell({
+      ...baseCampaign,
+      currentUserRole: 'PLAYER',
+      newVisibleMaterialCount: 2,
+    });
+    expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(2);
+
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <CampaignWorkspaceShell
+            campaign={{
+              ...baseCampaign,
+              currentUserRole: 'OWNER',
+              newVisibleMaterialCount: 2,
+            }}
+          >
+            <p>Page content</p>
+          </CampaignWorkspaceShell>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(0);
+  });
 });

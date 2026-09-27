@@ -75,6 +75,28 @@ describe('caseEntries', () => {
     expect(entries.recent).toHaveLength(0);
     expect(entries.earlier[0].items).toHaveLength(6);
   });
+
+  it('uses the opening time instead of later edits for newness and ordering', () => {
+    const entries = caseEntries(
+      [
+        element('edited-later', '2026-09-27T15:00:00.000Z', {
+          sharedAt: '2026-09-20T10:00:00.000Z',
+        }),
+        element('opened-later', '2026-09-26T11:00:00.000Z', {
+          sharedAt: '2026-09-26T10:00:00.000Z',
+        }),
+      ],
+      'player',
+      '2026-09-25T10:00:00.000Z',
+    );
+
+    expect(entries.recent.map((item) => item.elementId)).toEqual([
+      'opened-later',
+    ]);
+    expect(entries.earlier.map((group) => group.items[0].elementId)).toEqual([
+      'edited-later',
+    ]);
+  });
 });
 
 describe('ownNotes', () => {
