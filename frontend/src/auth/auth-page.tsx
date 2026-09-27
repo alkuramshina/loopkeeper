@@ -3,32 +3,47 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../api/client';
 import { useAuth } from './auth-context';
 import { useTranslation } from 'react-i18next';
+import lakeNight from '../assets/auth/lake-night.png';
+import substationAutumn from '../assets/auth/substation-autumn.png';
+import bridgeWinter from '../assets/auth/bridge-winter.png';
+import radioField from '../assets/auth/radio-field.png';
 
-export const brandVariantKeys = ['focus', 'threads', 'table'] as const;
+export const brandVariantKeys = ['focus', 'threads', 'table', 'signals'] as const;
 export const brandVariantStorageKey = 'loopkeeper.auth-brand-variant';
+export const brandImageKeys = ['lake', 'substation', 'bridge', 'radio'] as const;
+export const brandImageStorageKey = 'loopkeeper.auth-brand-image';
 
-type BrandVariantKey = (typeof brandVariantKeys)[number];
+type BrandImageKey = (typeof brandImageKeys)[number];
+
+const brandImages: Record<BrandImageKey, string> = {
+  lake: lakeNight,
+  substation: substationAutumn,
+  bridge: bridgeWinter,
+  radio: radioField,
+};
 
 // Storage access throws when the browser blocks it; the auth page must still
-// render, so fall back to an unsaved random variant.
-function selectBrandVariant(): BrandVariantKey {
+// render, so fall back to an unsaved random choice.
+function selectSessionChoice<T extends string>(
+  keys: readonly T[],
+  storageKey: string,
+): T {
   try {
-    const stored = window.sessionStorage.getItem(brandVariantStorageKey);
-    if (stored && brandVariantKeys.includes(stored as BrandVariantKey)) {
-      return stored as BrandVariantKey;
+    const stored = window.sessionStorage.getItem(storageKey);
+    if (stored && keys.includes(stored as T)) {
+      return stored as T;
     }
   } catch {
     // Ignore and pick a fresh variant below.
   }
 
-  const variant =
-    brandVariantKeys[Math.floor(Math.random() * brandVariantKeys.length)];
+  const choice = keys[Math.floor(Math.random() * keys.length)];
   try {
-    window.sessionStorage.setItem(brandVariantStorageKey, variant);
+    window.sessionStorage.setItem(storageKey, choice);
   } catch {
-    // The variant then stays stable only for this component instance.
+    // The choice then stays stable only for this component instance.
   }
-  return variant;
+  return choice;
 }
 
 export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
@@ -44,7 +59,12 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [invitationError, setInvitationError] = useState<string>();
   const [isInvitationEntryOpen, setInvitationEntryOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [brandVariant] = useState(selectBrandVariant);
+  const [brandVariant] = useState(() =>
+    selectSessionChoice(brandVariantKeys, brandVariantStorageKey),
+  );
+  const [brandImage] = useState(() =>
+    selectSessionChoice(brandImageKeys, brandImageStorageKey),
+  );
   const isSignUp = mode === 'sign-up';
   const brandCopyPath = `auth.brandVariants.${brandVariant}.${
     isSignUp ? 'signUp' : 'signIn'
@@ -117,6 +137,12 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     <main className="auth-page">
       <div className="auth-layout">
         <aside className="auth-brand" aria-label={t('appName')}>
+          <img
+            alt=""
+            className="auth-brand-image"
+            data-variant={brandImage}
+            src={brandImages[brandImage]}
+          />
           <div>
             <div className="brand-lock">
               <span className="brand-mark" aria-hidden="true" />

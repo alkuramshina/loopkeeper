@@ -5,6 +5,8 @@ import i18n from '../i18n';
 import { ApiError } from '../api/client';
 import {
   AuthPage,
+  brandImageKeys,
+  brandImageStorageKey,
   brandVariantKeys,
   brandVariantStorageKey,
 } from './auth-page';
@@ -121,11 +123,17 @@ describe('AuthPage', () => {
     );
   });
 
-  it('keeps the brand copy variant stable within the tab', async () => {
+  it('keeps the independent image and copy choices stable within the tab', async () => {
     renderAuth('/sign-in');
     const variant = window.sessionStorage.getItem(brandVariantStorageKey);
+    const imageVariant = window.sessionStorage.getItem(brandImageStorageKey);
+    const image = document.querySelector('.auth-brand-image');
 
     expect(brandVariantKeys).toContain(variant);
+    expect(brandImageKeys).toContain(imageVariant);
+    expect(image).toHaveAttribute('data-variant', imageVariant);
+    const imageSrc = image?.getAttribute('src');
+    expect(imageSrc).toBeTruthy();
     expect(
       screen.getByText(i18n.t(`auth.brandVariants.${variant}.signIn.title`)),
     ).toBeInTheDocument();
@@ -138,6 +146,8 @@ describe('AuthPage', () => {
       ),
     ).toBeInTheDocument();
     expect(window.sessionStorage.getItem(brandVariantStorageKey)).toBe(variant);
+    expect(window.sessionStorage.getItem(brandImageStorageKey)).toBe(imageVariant);
+    expect(image).toHaveAttribute('src', imageSrc);
   });
 
   it('keeps the form title as the only top-level heading', () => {
@@ -148,13 +158,18 @@ describe('AuthPage', () => {
     ]);
   });
 
-  it('reuses a stored brand copy variant', () => {
+  it('reuses a stored brand panel variant', () => {
     window.sessionStorage.setItem(brandVariantStorageKey, 'threads');
+    window.sessionStorage.setItem(brandImageStorageKey, 'bridge');
     renderAuth('/sign-in');
 
     expect(
-      screen.getByText('Все нити расследования — на одном столе'),
+      screen.getByText('Не упускайте нить истории.'),
     ).toBeInTheDocument();
+    expect(document.querySelector('.auth-brand-image')).toHaveAttribute(
+      'src',
+      expect.stringContaining('bridge-winter.png'),
+    );
     expect(
       screen.getByText(
         'Возвращайтесь к заметкам, персонажам и связям вашей кампании без лишнего шума.',
@@ -162,12 +177,35 @@ describe('AuthPage', () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    ['lake', 'lake-night.png'],
+    ['substation', 'substation-autumn.png'],
+    ['bridge', 'bridge-winter.png'],
+    ['radio', 'radio-field.png'],
+  ])('shows the %s illustration with independently chosen copy', (imageVariant, imageName) => {
+    window.sessionStorage.setItem(brandVariantStorageKey, 'focus');
+    window.sessionStorage.setItem(brandImageStorageKey, imageVariant);
+    renderAuth('/sign-in');
+
+    expect(document.querySelector('.auth-brand-image')).toHaveAttribute(
+      'src',
+      expect.stringContaining(imageName),
+    );
+    expect(
+      screen.getByText(i18n.t('auth.brandVariants.focus.signIn.title')),
+    ).toBeInTheDocument();
+  });
+
   it('replaces an unknown stored brand copy variant', () => {
     window.sessionStorage.setItem(brandVariantStorageKey, 'retired');
+    window.sessionStorage.setItem(brandImageStorageKey, 'retired');
     renderAuth('/sign-in');
 
     expect(brandVariantKeys).toContain(
       window.sessionStorage.getItem(brandVariantStorageKey),
+    );
+    expect(brandImageKeys).toContain(
+      window.sessionStorage.getItem(brandImageStorageKey),
     );
   });
 
