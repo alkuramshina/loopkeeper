@@ -1,0 +1,114 @@
+.campaign-search {
+  display: grid;
+  gap: 0.75rem;
+  min-width: min(32rem, 80vw);
+  padding: 1rem 1.5rem 1.5rem;
+}
+.campaign-search-input {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-md);
+}
+.campaign-search-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+}
+.campaign-search-filters {
+  display: flex;
+  gap: 0.4rem;
+}
+.campaign-search-filters button {
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+}
+.campaign-search-filters button[aria-pressed='true'] {
+  color: var(--color-accent);
+  background: var(--color-hover);
+}
+.campaign-search-results {
+  display: grid;
+  align-content: start;
+  max-height: min(50vh, 28rem);
+  min-height: 5rem;
+  overflow-y: auto;
+}
+.campaign-search-results > p {
+  padding: 0.8rem;
+  color: var(--color-text-secondary);
+}
+.campaign-search-results > button {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+.campaign-search-results > button:hover,
+.campaign-search-results > button.active {
+  background: var(--color-hover);
+}
+.campaign-search-result-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.campaign-search-result-main {
+  display: grid;
+  min-width: 0;
+  gap: 0.2rem;
+}
+.campaign-search-result-excerpt {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.campaign-search-result-title mark {
+  color: inherit;
+  background: var(--color-hover);
+  font-weight: 700;
+}
+.campaign-search-result-detail {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+.campaign-search-action {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 0.8rem;
+  border-top: 1px solid var(--color-line);
+  text-align: left;
+}
+.campaign-search-action:hover {
+  background: var(--color-hover);
+}
+.campaign-search-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+@media (max-width: 599px) {
+  .campaign-search {
+    min-width: 0;
+  }
+  .campaign-search-results {
+    max-height: 45dvh;
+  }
+}

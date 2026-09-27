@@ -1875,6 +1875,30 @@ summary {
   right: 0.6rem;
   top: 1.75rem;
 }
+.campaign-search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  text-align: left;
+}
+.campaign-search-trigger:hover {
+  background: var(--color-hover);
+}
+.campaign-search-trigger span {
+  flex: 1;
+}
+.campaign-search-trigger kbd {
+  font-size: var(--text-xs);
+}
+.campaign-mobile-search {
+  display: none;
+}
 .campaign-workspace-shell-navigation {
   display: grid;
   align-content: start;
@@ -1979,6 +2003,15 @@ summary {
     padding: max(0.5rem, env(safe-area-inset-top)) 1rem 0.5rem;
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-line);
+  }
+  .campaign-mobile-search {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-left: auto;
+    color: var(--color-text);
   }
   .campaign-mobile-switcher {
     display: grid;

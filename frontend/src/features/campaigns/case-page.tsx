@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutDashboard, PencilLine, UserRound } from 'lucide-react';
 import {
@@ -497,9 +497,23 @@ function CaseReader({
 
 export function CasePage() {
   const { campaignId, elementId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { campaign, elements } = useCampaignData();
   const [draft, setDraft] = useState<QuickNoteDraft>(emptyQuickNote);
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState(
+    () => searchParams.get('quick-note') === '1',
+  );
+  useEffect(() => {
+    if (searchParams.get('quick-note') === '1') setSheet(true);
+  }, [searchParams]);
+  const closeSheet = () => {
+    setSheet(false);
+    if (searchParams.has('quick-note')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('quick-note');
+      setSearchParams(next, { replace: true });
+    }
+  };
 
   if (campaign.isError || elements.isError)
     return (
@@ -547,11 +561,7 @@ export function CasePage() {
           />
         ))}
       {sheet && (
-        <QuickNoteSheet
-          draft={draft}
-          onClose={() => setSheet(false)}
-          onDraft={setDraft}
-        />
+        <QuickNoteSheet draft={draft} onClose={closeSheet} onDraft={setDraft} />
       )}
     </CampaignWorkspaceShell>
   );

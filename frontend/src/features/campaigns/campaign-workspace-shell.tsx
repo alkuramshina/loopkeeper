@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import {
   Users,
   UserRound,
   ChevronDown,
+  Search,
 } from 'lucide-react';
 import { Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
@@ -18,6 +19,7 @@ import { OfflineNotice } from '../../components/offline-notice';
 import { Logo } from '../../components/brand/logo';
 import { Avatar } from '../../components/avatar';
 import { useCampaignVisit } from './use-campaign-visit';
+import { CampaignSearch } from './campaign-search';
 import './new-since-visit.css';
 
 type CampaignWorkspaceShellProps = {
@@ -32,6 +34,17 @@ export function CampaignWorkspaceShell({
   const { api, profile, signOut } = useAuth();
   useCampaignVisit(campaign);
   const { t } = useTranslation();
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
   const gameSystems = useQuery({
     queryKey: ['game-systems'],
     queryFn: () => api.request<GameSystem[]>('/game-systems'),
@@ -135,6 +148,15 @@ export function CampaignWorkspaceShell({
           </span>
           <ChevronDown aria-hidden="true" size={16} />
         </Link>
+        <button
+          className="campaign-search-trigger"
+          type="button"
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search aria-hidden="true" size={17} />
+          <span>{t('search.trigger')}</span>
+          <kbd>Ctrl K</kbd>
+        </button>
         <nav
           className="campaign-workspace-shell-navigation"
           aria-label={t('workspace.navigation')}
@@ -174,6 +196,14 @@ export function CampaignWorkspaceShell({
             {t(`workspace.roles.${campaign.currentUserRole}`)} · {systemName}
           </span>
         </Link>
+        <button
+          className="campaign-mobile-search"
+          type="button"
+          aria-label={t('search.trigger')}
+          onClick={() => setSearchOpen(true)}
+        >
+          <Search aria-hidden="true" size={21} />
+        </button>
         <Link to="/settings/account" aria-label={t('account.title')}>
           <Avatar
             alt=""
@@ -210,6 +240,12 @@ export function CampaignWorkspaceShell({
           </>
         )}
       </nav>
+      {searchOpen && (
+        <CampaignSearch
+          campaign={campaign}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
     </div>
   );
 }

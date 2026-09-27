@@ -333,3 +333,8 @@
     display: none;
   }
 }
+.board-node-search-target {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-md);
+}

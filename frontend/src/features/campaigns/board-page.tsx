@@ -21,7 +21,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './board-redesign.css';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Board, BoardCard, BoardLink, Campaign } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
@@ -614,6 +614,7 @@ export function BoardPage() {
   const [editor, setEditor] = useState<EditorTarget>();
   const [error, setError] = useState<string>();
   const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
   const [now, setNow] = useState(() => Date.now());
   const [linking, setLinking] = useState(false);
   const [linkSourceId, setLinkSourceId] = useState<string>();
@@ -644,6 +645,11 @@ export function BoardPage() {
     enabled: Boolean(campaignId && campaign.data),
     retry: false,
   });
+  useEffect(() => {
+    const cardId = searchParams.get('card');
+    const card = board.data?.cards.find((item) => item.cardId === cardId);
+    if (card) setEditor({ type: 'card', card });
+  }, [board.data, searchParams]);
   const canManage =
     campaign.data?.currentUserRole === 'OWNER' ||
     campaign.data?.currentUserRole === 'PLAYER';
@@ -797,12 +803,16 @@ export function BoardPage() {
   );
 
   const data = campaign.data;
-  const selectedCardId = nodes.find((node) => node.selected)?.id;
+  const linkedCardId = searchParams.get('card');
+  const selectedCardId =
+    nodes.find((node) => node.id === linkedCardId)?.id ??
+    nodes.find((node) => node.selected)?.id;
   const searchTerm = search.trim().toLocaleLowerCase('ru');
   const visibleNodes = nodes.map((node) => ({
     ...node,
     className: [
       node.className,
+      node.id === linkedCardId ? 'board-node-search-target' : '',
       selectedCardId &&
       node.id !== selectedCardId &&
       !board.data?.links.some(
