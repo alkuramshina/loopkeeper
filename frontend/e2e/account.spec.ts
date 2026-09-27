@@ -8,23 +8,24 @@ test('M9: renames the account and changes the password', async ({
   const user = await registerUser(request, 'Старое имя');
   await signInAs(page, user);
   await page.goto('/campaigns');
-  await page.locator('.account-menu summary').click();
-  await page.locator('.account-menu').getByRole('link').click();
+  await page.locator('.sidebar-profile').click();
   await expect(page).toHaveURL(/\/settings\/account$/);
   await expect(page.getByLabel('Электронная почта')).toBeDisabled();
   await expect(page.getByLabel('Электронная почта')).toHaveValue(user.email);
 
-  const profileForm = page.locator('form').filter({ hasText: 'Профиль' });
+  const profileForm = page.locator('form').filter({ hasText: 'Имя' });
   await profileForm.getByLabel('Имя').fill('Новое имя');
-  await profileForm.getByRole('button', { name: 'Сохранить' }).click();
-  await expect(profileForm.getByText('Сохранено')).toBeVisible();
+  await profileForm
+    .getByRole('button', { name: 'Сохранить изменения' })
+    .click();
+  await expect(profileForm.getByText('Изменения сохранены')).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Имя')).toHaveValue('Новое имя');
 
   // The password has its own section in the side menu.
   await page
-    .getByRole('navigation', { name: 'Разделы аккаунта' })
-    .getByRole('link', { name: 'Пароль' })
+    .getByRole('navigation', { name: 'Разделы настроек' })
+    .getByRole('link', { name: 'Вход и пароль' })
     .click();
   await expect(page).toHaveURL(/\/settings\/password$/);
 
@@ -73,8 +74,7 @@ test('M9: renames the account and changes the password', async ({
   await page.getByLabel('Пароль').fill(newPassword);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
-  await page.locator('.account-menu summary').click();
   await expect(
-    page.locator('.account-menu').getByRole('link', { name: 'Новое имя' }),
+    page.locator('.sidebar-profile'),
   ).toBeVisible();
 });

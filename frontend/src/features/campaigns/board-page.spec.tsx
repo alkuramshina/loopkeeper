@@ -184,7 +184,7 @@ describe('BoardPage', () => {
     role = 'PLAYER';
     renderBoard();
     expect(
-      await screen.findByRole('button', { name: 'Новая карточка' }),
+      (await screen.findAllByRole('button', { name: 'Новая карточка' }))[0],
     ).toBeInTheDocument();
     expect(screen.queryByText(/Режим просмотра/)).not.toBeInTheDocument();
     expect(document.querySelector('.board-canvas-readonly')).toBeNull();

@@ -172,6 +172,14 @@
   /* The shared header of the list, the account and the workspace */
   --app-topbar-height: 4.5rem;
 
+  /* The frame of every screen: the sidebar, the gutter after it and the
+     widths a page may choose for its content, always left-aligned */
+  --sidebar-width: 15.5rem;
+  --page-gutter: 3rem;
+  --content-narrow: 40rem;
+  --content-default: 75rem;
+  --content-full: none;
+
   /* Motion: short and quiet */
   --duration-fast: 120ms;
   --duration-base: 200ms;

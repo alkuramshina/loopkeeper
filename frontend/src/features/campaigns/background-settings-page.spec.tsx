@@ -115,6 +115,7 @@ describe('BackgroundSettingsPage', () => {
       }),
     );
     fireEvent.click(screen.getAllByRole('button', { name: 'Удалить' })[1]);
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Удалить' }));
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith(
         `${endpoint}/22222222-2222-4222-8222-222222222222`,

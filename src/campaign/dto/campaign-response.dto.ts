@@ -30,6 +30,13 @@ export class CampaignResponseDto {
   @ApiPropertyOptional({ nullable: true, format: 'date-time' })
   newSinceAt!: Date | null;
 
+  @ApiPropertyOptional({
+    nullable: true,
+    format: 'date-time',
+    description: 'When the current user last opened this campaign.',
+  })
+  lastVisitAt!: Date | null;
+
   @ApiProperty({ minimum: 0 })
   newVisibleMaterialCount!: number;
 

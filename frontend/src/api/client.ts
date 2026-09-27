@@ -141,6 +141,7 @@ export type Campaign = {
   system?: string | null;
   currentUserRole: 'OWNER' | 'PLAYER' | 'VIEWER';
   newSinceAt?: string | null;
+  lastVisitAt?: string | null;
   newVisibleMaterialCount?: number;
   backgroundConfig?: CampaignBackgroundConfig;
   coverUrl?: string | null;

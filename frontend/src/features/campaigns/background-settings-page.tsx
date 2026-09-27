@@ -13,6 +13,10 @@ import { ProtectedImage } from '../../components/protected-image';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { PageError } from '../../components/page-error';
+import { ModalDialog } from '../../components/modal-dialog';
+import { Button } from '../../components/ui/button';
+import { PageHeader } from '../../components/page-header';
+import '../account/account.css';
 import './workspace-settings.css';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
@@ -33,6 +37,7 @@ export function BackgroundSettingsPage() {
   const [config, setConfig] = useState<CampaignBackgroundConfig>();
   const [error, setError] = useState<string>();
   const [pendingBackgroundId, setPendingBackgroundId] = useState<string>();
+  const [backgroundToDelete, setBackgroundToDelete] = useState<CampaignBackground>();
   const campaign = useQuery({
     queryKey: ['campaign', campaignId],
     queryFn: () => api.request<Campaign>(`/campaigns/${campaignId}`),
@@ -136,6 +141,7 @@ export function BackgroundSettingsPage() {
       await queryClient.invalidateQueries({
         queryKey: ['campaign', campaignId],
       });
+      setBackgroundToDelete(undefined);
     } catch (cause) {
       setError(apiErrorMessage(cause, t));
     } finally {
@@ -170,9 +176,7 @@ export function BackgroundSettingsPage() {
 
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
-      <section className="page-header">
-        <h2>{t('backgrounds.title')}</h2>
-      </section>
+      <PageHeader title={t('backgrounds.title')} />
       {error && (
         <p className="form-error" role="alert">
           {error}
@@ -181,7 +185,7 @@ export function BackgroundSettingsPage() {
       {campaign.isLoading || settings.isLoading || !config ? (
         <p>{t('common.loading')}</p>
       ) : (
-        <form className="panel background-settings" onSubmit={submit}>
+        <form className="account-card background-settings" onSubmit={submit}>
           <label>
             {t('backgrounds.selectionMode')}
             <select
@@ -369,12 +373,7 @@ export function BackgroundSettingsPage() {
                 type="button"
                 className="button-danger"
                 disabled={Boolean(pendingBackgroundId) || save.isPending}
-                onClick={() =>
-                  void removeBackground(
-                    background.backgroundId,
-                    background.imageUrl,
-                  )
-                }
+                onClick={() => setBackgroundToDelete(background)}
               >
                 {t('common.delete')}
               </button>
@@ -385,6 +384,14 @@ export function BackgroundSettingsPage() {
           </button>
         </form>
       )}
+      {backgroundToDelete && <ModalDialog onClose={() => setBackgroundToDelete(undefined)} title={t('common.delete')}>
+        <p className="access-dialog-consequence">{t('backgrounds.deleteConfirmation', { name: backgroundToDelete.name || t('backgrounds.unnamed') })}</p>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <div className="access-dialog-actions">
+          <Button onClick={() => setBackgroundToDelete(undefined)}>{t('common.cancel')}</Button>
+          <Button disabled={Boolean(pendingBackgroundId)} onClick={() => void removeBackground(backgroundToDelete.backgroundId, backgroundToDelete.imageUrl)} variant="danger">{t('common.delete')}</Button>
+        </div>
+      </ModalDialog>}
     </CampaignWorkspaceShell>
   );
 }

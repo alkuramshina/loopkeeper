@@ -31,6 +31,24 @@
 }
 .background-settings {
   max-width: 64rem;
+  min-height: 0;
+  gap: var(--space-5);
+  padding: var(--space-8);
+}
+.background-settings > label {
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.background-settings > label :is(input, select),
+.background-entry > label :is(input, select) {
+  min-height: var(--touch-target);
+  border-color: var(--color-line-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: 400;
 }
 .background-gallery a {
   padding: 0.5rem;
@@ -50,6 +68,24 @@
 }
 .settings-grid {
   align-items: start;
+}
+.settings-grid .campaign-settings-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0;
+}
+.campaign-settings-card .section-heading {
+  margin: 0;
+}
+.campaign-settings-card .account-field textarea {
+  min-height: 8rem;
+  border-color: var(--color-line-strong);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+}
+.campaign-settings-card .account-card-footer {
+  margin-top: auto;
 }
 .settings-grid .panel {
   min-width: 0;

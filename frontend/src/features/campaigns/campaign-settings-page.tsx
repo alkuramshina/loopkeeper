@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Campaign } from '../../api/client';
@@ -9,6 +9,10 @@ import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { MediaUpload } from '../../components/media-upload';
 import { ProtectedImage } from '../../components/protected-image';
 import { PageError } from '../../components/page-error';
+import { PageHeader } from '../../components/page-header';
+import { ModalDialog } from '../../components/modal-dialog';
+import { Button } from '../../components/ui/button';
+import '../account/account.css';
 import './workspace-settings.css';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
@@ -25,6 +29,7 @@ export function CampaignSettingsPage() {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
   const [saved, setSaved] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const campaign = useQuery({
     queryKey: ['campaign', campaignId],
     queryFn: () => api.request<Campaign>(`/campaigns/${campaignId}`),
@@ -79,22 +84,20 @@ export function CampaignSettingsPage() {
 
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
-      <section className="page-header">
-        <h2>{t('campaignSettings.title')}</h2>
-      </section>
+      <PageHeader title={t('campaignSettings.title')} />
       {campaign.isLoading ? (
         <p>{t('common.loading')}</p>
       ) : (
         <div className="settings-grid">
           <form
-            className="panel"
+            className="account-card campaign-settings-card"
             onSubmit={(event: FormEvent<HTMLFormElement>) => {
               // Read the form now: the mutation runs after the event is released.
               event.preventDefault();
               update.mutate(new FormData(event.currentTarget));
             }}
           >
-            <div className="section-heading">
+            <div className="account-card-section section-heading">
               <h2>{t('campaignSettings.details')}</h2>
               {saved && (
                 <small className="success-message">
@@ -102,86 +105,88 @@ export function CampaignSettingsPage() {
                 </small>
               )}
             </div>
-            <label>
-              {t('campaigns.campaignTitle')}
-              <input
-                defaultValue={campaign.data?.title}
-                maxLength={100}
-                name="title"
-                required
-              />
-            </label>
-            <label>
-              {t('campaigns.description')}
-              <textarea
-                defaultValue={campaign.data?.description ?? ''}
-                maxLength={1000}
-                name="description"
-              />
-            </label>
-            {error && (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
-            )}
-            <button disabled={update.isPending}>{t('common.save')}</button>
+            <div className="account-card-section account-fields">
+              <div className="account-field">
+                <label htmlFor="campaign-title">{t('campaigns.campaignTitle')}</label>
+                <input
+                  id="campaign-title"
+                  defaultValue={campaign.data?.title}
+                  maxLength={100}
+                  name="title"
+                  required
+                />
+              </div>
+              <div className="account-field">
+                <label htmlFor="campaign-description">{t('campaigns.description')}</label>
+                <textarea
+                  id="campaign-description"
+                  defaultValue={campaign.data?.description ?? ''}
+                  maxLength={1000}
+                  name="description"
+                />
+              </div>
+              {error && <p className="form-error" role="alert">{error}</p>}
+            </div>
+            <footer className="account-card-footer">
+              <Button disabled={update.isPending} type="submit" variant="primary">
+                {t('common.save')}
+              </Button>
+            </footer>
           </form>
-          <section className="panel">
-            <h2>{t('campaignSettings.cover')}</h2>
-            {campaign.data?.coverUrl && (
-              <ProtectedImage
-                alt={campaign.data.title}
-                className="campaign-cover-preview"
-                imageUrl={campaign.data.coverUrl}
+          <section className="account-card campaign-settings-card">
+            <div className="account-card-section">
+              <h2>{t('campaignSettings.cover')}</h2>
+              {campaign.data?.coverUrl && (
+                <ProtectedImage
+                  alt={campaign.data.title}
+                  className="campaign-cover-preview"
+                  imageUrl={campaign.data.coverUrl}
+                />
+              )}
+              <MediaUpload
+                endpoint={`/campaigns/${campaignId}/cover`}
+                hasImage={Boolean(campaign.data?.coverUrl?.startsWith('/media/'))}
+                label={t('campaignSettings.cover')}
+                onChanged={async () => {
+                  await Promise.all([
+                    queryClient.invalidateQueries({ queryKey: ['campaign', campaignId] }),
+                    queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
+                  ]);
+                }}
               />
-            )}
-            <MediaUpload
-              endpoint={`/campaigns/${campaignId}/cover`}
-              hasImage={Boolean(campaign.data?.coverUrl?.startsWith('/media/'))}
-              label={t('campaignSettings.cover')}
-              onChanged={async () => {
-                await Promise.all([
-                  queryClient.invalidateQueries({
-                    queryKey: ['campaign', campaignId],
-                  }),
-                  queryClient.invalidateQueries({ queryKey: ['campaigns'] }),
-                ]);
-              }}
-            />
+            </div>
           </section>
-          <section className="panel">
-            <h2>{t('backgrounds.title')}</h2>
-            <p>{t('campaignSettings.backgroundsDescription')}</p>
-            <Link
-              className="button-link"
-              to={`/campaigns/${campaignId}/settings/backgrounds`}
-            >
-              {t('workspace.backgroundSettings')}
-            </Link>
-          </section>
-          <section className="panel settings-danger-zone">
-            <h2>{t('campaignSettings.dangerTitle')}</h2>
-            <p>{t('campaignSettings.dangerDescription')}</p>
-            <button
-              className="button-danger"
-              disabled={remove.isPending}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    t('campaignSettings.deleteConfirmation', {
-                      title: campaign.data?.title,
-                    }),
-                  )
-                ) {
-                  remove.mutate();
-                }
-              }}
-              type="button"
-            >
-              {t('campaignSettings.delete')}
-            </button>
+          <section className="account-card campaign-settings-card settings-danger-zone">
+            <div className="account-card-section">
+              <h2>{t('campaignSettings.dangerTitle')}</h2>
+              <p>{t('campaignSettings.dangerDescription')}</p>
+            </div>
+            <footer className="account-card-footer">
+              <Button
+                disabled={remove.isPending}
+                onClick={() => setConfirmDelete(true)}
+                type="button"
+                variant="danger"
+              >
+                {t('campaignSettings.delete')}
+              </Button>
+            </footer>
           </section>
         </div>
+      )}
+      {confirmDelete && (
+        <ModalDialog onClose={() => setConfirmDelete(false)} title={t('campaignSettings.delete')}>
+          <p className="access-dialog-consequence">
+            {t('campaignSettings.deleteConfirmation', { title: campaign.data?.title })}
+          </p>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <div className="access-dialog-actions">
+            <Button onClick={() => setConfirmDelete(false)}>{t('common.cancel')}</Button>
+            <Button disabled={remove.isPending} onClick={() => remove.mutate()} variant="danger">
+              {t('campaignSettings.delete')}
+            </Button>
+          </div>
+        </ModalDialog>
       )}
     </CampaignWorkspaceShell>
   );

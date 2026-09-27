@@ -13,34 +13,33 @@ import {
   ChevronDown,
   Menu,
   Search,
+  Image,
 } from 'lucide-react';
 import { Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { OfflineNotice } from '../../components/offline-notice';
-import { mediaQueries, useMediaQuery } from '../../theme/breakpoints';
-import { AccountMenu, AppTopbar } from '../../components/app-topbar';
+import { ContentWidth, PageFrame, SidebarLogo, SidebarProfileLink } from '../../components/app-shell';
 import { useCampaignVisit } from './use-campaign-visit';
 import { CampaignSearch } from './campaign-search';
 import './new-since-visit.css';
 
 type CampaignWorkspaceShellProps = {
   campaign?: Campaign;
+  /** The board takes the full width; other pages keep the default. */
+  width?: ContentWidth;
   children: ReactNode;
 };
 
 export function CampaignWorkspaceShell({
   campaign,
+  width,
   children,
 }: CampaignWorkspaceShellProps) {
   const { api } = useAuth();
   useCampaignVisit(campaign);
   const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
-  // Between the phone and the laptop the sidebar slides out from a menu.
-  const tablet = useMediaQuery(mediaQueries.tablet);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Leaving the range closes the menu, so it never comes back open.
-  if (menuOpen && !tablet) setMenuOpen(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -54,6 +53,13 @@ export function CampaignWorkspaceShell({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [menuOpen]);
+  useEffect(() => {
+    const wide = window.matchMedia?.('(min-width: 1024px)');
+    if (!wide) return;
+    const closeMenu = () => setMenuOpen(false);
+    wide.addEventListener('change', closeMenu);
+    return () => wide.removeEventListener('change', closeMenu);
+  }, []);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -90,6 +96,7 @@ export function CampaignWorkspaceShell({
     {
       to: `${basePath}/board`,
       label: t('workspace.board'),
+      displayLabel: t('workspace.boardShort'),
       icon: LayoutDashboard,
     },
     isOwner
@@ -130,6 +137,7 @@ export function CampaignWorkspaceShell({
         {
           to: `${basePath}/settings`,
           label: t('workspace.campaignSettings'),
+          displayLabel: t('account.settings'),
           icon: Settings2,
         },
       ]
@@ -139,20 +147,22 @@ export function CampaignWorkspaceShell({
     label: string;
     /** A shorter word for the phone's bottom navigation. */
     shortLabel?: string;
+    displayLabel?: string;
     icon: typeof LayoutDashboard;
   };
   const hasNew = !isOwner && (campaign.newVisibleMaterialCount ?? 0) > 0;
   const navLinks = (items: NavItem[], mobile = false) =>
-    items.map(({ to, label, shortLabel, icon: Icon }) => (
+    items.map(({ to, label, shortLabel, displayLabel, icon: Icon }) => (
       <NavLink
-        aria-label={mobile && shortLabel ? label : undefined}
+        aria-label={displayLabel || (mobile && shortLabel) ? label : undefined}
         key={to}
         to={to}
+        end={to.endsWith('/settings')}
         className={({ isActive }) => (isActive ? 'active' : undefined)}
       >
         <Icon aria-hidden="true" size={mobile ? 18 : 17} strokeWidth={1.8} />
         <span className={mobile ? undefined : 'rail-label'}>
-          {mobile ? (shortLabel ?? label) : label}
+          {mobile ? (shortLabel ?? label) : (displayLabel ?? label)}
         </span>
         {hasNew && to.endsWith('/case') && (
           <span
@@ -166,7 +176,18 @@ export function CampaignWorkspaceShell({
 
   return (
     <div className="campaign-workspace-shell">
-      <AppTopbar className="campaign-workspace-shell-topbar" />
+      <button
+        aria-controls="campaign-sidebar"
+        aria-expanded={menuOpen}
+        aria-label={t('workspace.menu')}
+        className="sidebar-menu-button"
+        onClick={() => setMenuOpen((open) => !open)}
+        ref={menuButton}
+        type="button"
+      >
+        <Menu aria-hidden="true" size={21} />
+        {hasNew && <span className="campaign-nav-new" aria-hidden="true" />}
+      </button>
       <aside
         className={`campaign-workspace-shell-sidebar${menuOpen ? ' campaign-workspace-shell-sidebar-open' : ''}`}
         id="campaign-sidebar"
@@ -176,6 +197,7 @@ export function CampaignWorkspaceShell({
           if ((event.target as Element).closest('a')) setMenuOpen(false);
         }}
       >
+        <SidebarLogo />
         <Link
           className="campaign-switcher"
           to="/campaigns"
@@ -205,16 +227,26 @@ export function CampaignWorkspaceShell({
           className="campaign-workspace-shell-navigation"
           aria-label={t('workspace.navigation')}
         >
-          {navLinks(primary)}
-          {management.length > 0 && (
-            <>
-              <span className="campaign-nav-group">
-                {t('workspace.campaignGroup')}
-              </span>
-              {navLinks(management)}
-            </>
-          )}
+          <div className="campaign-submenu">
+            {navLinks(primary)}
+            {management.length > 0 && (
+              <>
+                <span className="campaign-nav-group">
+                  {t('workspace.campaignGroup')}
+                </span>
+                {navLinks(management)}
+                <NavLink
+                  className={({ isActive }) => (isActive ? 'active' : undefined)}
+                  to={`${basePath}/settings/backgrounds`}
+                >
+                  <Image aria-hidden="true" size={17} strokeWidth={1.8} />
+                  <span className="rail-label">{t('workspace.backgroundSettings')}</span>
+                </NavLink>
+              </>
+            )}
+          </div>
         </nav>
+        <SidebarProfileLink />
       </aside>
       {menuOpen && (
         <div
@@ -223,64 +255,10 @@ export function CampaignWorkspaceShell({
           onClick={() => setMenuOpen(false)}
         />
       )}
-      <header className="campaign-workspace-shell-mobile-header">
-        <button
-          aria-controls="campaign-sidebar"
-          aria-expanded={menuOpen}
-          aria-label={t('workspace.menu')}
-          className="campaign-menu-button"
-          ref={menuButton}
-          type="button"
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          <Menu aria-hidden="true" size={21} />
-          {/* The case's dot stays in sight while the menu is closed. */}
-          {hasNew && <span className="campaign-nav-new" aria-hidden="true" />}
-        </button>
-        <Link className="campaign-mobile-switcher" to="/campaigns">
-          <strong>{campaign.title}</strong>
-          <span>
-            {t(`workspace.roles.${campaign.currentUserRole}`)} · {systemName}
-          </span>
-        </Link>
-        <button
-          className="campaign-mobile-search"
-          type="button"
-          aria-label={t('search.trigger')}
-          onClick={() => setSearchOpen(true)}
-        >
-          <Search aria-hidden="true" size={21} />
-        </button>
-        <AccountMenu />
-      </header>
       <main className="campaign-workspace-shell-content">
         <OfflineNotice />
-        {children}
+        <PageFrame width={width}>{children}</PageFrame>
       </main>
-      <nav
-        className="campaign-workspace-shell-mobile-navigation"
-        aria-label={t('workspace.navigation')}
-      >
-        {navLinks(primary, true)}
-        {isOwner && (
-          <>
-            <NavLink
-              to={`${basePath}/members`}
-              className={({ isActive }) => (isActive ? 'active' : undefined)}
-            >
-              <Users aria-hidden="true" size={18} />
-              <span>{t('workspace.members')}</span>
-            </NavLink>
-            <NavLink
-              to={`${basePath}/settings`}
-              className={({ isActive }) => (isActive ? 'active' : undefined)}
-            >
-              <Settings2 aria-hidden="true" size={18} />
-              <span>{t('workspace.campaignSettings')}</span>
-            </NavLink>
-          </>
-        )}
-      </nav>
       {searchOpen && (
         <CampaignSearch
           campaign={campaign}

@@ -76,11 +76,8 @@ test('F13c: phone board is read only and creates a card in a bottom sheet', asyn
   const inspector = page.getByRole('complementary', { name: 'Новая карточка' });
   await expect(inspector).toBeVisible();
   const box = await inspector.boundingBox();
-  const navBox = await page
-    .locator('.campaign-workspace-shell-mobile-navigation')
-    .boundingBox();
-  if (!box || !navBox) throw new Error('Mobile layout is unavailable');
-  expect(Math.abs(box.y + box.height - navBox.y)).toBeLessThan(16);
+  if (!box) throw new Error('Mobile layout is unavailable');
+  expect(box.y + box.height).toBeLessThanOrEqual(800);
   await inspector.getByLabel('Название карточки').fill('Следы на снегу');
   await inspector.getByRole('button', { name: 'Сохранить' }).click();
   await expect(

@@ -50,12 +50,8 @@ for (const width of [320, 768]) {
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width);
     await page.goto(`/campaigns/${campaignId}/settings`);
-    // A phone has the bottom navigation, a tablet the slide-out menu.
-    const navigation =
-      width < 600
-        ? page.locator('.campaign-workspace-shell-mobile-navigation')
-        : page.locator('.campaign-workspace-shell-sidebar');
-    if (width >= 600) await page.getByRole('button', { name: 'Меню' }).click();
+    const navigation = page.locator('.campaign-workspace-shell-sidebar');
+    await page.getByRole('button', { name: 'Меню' }).click();
     await expect(navigation).toBeVisible();
     await expect(
       navigation.getByRole('link', { name: 'Настройки кампании' }),
@@ -102,16 +98,13 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
   await playerPage.goto(`/campaigns/${campaignId}/settings`);
   await expect(playerPage.getByRole('alert')).toHaveText('Ресурс недоступен.');
 
-  // Dismissing the native confirmation keeps the campaign.
-  page.once('dialog', (dialog) => void dialog.dismiss());
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Отмена' }).click();
   await expect(page).toHaveURL(`/campaigns/${campaignId}/settings`);
 
-  page.once('dialog', (dialog) => {
-    expect(dialog.message()).toContain('Финальная версия');
-    void dialog.accept();
-  });
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Финальная версия');
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить кампанию' }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
   await expect(
     page.getByRole('heading', { name: 'Здесь пока нет кампаний' }),
@@ -152,31 +145,27 @@ for (const viewport of [
     const owner = await registerUser(request, 'Мастер');
     const campaignId = await createCampaign(request, owner);
     await signInAs(page, owner);
+    const openMenu = async () => {
+      if (viewport.width < 1024) await page.getByRole('button', { name: 'Меню' }).click();
+    };
 
     // From the campaign list.
     await page.goto('/campaigns');
-    await page.locator('.account-menu summary').click();
-    await page.locator('.account-menu').getByRole('link').click();
-    await expect(
-      page.getByRole('heading', { name: 'Настройки аккаунта' }),
-    ).toBeVisible();
+    await openMenu();
+    await page.locator('.sidebar-profile').click();
+    await expect(page.getByRole('heading', { name: 'Профиль' })).toBeVisible();
     await page.goto('/campaigns');
-    await page.locator('.account-menu summary').click();
+    await openMenu();
     await page.getByRole('button', { name: 'Выйти' }).click();
     await expect(page).toHaveURL(/\/sign-in/);
 
-    // From the workspace: the same avatar menu on every screen size, in the
-    // shared header on a desktop and in the campaign header below it.
+    // The profile stays at the bottom of the same sidebar in the workspace.
     await signInAs(page, owner);
     await page.goto(`/campaigns/${campaignId}/characters`);
-    const menu = page.locator('.account-menu').filter({ visible: true });
-    await expect(menu).toHaveCount(1);
-    await menu.locator('summary').click();
-    await menu.getByRole('link').click();
-    await expect(
-      page.getByRole('heading', { name: 'Настройки аккаунта' }),
-    ).toBeVisible();
-    await page.locator('.account-menu summary').click();
+    await openMenu();
+    await page.locator('.sidebar-profile').click();
+    await expect(page.getByRole('heading', { name: 'Профиль' })).toBeVisible();
+    await openMenu();
     await page.getByRole('button', { name: 'Выйти' }).click();
     await expect(page).toHaveURL(/\/sign-in/);
     await page.goto(`/campaigns/${campaignId}/characters`);
@@ -184,7 +173,7 @@ for (const viewport of [
   });
 }
 
-test('backgrounds are configured inside campaign settings, not in the main navigation', async ({
+test('backgrounds open directly from the campaign submenu', async ({
   page,
   request,
 }) => {
@@ -194,9 +183,30 @@ test('backgrounds are configured inside campaign settings, not in the main navig
   await page.goto(`/campaigns/${campaignId}/characters`);
 
   const navigation = page.locator('.campaign-workspace-shell-navigation');
-  await expect(navigation.getByRole('link', { name: 'Фоны' })).toHaveCount(0);
-  await navigation.getByRole('link', { name: 'Настройки кампании' }).click();
-  await page.getByRole('link', { name: 'Фоны' }).click();
+  await expect(navigation).toBeVisible();
+  await expect(page.locator('.sidebar-logo-link')).toHaveAttribute('href', '/campaigns');
+  await expect(navigation.getByRole('link', { name: 'Все кампании' })).toHaveCount(0);
+  const sidebarStyle = await page.locator('.campaign-workspace-shell-sidebar').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { width: element.getBoundingClientRect().width, left: style.borderLeftWidth, right: style.borderRightWidth };
+  });
+  expect(sidebarStyle).toEqual({ width: 248, left: '0px', right: '1px' });
+  const searchStyle = await page.locator('.campaign-search-trigger').evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { height: element.getBoundingClientRect().height, border: style.borderTopWidth, font: style.fontFamily };
+  });
+  expect(searchStyle.height).toBe(40);
+  expect(searchStyle.border).toBe('0px');
+  expect(searchStyle.font).toContain('Golos Text');
+  const navFont = await navigation.getByRole('link', { name: 'Фоны' }).evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { family: style.fontFamily, weight: style.fontWeight };
+  });
+  expect(navFont.family).toContain('Golos Text');
+  expect(navFont.weight).toBe('500');
+  await expect(page.locator('.sidebar-profile')).toContainText('Профиль');
+  await expect(page.locator('.sidebar-profile')).not.toContainText('Мастер');
+  await navigation.getByRole('link', { name: 'Фоны' }).click();
   await expect(page).toHaveURL(`/campaigns/${campaignId}/settings/backgrounds`);
   await expect(
     page.getByRole('heading', { name: 'Фоны кампании' }),

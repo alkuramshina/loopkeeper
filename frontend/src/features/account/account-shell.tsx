@@ -1,46 +1,49 @@
 import { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { KeyRound, UserRound } from 'lucide-react';
-import { AppTopbar } from '../../components/app-topbar';
-import { OfflineNotice } from '../../components/offline-notice';
+import { LockKeyhole, UserRound } from 'lucide-react';
+import { AppShell, SidebarLink } from '../../components/app-shell';
+import { PageHeader } from '../../components/page-header';
+import './account.css';
 
-/** The account pages share the campaign workspace layout and its sidebar. */
-export function AccountShell({ children }: { children: ReactNode }) {
+type AccountShellProps = {
+  title: string;
+  lead: string;
+  children: ReactNode;
+};
+
+/**
+ * Account settings in the shared frame and its left navigation.
+ */
+export function AccountShell({ title, lead, children }: AccountShellProps) {
   const { t } = useTranslation();
-  const items = [
+  const sections = [
+    { to: '/settings/account', label: t('account.profile'), icon: UserRound },
     {
-      to: '/settings/account',
-      label: t('account.navSettings'),
-      icon: UserRound,
+      to: '/settings/password',
+      label: t('account.login'),
+      icon: LockKeyhole,
     },
-    { to: '/settings/password', label: t('account.password'), icon: KeyRound },
   ];
 
   return (
-    <div className="campaign-workspace-shell account-shell">
-      <AppTopbar className="campaign-workspace-shell-topbar" />
-      <aside className="campaign-workspace-shell-sidebar">
-        <nav
-          aria-label={t('account.navigation')}
-          className="campaign-workspace-shell-navigation"
-        >
-          {items.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              className={({ isActive }) => (isActive ? 'active' : undefined)}
-              key={to}
-              to={to}
-            >
-              <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
-              <span className="rail-label">{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
-      <main className="campaign-workspace-shell-content">
-        <OfflineNotice />
+    <AppShell
+      sidebar={
+        <>
+          <span className="campaign-nav-group">{t('account.settings')}</span>
+          <div className="campaign-submenu">
+            {sections.map(({ to, label, icon }) => (
+              <SidebarLink icon={icon} key={to} label={label} to={to} />
+            ))}
+          </div>
+        </>
+      }
+      sidebarLabel={t('account.navigation')}
+      width="narrow"
+    >
+      <div className="account-page">
+        <PageHeader lead={lead} title={title} />
         {children}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

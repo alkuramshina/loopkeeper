@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -55,6 +55,7 @@ function LocationProbe() {
 describe('CampaignWorkspaceShell', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    auth.profile.name = 'Viewer';
     HTMLDialogElement.prototype.showModal = function () {
       this.setAttribute('open', '');
     };
@@ -76,15 +77,19 @@ describe('CampaignWorkspaceShell', () => {
 
     expect(
       screen.getAllByRole('navigation', { name: 'Разделы кампании' }),
-    ).toHaveLength(2);
-    expect(screen.getAllByRole('link', { name: 'Дело' })).toHaveLength(2);
+    ).toHaveLength(1);
+    expect(screen.getAllByRole('link', { name: 'Дело' })).toHaveLength(1);
     expect(screen.queryByRole('link', { name: 'Мои заметки' })).toBeNull();
     expect(
       screen.getByRole('link', { name: 'Выбрать другую кампанию' }),
     ).toHaveAttribute('href', '/campaigns');
+    const logo = screen.getByRole('link', { name: 'Все кампании' });
+    expect(logo).toHaveAttribute('href', '/campaigns');
+    expect(logo.querySelector('.logo')).not.toBeNull();
+    expect(within(screen.getByRole('navigation', { name: 'Разделы кампании' })).queryByRole('link', { name: 'Все кампании' })).toBeNull();
     expect(
       screen.getAllByRole('link', { name: 'Доска расследования' }),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(
       screen.queryByRole('link', { name: 'Участники' }),
     ).not.toBeInTheDocument();
@@ -102,17 +107,29 @@ describe('CampaignWorkspaceShell', () => {
     expect(
       screen.getAllByRole('link', { name: 'Настройки кампании' }).length,
     ).toBeGreaterThan(0);
-    expect(screen.getAllByRole('link', { name: 'Материалы' })).toHaveLength(2);
-    expect(
-      screen.queryByRole('link', { name: 'Фоны' }),
-    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Материалы' })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Фоны' })).toHaveAttribute('href', '/campaigns/campaign-1/settings/backgrounds');
   });
+
+  it.each(['Мастер', 'Игрок', 'Наблюдатель'])(
+    'does not use the generic %s role as the profile link text',
+    (role) => {
+      auth.profile.name = role;
+      renderShell({ ...baseCampaign, currentUserRole: 'PLAYER' });
+
+      expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
+        'href',
+        '/settings/account',
+      );
+      expect(screen.queryByRole('link', { name: role })).toBeNull();
+    },
+  );
 
   it('gives a player the case and their own notes', () => {
     renderShell({ ...baseCampaign, currentUserRole: 'PLAYER' });
 
     for (const name of ['Дело', 'Мои заметки'])
-      expect(screen.getAllByRole('link', { name })).toHaveLength(2);
+      expect(screen.getAllByRole('link', { name })).toHaveLength(1);
     expect(screen.getAllByRole('link', { name: 'Дело' })[0]).toHaveAttribute(
       'href',
       '/campaigns/campaign-1/case',
@@ -129,9 +146,9 @@ describe('CampaignWorkspaceShell', () => {
       currentUserRole: 'PLAYER',
       newVisibleMaterialCount: 2,
     });
-    // The case in the sidebar and in the bottom navigation, and the menu.
-    expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(3);
-    expect(screen.getAllByRole('img', { name: 'новое' })).toHaveLength(2);
+    // The case link and the compact menu both show the marker.
+    expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(2);
+    expect(screen.getAllByRole('img', { name: 'новое' })).toHaveLength(1);
     expect(
       screen
         .getByRole('button', { name: 'Меню' })
@@ -226,7 +243,7 @@ describe('CampaignWorkspaceShell', () => {
       return Promise.resolve([]) as never;
     });
     renderShell(baseCampaign);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Найти' })[0]);
+    fireEvent.click(document.querySelector('.campaign-search-trigger')!);
     await screen.findByRole('button', { name: /Open clue/ });
     expect(
       screen.queryByRole('button', { name: 'Быстрая заметка' }),

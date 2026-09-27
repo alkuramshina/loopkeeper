@@ -45,6 +45,8 @@ import {
   useCampaignBackground,
 } from './use-campaign-background';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { PageHeader } from '../../components/page-header';
+import { Button } from '../../components/ui/button';
 import { errorMessage, PageError } from '../../components/page-error';
 import { formText } from '../../components/form-text';
 import { TypeTag } from '../../components/ui/type-tag';
@@ -986,12 +988,12 @@ export function BoardPage() {
     board.isError && board.data ? errorMessage(board.error, t) : undefined;
 
   return (
-    <CampaignWorkspaceShell campaign={data}>
+    <CampaignWorkspaceShell campaign={data} width="full">
       <div className="board-page">
-        <section className="board-toolbar">
-          <div>
-            <h2>{t('board.title')}</h2>
-            <p className="muted">
+        <PageHeader
+          compact
+          meta={
+            <>
               {!canManage && <span>{t('board.readOnlyNotice')} · </span>}
               {board.dataUpdatedAt
                 ? t('board.updatedAgo', {
@@ -1008,46 +1010,44 @@ export function BoardPage() {
               >
                 {t('board.refresh')}
               </button>
-            </p>
-          </div>
-          <div className="action-row">
-            <button
-              aria-expanded={searchExpanded || Boolean(search)}
-              aria-label={t('board.search')}
-              className="board-search-toggle"
-              type="button"
-              onClick={() => {
-                setSearchExpanded(true);
-                // The field appears in this click; focus it once it is shown.
-                requestAnimationFrame(() => searchInput.current?.focus());
-              }}
-            >
-              <Search aria-hidden="true" size={18} />
-            </button>
-            <label
-              className={`board-search${searchExpanded || search ? ' board-search-expanded' : ''}`}
-            >
-              <Search aria-hidden="true" size={16} />
-              <span className="sr-only">{t('board.search')}</span>
-              <input
-                ref={searchInput}
-                value={search}
-                onBlur={() => setSearchExpanded(false)}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder={t('board.search')}
-              />
-            </label>
-          </div>
-        </section>
+            </>
+          }
+          title={t('board.title')}
+          actions={
+            <>
+              <button
+                aria-expanded={searchExpanded || Boolean(search)}
+                aria-label={t('board.search')}
+                className="board-search-toggle"
+                type="button"
+                onClick={() => {
+                  setSearchExpanded(true);
+                  // The field appears in this click; focus it once it is shown.
+                  requestAnimationFrame(() => searchInput.current?.focus());
+                }}
+              >
+                <Search aria-hidden="true" size={18} />
+              </button>
+              <label
+                className={`board-search${searchExpanded || search ? ' board-search-expanded' : ''}`}
+              >
+                <Search aria-hidden="true" size={16} />
+                <span className="sr-only">{t('board.search')}</span>
+                <input
+                  ref={searchInput}
+                  value={search}
+                  onBlur={() => setSearchExpanded(false)}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={t('board.search')}
+                />
+              </label>
+            </>
+          }
+        />
         {(error ?? refreshError) && (
           <p className="form-error" role="alert">
             {error ?? refreshError}
           </p>
-        )}
-        {board.data && !board.data.cards.length && (
-          <div className="board-empty">
-            <p>{t('workspace.boardEmpty')}</p>
-          </div>
         )}
         {linking && <p className="board-link-hint">{t('board.linkHint')}</p>}
         {board.isLoading || campaign.isLoading ? (
@@ -1064,6 +1064,21 @@ export function BoardPage() {
               className={`board-canvas ${canManage ? '' : 'board-canvas-readonly'}`}
             >
               <CampaignBackgroundLayer background={background} />
+              {board.data && !board.data.cards.length && !editor && (
+                // In the middle of the empty board, with its one action.
+                <div className="board-empty">
+                  <p>{t('workspace.boardEmpty')}</p>
+                  {canManage && (
+                    <Button
+                      icon={Plus}
+                      onClick={() => setEditor({ type: 'new-card' })}
+                      variant="primary"
+                    >
+                      {t('board.newCard')}
+                    </Button>
+                  )}
+                </div>
+              )}
               <ReactFlow
                 ariaLabelConfig={ariaLabelConfig}
                 edges={visibleEdges}

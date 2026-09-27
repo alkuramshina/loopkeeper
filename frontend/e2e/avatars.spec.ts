@@ -34,7 +34,7 @@ test('P5b: a user sets and removes an account avatar', async ({
 
   const tooSmall = uploaded(page, /\/users\/me\/avatar$/);
   await page
-    .getByLabel('Аватар', { exact: true })
+    .getByLabel('Загрузить фото')
     .setInputFiles(await pngFile(100, 100));
   expect((await tooSmall).status()).toBe(400);
   await expect(page.getByRole('alert')).toHaveText(
@@ -43,13 +43,13 @@ test('P5b: a user sets and removes an account avatar', async ({
 
   const done = uploaded(page, /\/users\/me\/avatar$/);
   await page
-    .getByLabel('Аватар', { exact: true })
+    .getByLabel('Загрузить фото')
     .setInputFiles(await pngFile(400, 300));
   expect((await done).ok()).toBeTruthy();
   await expect(avatar).toHaveAttribute('src', /^blob:/);
   await expect(page.getByRole('alert')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Удалить аватар' }).click();
+  await page.getByRole('button', { name: 'Удалить', exact: true }).click();
   await expect(avatar).toHaveAttribute('src', /^data:image\/svg\+xml/);
 });
 

@@ -47,7 +47,6 @@ test('the workspace shell follows every layout range', async ({
   const { campaignId, owner } = await createCampaignWithRoles(request);
   await signInAs(page, owner);
   const menu = page.getByRole('button', { name: 'Меню' });
-  const bottom = page.locator('.campaign-workspace-shell-mobile-navigation');
 
   // ≥ 1280: the mockup's sidebar with words.
   await page.setViewportSize({ width: 1366, height: 768 });
@@ -56,7 +55,6 @@ test('the workspace shell follows every layout range', async ({
   await expect(side.getByText('Участники', { exact: true })).toBeVisible();
   expect((await side.boundingBox())?.width).toBeGreaterThan(200);
   await expect(menu).toBeHidden();
-  await expect(bottom).toBeHidden();
 
   // 1024–1279: icons only, the words stay the links' names and show on hover.
   await page.setViewportSize({ width: 1100, height: 768 });
@@ -66,11 +64,9 @@ test('the workspace shell follows every layout range', async ({
   await board.hover();
   await expect(board.getByText('Доска расследования')).toBeVisible();
   await expect(menu).toBeHidden();
-  await expect(bottom).toBeHidden();
 
-  // 600–1023: a header with a menu that slides out over the content.
+  // 600–1023: the sidebar slides out over the content.
   await page.setViewportSize({ width: 768, height: 1024 });
-  await expect(bottom).toBeHidden();
   await expect(side).toBeHidden();
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
   await menu.click();
@@ -89,13 +85,12 @@ test('the workspace shell follows every layout range', async ({
   await page.mouse.click(740, 600);
   await expect(side).toBeHidden();
 
-  // < 600: the phone's bottom navigation.
+  // < 600: the same sidebar opens from the menu button.
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(bottom).toBeVisible();
-  await expect(menu).toBeHidden();
-  await expect(
-    bottom.getByRole('link', { name: 'Доска расследования' }),
-  ).toBeVisible();
+  await expect(menu).toBeVisible();
+  await menu.click();
+  await expect(side.getByRole('link', { name: 'Доска расследования' })).toBeVisible();
+  await page.keyboard.press('Escape');
 
   // An open menu does not survive into the sidebar ranges and back.
   await page.setViewportSize({ width: 768, height: 1024 });

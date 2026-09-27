@@ -143,7 +143,7 @@ test('P5b: media is not served to outsiders and a replaced avatar goes offline',
   await signInAs(page, owner);
   await page.goto('/settings/account');
   const avatar = page.locator('img.avatar-large');
-  const input = page.getByLabel('Аватар', { exact: true });
+  const input = page.getByLabel('Загрузить фото');
   let done = uploaded(page, /\/users\/me\/avatar$/);
   await input.setInputFiles(await pngFile(400, 400));
   await done;
@@ -176,7 +176,7 @@ test('P5b: bad avatar files are refused with a localized message and nothing is 
   const owner = await registerUser(request, 'Мастер');
   await signInAs(page, owner);
   await page.goto('/settings/account');
-  const input = page.getByLabel('Аватар', { exact: true });
+  const input = page.getByLabel('Загрузить фото');
   const files = storedFiles();
 
   const cases: [string, Parameters<Locator['setInputFiles']>[0], RegExp][] = [
@@ -585,8 +585,8 @@ test('P5d: deleting a campaign with members, media and a board removes it for ev
 
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/settings`);
-  page.once('dialog', (confirm) => void confirm.accept());
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить кампанию' }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
 
   expect(await listCampaignTitles(request, owner)).toEqual([]);

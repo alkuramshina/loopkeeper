@@ -27,7 +27,7 @@ const campaignForCurrentUser = (userId: string) =>
       select: {
         campaignRole: true,
         memberId: true,
-        participantState: { select: { newSinceAt: true } },
+        participantState: { select: { newSinceAt: true, lastVisitAt: true } },
       },
     },
   }) satisfies Prisma.CampaignSelect;
@@ -216,6 +216,7 @@ export class CampaignService {
       ...campaignData,
       currentUserRole: members[0].campaignRole,
       newSinceAt: members[0].participantState?.newSinceAt ?? null,
+      lastVisitAt: members[0].participantState?.lastVisitAt ?? null,
       newVisibleMaterialCount,
       backgroundConfig: {
         selectionMode: backgroundSelectionMode,

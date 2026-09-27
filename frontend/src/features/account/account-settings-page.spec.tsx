@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
 import { ApiError } from '../../api/client';
@@ -11,24 +12,23 @@ import {
 const request = vi.fn();
 const signOut = vi.fn();
 const updateProfile = vi.fn();
+// Like the real context, a saved profile is what the next render reads.
+const profile = { userId: 'user-1', email: 'user@example.test', name: 'Алекс' };
 vi.mock('../../auth/auth-context', () => ({
-  useAuth: () => ({
-    api: { request },
-    profile: { userId: 'user-1', email: 'user@example.test', name: 'Алекс' },
-    signOut,
-    updateProfile,
-  }),
+  useAuth: () => ({ api: { request }, profile, signOut, updateProfile }),
 }));
 
 function renderPage(path = '/settings/account') {
   render(
-    <MemoryRouter initialEntries={[path]}>
-      <Routes>
-        <Route path="/settings/account" element={<AccountSettingsPage />} />
-        <Route path="/settings/password" element={<PasswordSettingsPage />} />
-        <Route path="/sign-in" element={<p>Страница входа</p>} />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/settings/account" element={<AccountSettingsPage />} />
+          <Route path="/settings/password" element={<PasswordSettingsPage />} />
+          <Route path="/sign-in" element={<p>Страница входа</p>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -48,44 +48,51 @@ function fillPasswords(current: string, next: string, confirmation: string) {
 describe('AccountSettingsPage', () => {
   beforeEach(() => {
     request.mockReset();
+    request.mockImplementation((path: string) => path === '/campaigns' ? Promise.resolve([]) : undefined);
     signOut.mockReset();
     updateProfile.mockReset();
+    profile.name = 'Алекс';
   });
 
   it('switches between the settings and the password from the side menu', async () => {
     renderPage();
     const navigation = screen.getByRole('navigation', {
-      name: 'Разделы аккаунта',
+      name: 'Разделы настроек',
     });
 
-    expect(screen.getByRole('link', { name: 'Настройки' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Профиль' })).toHaveAttribute(
       'aria-current',
       'page',
     );
     expect(navigation).toContainElement(
-      screen.getByRole('link', { name: 'Пароль' }),
+      screen.getByRole('link', { name: 'Вход и пароль' }),
     );
     expect(screen.queryByLabelText('Текущий пароль')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('link', { name: 'Пароль' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Вход и пароль' }));
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Пароль' }),
+      await screen.findByRole('heading', { level: 1, name: 'Вход и пароль' }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('Текущий пароль')).toBeInTheDocument();
   });
 
   it('shows the email read-only and saves a trimmed name', async () => {
-    updateProfile.mockResolvedValue(undefined);
+    updateProfile.mockImplementation(({ name }: { name: string }) => {
+      profile.name = name;
+      return Promise.resolve();
+    });
     renderPage();
 
     expect(screen.getByLabelText('Электронная почта')).toBeDisabled();
     fireEvent.change(screen.getByLabelText('Имя'), {
       target: { value: '  Мира  ' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Сохранить изменения' }),
+    );
 
-    expect(await screen.findByText('Сохранено')).toBeInTheDocument();
+    expect(await screen.findByText('Изменения сохранены')).toBeInTheDocument();
     expect(updateProfile).toHaveBeenCalledWith({ name: 'Мира' });
   });
 
@@ -97,7 +104,7 @@ describe('AccountSettingsPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Новые пароли не совпадают',
     );
-    expect(request).not.toHaveBeenCalled();
+    expect(request.mock.calls.filter(([path]) => path === '/auth/change-password')).toHaveLength(0);
   });
 
   it('shows a localized error for a wrong current password', async () => {

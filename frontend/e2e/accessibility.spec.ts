@@ -151,7 +151,8 @@ test('main screens have no automatically detectable accessibility violations in 
     ['board', `/campaigns/${campaignId}/board`, 'Радиосигнал'],
     ['members', `/campaigns/${campaignId}/members`, 'Мастер'],
     ['campaign settings', `/campaigns/${campaignId}/settings`, 'Настройки'],
-    ['account', '/settings/account', 'Аккаунт'],
+    ['account', '/settings/account', 'Профиль'],
+    ['password', '/settings/password', 'Текущий пароль'],
   ];
   for (const colorScheme of variations) {
     await page.emulateMedia({ colorScheme });
@@ -411,7 +412,8 @@ test('the main forms work with the keyboard alone and announce errors', async ({
   await page.keyboard.press('ControlOrMeta+A');
   await page.keyboard.type('Мастер игры');
   await page.keyboard.press('Enter');
-  await expect(page.getByText('Сохранено')).toBeVisible();
+  await expect(page.getByText('Изменения сохранены')).toBeVisible();
+  await page.goto('/settings/password');
   await page.getByLabel('Текущий пароль').focus();
   await page.keyboard.type(owner.password);
   await page.keyboard.press('Tab');
