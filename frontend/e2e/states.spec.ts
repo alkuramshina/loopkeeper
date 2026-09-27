@@ -12,7 +12,7 @@ test('M13: a new campaign shows empty states, not errors', async ({
 
   const expectations: Array<[string, string]> = [
     ['characters', 'В кампании пока нет персонажей.'],
-    ['elements', 'Здесь пока ничего нет.'],
+    ['elements', 'Материалов пока нет'],
     ['board', 'На доске пока нет карточек.'],
   ];
   for (const [section, text] of expectations) {
@@ -85,8 +85,13 @@ test('M13: a slow list shows a loading state first', async ({
   });
 
   await page.goto(`/campaigns/${campaignId}/elements`);
-  await expect(page.getByText('Загрузка…')).toBeVisible();
+  // A skeleton repeats the list layout while it loads.
+  const list = page.getByRole('navigation', { name: 'Список материалов' });
+  await expect(list).toHaveAttribute('aria-busy', 'true');
+  await expect(list.getByText('Загрузка…')).toBeAttached();
+  await expect(page.locator('.materials-skeleton')).toBeVisible();
   release();
-  await expect(page.getByText('Здесь пока ничего нет.')).toBeVisible();
-  await expect(page.getByText('Загрузка…')).toHaveCount(0);
+  await expect(page.getByText('Материалов пока нет')).toBeVisible();
+  await expect(list).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('.materials-skeleton')).toHaveCount(0);
 });

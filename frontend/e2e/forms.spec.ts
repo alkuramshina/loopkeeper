@@ -26,10 +26,10 @@ test('a dialog closes by the cross, Escape and a click outside without moving th
   await expect(
     page.getByRole('link', { name: /Старая заметка/ }),
   ).toBeVisible();
-  const before = await position(page, '.note-list-item');
+  const before = await position(page, '.materials-row');
 
-  const opener = page.getByRole('button', { name: 'Новая заметка' });
-  const dialog = page.getByRole('dialog', { name: 'Новый элемент' });
+  const opener = page.getByRole('button', { name: 'Заметка', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Новая заметка' });
   const closeWays: [string, () => Promise<void>][] = [
     ['cross', () => dialog.getByRole('button', { name: 'Закрыть' }).click()],
     ['Escape', () => page.keyboard.press('Escape')],
@@ -40,10 +40,10 @@ test('a dialog closes by the cross, Escape and a click outside without moving th
     await opener.click();
     await expect(dialog, way).toBeVisible();
     // Opening a dialog does not push the page content.
-    expect(await position(page, '.note-list-item'), way).toEqual(before);
+    expect(await position(page, '.materials-row'), way).toEqual(before);
     await close();
     await expect(dialog, way).toHaveCount(0);
-    expect(await position(page, '.note-list-item'), way).toEqual(before);
+    expect(await position(page, '.materials-row'), way).toEqual(before);
   }
 
   // A click inside the dialog, even on its padding, keeps it open.
@@ -102,13 +102,21 @@ test('a player creates a character through the form; the NPC form has its own fi
   const ownerPage = await context.newPage();
   await signInAs(ownerPage, owner);
   await ownerPage.goto(`/campaigns/${campaignId}/elements`);
-  await ownerPage.getByRole('button', { name: 'Новый элемент' }).click();
-  const npcDialog = ownerPage.getByRole('dialog', { name: 'Новый элемент' });
+  await ownerPage
+    .getByRole('button', { name: 'Материал', exact: true })
+    .first()
+    .click();
+  const npcDialog = ownerPage.getByRole('dialog', { name: 'Новый материал' });
   const type = npcDialog.getByLabel('Тип');
   await expect(type.locator('option[value="NPC"]')).toHaveText('NPC');
   await type.selectOption('NPC');
   await expect(npcDialog.locator('fieldset, legend')).toHaveCount(0);
   await expect(npcDialog).not.toContainText('Profile');
+  // The role is required up front; the rest is written right after.
+  await npcDialog.getByLabel('Название').fill('Сторож Берг');
+  await npcDialog.getByLabel('Роль', { exact: true }).fill('Сторож');
+  await npcDialog.getByRole('button', { name: 'Создать' }).click();
+  const npc = ownerPage.getByRole('article');
   for (const label of [
     'Роль',
     'Мотивация',
@@ -116,16 +124,13 @@ test('a player creates a character through the form; the NPC form has its own fi
     'Секрет',
     'Связи',
   ])
-    await expect(npcDialog.getByLabel(label, { exact: true })).toBeVisible();
-  await npcDialog.getByLabel('Название').fill('Сторож Берг');
-  await npcDialog.getByLabel('Роль', { exact: true }).fill('Сторож');
-  await npcDialog.getByRole('button', { name: 'Сохранить' }).click();
-  await expect(
-    ownerPage
-      .locator('.note-detail')
-      .getByRole('heading', { name: 'Сторож Берг' }),
-  ).toBeVisible();
-  await expect(ownerPage.locator('.note-detail')).toContainText('Роль: Сторож');
+    await expect(npc.getByLabel(label, { exact: true })).toBeVisible();
+  await npc.getByLabel('Мотивация', { exact: true }).fill('Хранит тайну');
+  await expect(npc.getByRole('status')).toHaveText('Сохранено');
+  await npc.getByRole('button', { name: 'Готово' }).click();
+  await expect(npc.getByRole('heading', { name: 'Сторож Берг' })).toBeVisible();
+  await expect(npc.locator('dl')).toContainText('РольСторож');
+  await expect(npc.locator('dl')).toContainText('МотивацияХранит тайну');
   await context.close();
 });
 
@@ -139,18 +144,21 @@ test('a location form appears only on request and saving opens the new location'
 
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByLabel('Название')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Новый элемент' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Новый элемент' });
+  await page
+    .getByRole('button', { name: 'Материал', exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Новый материал' });
   await expect(dialog.getByLabel('Тип')).toHaveValue('LOCATION');
   await dialog.getByLabel('Название').fill('Маяк');
-  await dialog.getByRole('button', { name: 'Сохранить' }).click();
+  await dialog.getByRole('button', { name: 'Создать' }).click();
 
   await expect(page).toHaveURL(
     new RegExp(`/campaigns/${campaignId}/elements/[0-9a-f-]+$`),
   );
-  await expect(
-    page.locator('.note-detail').getByRole('heading', { name: 'Маяк' }),
-  ).toBeVisible();
+  await expect(page.getByRole('article').getByLabel('Название')).toHaveValue(
+    'Маяк',
+  );
 });
 
 test('a new card stays on the board when its position cannot be saved', async ({

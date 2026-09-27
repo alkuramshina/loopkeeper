@@ -42,10 +42,12 @@ test('a dialog takes focus, closes with Escape and returns focus to its opener',
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements`);
 
-  const opener = page.getByRole('button', { name: 'Новый элемент' });
+  const opener = page
+    .getByRole('button', { name: 'Материал', exact: true })
+    .first();
   await opener.focus();
   await page.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Новый элемент' });
+  const dialog = page.getByRole('dialog', { name: 'Новый материал' });
   await expect(dialog).toBeVisible();
   expect(await focusedInsideDialog(page)).toBe(true);
 
@@ -68,16 +70,17 @@ test('a campaign element is created with the keyboard only; errors are announced
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements`);
 
-  await page.getByRole('button', { name: 'Новый элемент' }).focus();
+  await page
+    .getByRole('button', { name: 'Материал', exact: true })
+    .first()
+    .focus();
   await page.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog', { name: 'Новый элемент' });
+  const dialog = page.getByRole('dialog', { name: 'Новый материал' });
 
-  // Tab order follows the visual order: close, type, access, title.
+  // Tab order follows the visual order: close, type, title.
   await expect(dialog.getByRole('button', { name: 'Закрыть' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(dialog.getByLabel('Тип')).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(dialog.getByLabel('Доступ')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(dialog.getByLabel('Название')).toBeFocused();
   await page.keyboard.type('Письмо без подписи');
@@ -96,9 +99,10 @@ test('a campaign element is created with the keyboard only; errors are announced
   await dialog.getByLabel('Название').focus();
   await page.keyboard.press('Enter');
   await expect(dialog).toHaveCount(0);
-  await expect(
-    page.getByRole('heading', { name: 'Письмо без подписи' }),
-  ).toBeVisible();
+  // The new material opens for writing.
+  await expect(page.getByRole('article').getByLabel('Название')).toHaveValue(
+    'Письмо без подписи',
+  );
   expect(await listElementTitles(request, owner, campaignId)).toContain(
     'Письмо без подписи',
   );
@@ -207,8 +211,8 @@ test('every dialog is named, keeps focus inside, closes with Escape and returns 
     [
       owner,
       `/campaigns/${campaignId}/elements/${elementId}`,
-      'Редактировать',
-      'Редактирование элемента',
+      'Открыть игрокам…',
+      'Открыть игрокам материал «Заметка»?',
     ],
     [
       owner,
@@ -290,8 +294,14 @@ test('every screen and dialog has a visible focus in document order', async ({
   }
 
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
-  await page.getByRole('button', { name: 'Редактировать' }).click();
-  await expectKeyboardWalk(page, 'element dialog');
+  await page.getByRole('button', { name: 'Изменить' }).click();
+  await expectKeyboardWalk(page, 'element editor');
+  await page.getByRole('button', { name: 'Готово' }).click();
+  await page.getByRole('button', { name: 'Ещё действия' }).click();
+  await expect(page.getByRole('menuitem').first()).toBeFocused();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Скрыть от игроков…' }).click();
+  await expectKeyboardWalk(page, 'hide dialog');
   await page.keyboard.press('Escape');
 
   await page.goto(`/campaigns/${campaignId}/board`);

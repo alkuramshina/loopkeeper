@@ -37,7 +37,7 @@ test('M12: a note renders safe Markdown and never raw HTML', async ({
   await signInAs(page, player);
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
 
-  const body = page.locator('.note-detail .markdown-preview');
+  const body = page.getByRole('article').locator('.markdown-body');
   await expect(body.getByRole('heading', { name: 'Дневник' })).toBeVisible();
   await expect(body.locator('ol > li')).toHaveText([
     'Первый пункт',

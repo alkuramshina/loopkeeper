@@ -26,9 +26,12 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // Optional: PLAYWRIGHT_CHANNEL=chrome uses an installed Chrome instead
-        // of the downloaded Playwright build.
-        channel: process.env.PLAYWRIGHT_CHANNEL,
+        // Locally the installed Google Chrome is used, so no browser download
+        // is needed. CI uses the downloaded Playwright build. Override with
+        // PLAYWRIGHT_CHANNEL (e.g. `chromium` for the downloaded build).
+        channel:
+          process.env.PLAYWRIGHT_CHANNEL ??
+          (process.env.CI ? undefined : 'chrome'),
       },
     },
   ],

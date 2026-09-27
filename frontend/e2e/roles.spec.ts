@@ -54,12 +54,10 @@ test('M5: a viewer reads the board and catalog without editing controls', async 
   ).toHaveCount(0);
 
   await navigation.getByRole('link', { name: 'Дело' }).click();
-  await expect(page.getByRole('button', { name: 'Новый элемент' })).toHaveCount(
-    0,
-  );
-  await expect(page.getByRole('button', { name: 'Новая заметка' })).toHaveCount(
-    0,
-  );
+  for (const name of ['Материал', 'Заметка'])
+    await expect(page.getByRole('button', { name, exact: true })).toHaveCount(
+      0,
+    );
 
   for (const section of ['members', 'settings']) {
     await page.goto(`/campaigns/${campaignId}/${section}`);
@@ -192,7 +190,7 @@ test('a player demoted to viewer loses their private notes but keeps reading sha
     access: 'SHARED',
   });
   const catalog = `/campaigns/${campaignId}/elements`;
-  const items = page.locator('.note-list-item strong');
+  const items = page.locator('.materials-row-title');
 
   await signInAs(page, player);
   await page.goto(catalog);
@@ -215,14 +213,16 @@ test('a player demoted to viewer loses their private notes but keeps reading sha
   await page.reload();
   await expect(items).toHaveText(['Общая находка']);
   await items.first().click();
-  const detail = page.locator('.note-detail');
+  const detail = page.getByRole('article');
   await expect(
     detail.getByRole('heading', { name: 'Общая находка' }),
   ).toBeVisible();
-  for (const name of ['Редактировать', 'Удалить', 'Добавить на доску'])
+  for (const name of ['Изменить', 'Ещё действия'])
     await expect(detail.getByRole('button', { name })).toHaveCount(0);
-  await expect(detail.getByLabel('Доступ')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Новая заметка' })).toHaveCount(
-    0,
-  );
+  await expect(
+    detail.getByRole('radiogroup', { name: 'Кто увидит' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Заметка', exact: true }),
+  ).toHaveCount(0);
 });

@@ -5,7 +5,7 @@ import { iconProps } from './icon';
 export type TagType =
   'LOCATION' | 'NPC' | 'NOTE' | 'OTHER' | 'CHARACTER' | 'FREE';
 
-const icons = {
+export const typeIcons = {
   LOCATION: MapPin,
   NPC: Shield,
   NOTE: FileText,
@@ -17,7 +17,7 @@ const icons = {
 /** Type of a material or board card: shape and icon, never colour alone. */
 export function TypeTag({ type }: { type: TagType }) {
   const { t } = useTranslation();
-  const Icon = icons[type];
+  const Icon = typeIcons[type];
   const label =
     type === 'CHARACTER' || type === 'FREE'
       ? t(`ui.cardTypes.${type}`)

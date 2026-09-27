@@ -2,215 +2,112 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Link,
+  useLocation,
   useNavigate,
   useParams,
   useSearchParams,
 } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
+import { ListFilter, Plus } from 'lucide-react';
 import {
   ApiError,
   Campaign,
   CampaignElement,
   CampaignElementAccess,
-  CampaignElementInput,
   CampaignElementType,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
-import { MediaUpload } from '../../components/media-upload';
 import { ModalDialog } from '../../components/modal-dialog';
-import { ProtectedImage } from '../../components/protected-image';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
-import { ElementMapViewer } from './element-map-viewer';
 import { PageError } from '../../components/page-error';
+import { ProtectedImage } from '../../components/protected-image';
+import { AccessBadge } from '../../components/ui/access-badge';
+import { Button } from '../../components/ui/button';
+import { EmptyState } from '../../components/ui/empty-state';
+import { iconProps } from '../../components/ui/icon';
+import { SegmentedControl } from '../../components/ui/segmented-control';
+import { Skeleton } from '../../components/ui/skeleton';
+import { useToast } from '../../components/ui/toast';
+import { typeIcons } from '../../components/ui/type-tag';
+import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { ElementDetail } from './element-detail';
+import { apiErrorText, elementTypes, npcLimits } from './element-model';
+import './materials.css';
 
-function SafeMarkdown({ content }: { content: string | null | undefined }) {
-  return (
-    <ReactMarkdown
-      urlTransform={(url) => (/^(https?:|mailto:)/i.test(url) ? url : '')}
-      components={{
-        img: () => null,
-        a: ({ children, ...props }) => (
-          <a {...props} target="_blank" rel="noopener noreferrer">
-            {children}
-          </a>
-        ),
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  );
-}
-
-const types: CampaignElementType[] = ['NOTE', 'LOCATION', 'NPC', 'OTHER'];
-type Draft = Omit<CampaignElementInput, 'content'> & { content: string };
-const npcFields = [
-  'role',
-  'motivation',
-  'firstImpression',
-  'secret',
-  'relationship',
-] as const;
-const npcLimits = {
-  role: 100,
-  motivation: 500,
-  firstImpression: 500,
-  secret: 1000,
-  relationship: 500,
-};
-// NPC details are stored as strings in the element's typeData.
-const npcText = (value: unknown) => (typeof value === 'string' ? value : '');
-
-const ownerAccess: CampaignElementAccess[] = ['MASTER_ONLY', 'SHARED'];
+type AccessFilter = 'all' | 'shared' | 'hidden';
 const playerAccess: CampaignElementAccess[] = [
   'PRIVATE',
   'MASTER_ONLY',
   'SHARED',
 ];
 
-// MASTER_ONLY reads "master only" on master materials and "to the master" on
-// player notes.
-function accessLabelKey(access: CampaignElementAccess, playerNote: boolean) {
-  return access === 'MASTER_ONLY' && playerNote
-    ? 'elements.access.TO_MASTER'
-    : `elements.access.${access}`;
-}
-
-const isUploadedMedia = (url: string | null | undefined) =>
-  Boolean(url?.startsWith('/media/'));
-const isMapUrl = (url: string | null | undefined) =>
-  Boolean(url && (/^https:\/\//i.test(url) || isUploadedMedia(url)));
-
-// The map URL field edits only external links; an uploaded map file is
-// managed by its own upload control.
-const externalMapUrl = (element: CampaignElement | undefined) =>
-  element?.imageUrl && !isUploadedMedia(element.imageUrl)
-    ? element.imageUrl
-    : '';
-
-function draftFor(
-  element: CampaignElement | undefined,
-  type: CampaignElementType,
-  owner: boolean,
-): Draft {
-  return {
-    type: element?.type ?? type,
-    access: element?.access ?? (owner ? 'MASTER_ONLY' : 'PRIVATE'),
-    title: element?.title ?? '',
-    content: element?.content ?? '',
-    imageUrl: externalMapUrl(element),
-    typeData: element?.typeData ?? {},
-  };
-}
-
-function message(
-  error: unknown,
-  t: (key: string, options?: { defaultValue: string }) => string,
-) {
-  return error instanceof ApiError
-    ? t(`errors.${error.code}`, { defaultValue: t('errors.unexpected') })
-    : t('errors.unexpected');
-}
-
-function ElementEditor({
-  element,
-  initialType,
+/**
+ * A new material starts from its type and name (and an NPC's role, which the
+ * backend requires); the text is written right after, with autosave. The
+ * master's material always starts hidden: revealing is a separate step.
+ */
+function CreateElementDialog({
   owner,
+  initialType,
   onClose,
-  onSaved,
+  onCreated,
 }: {
-  element?: CampaignElement;
-  initialType: CampaignElementType;
   owner: boolean;
+  initialType?: CampaignElementType;
   onClose: () => void;
-  onSaved: (element: CampaignElement) => void;
+  onCreated: (element: CampaignElement) => void;
 }) {
   const { campaignId } = useParams();
   const { api } = useAuth();
   const { t } = useTranslation();
-  const [draft, setDraft] = useState(() =>
-    draftFor(element, owner ? initialType : 'NOTE', owner),
+  const [type, setType] = useState<CampaignElementType>(
+    owner ? (initialType ?? 'LOCATION') : 'NOTE',
   );
+  const [access, setAccess] = useState<CampaignElementAccess>('PRIVATE');
+  const [title, setTitle] = useState('');
+  const [role, setRole] = useState('');
   const [error, setError] = useState<string>();
-  const save = useMutation({
-    mutationFn: () => {
-      // An unchanged map link is not sent, so saving the form keeps an
-      // uploaded map file; a new link (or clearing it) replaces the map.
-      const mapChanged = draft.imageUrl !== externalMapUrl(element);
-      const payload = {
-        type: draft.type,
-        title: draft.title.trim(),
-        content: draft.content,
-        ...(element ? {} : { access: draft.access }),
-        ...(draft.type === 'LOCATION' && mapChanged
-          ? { imageUrl: draft.imageUrl || (element ? null : undefined) }
-          : {}),
-        ...(draft.type === 'NPC' ? { typeData: draft.typeData } : {}),
-      };
-      return api.request<CampaignElement>(
-        element
-          ? `/elements/${element.elementId}`
-          : `/campaigns/${campaignId}/elements`,
-        { method: element ? 'PATCH' : 'POST', body: JSON.stringify(payload) },
-      );
-    },
-    onSuccess: onSaved,
-    onError: (cause) => setError(message(cause, t)),
+  const create = useMutation({
+    mutationFn: () =>
+      api.request<CampaignElement>(`/campaigns/${campaignId}/elements`, {
+        method: 'POST',
+        body: JSON.stringify({
+          type,
+          title: title.trim(),
+          content: '',
+          access: owner ? 'MASTER_ONLY' : access,
+          ...(type === 'NPC' ? { typeData: { role: role.trim() } } : {}),
+        }),
+      }),
+    onSuccess: onCreated,
+    onError: (cause) => setError(apiErrorText(cause, t)),
   });
-  const updateNpc = (field: string, value: string) =>
-    setDraft((current) => ({
-      ...current,
-      typeData: { ...current.typeData, [field]: value },
-    }));
 
   return (
     <ModalDialog
-      title={t(element ? 'elements.edit' : 'elements.new')}
+      description={t(
+        owner ? 'elements.create.hint' : 'elements.create.noteHint',
+      )}
       onClose={onClose}
+      title={t(owner ? 'elements.create.title' : 'elements.create.noteTitle')}
     >
       <form
         onSubmit={(event: FormEvent<HTMLFormElement>) => {
           event.preventDefault();
-          save.mutate();
+          create.mutate();
         }}
       >
-        <label>
-          {t('elements.type')}
-          <select
-            value={draft.type}
-            disabled={Boolean(element) || !owner}
-            onChange={(event) =>
-              setDraft(
-                draftFor(
-                  undefined,
-                  event.target.value as CampaignElementType,
-                  owner,
-                ),
-              )
-            }
-          >
-            {types.map((type) => (
-              <option key={type} value={type}>
-                {t(`elements.types.${type}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {!element && (
+        {owner && (
           <label>
-            {t('elements.accessLabel')}
+            {t('elements.type')}
             <select
-              value={draft.access}
               onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  access: event.target.value as CampaignElementAccess,
-                })
+                setType(event.target.value as CampaignElementType)
               }
+              value={type}
             >
-              {(owner ? ownerAccess : playerAccess).map((access) => (
-                <option key={access} value={access}>
-                  {t(accessLabelKey(access, !owner))}
+              {elementTypes.map((item) => (
+                <option key={item} value={item}>
+                  {t(`elements.types.${item}`)}
                 </option>
               ))}
             </select>
@@ -219,90 +116,79 @@ function ElementEditor({
         <label>
           {t('elements.name')}
           <input
-            value={draft.title}
-            onChange={(event) =>
-              setDraft({ ...draft, title: event.target.value })
-            }
-            required
             maxLength={200}
+            onChange={(event) => setTitle(event.target.value)}
+            required
+            value={title}
           />
         </label>
-        <label>
-          {t('elements.content')}
-          <textarea
-            value={draft.content}
-            onChange={(event) =>
-              setDraft({ ...draft, content: event.target.value })
-            }
-            maxLength={10000}
-          />
-        </label>
-        {draft.type === 'LOCATION' && (
-          <>
-            <label>
-              {t('elements.mapUrl')}
-              <input
-                type="url"
-                pattern="https://.*"
-                placeholder="https://"
-                maxLength={2048}
-                value={draft.imageUrl ?? ''}
-                aria-describedby={
-                  isUploadedMedia(element?.imageUrl)
-                    ? 'element-map-url-hint'
-                    : undefined
-                }
-                onChange={(event) =>
-                  setDraft({ ...draft, imageUrl: event.target.value })
-                }
-              />
-            </label>
-            {isUploadedMedia(element?.imageUrl) && (
-              <p className="muted" id="element-map-url-hint">
-                {t('elements.mapUrlReplacesFile')}
-              </p>
-            )}
-          </>
+        {type === 'NPC' && (
+          <label>
+            {t('elements.npc.role')}
+            <input
+              maxLength={npcLimits.role}
+              onChange={(event) => setRole(event.target.value)}
+              required
+              value={role}
+            />
+          </label>
         )}
-        {draft.type === 'NPC' &&
-          npcFields.map((field) => (
-            <label key={field}>
-              {t(`elements.npc.${field}`)}
-              <input
-                required={field === 'role'}
-                maxLength={npcLimits[field]}
-                value={npcText(draft.typeData?.[field])}
-                onChange={(event) => updateNpc(field, event.target.value)}
-              />
-            </label>
-          ))}
-        <div className="preview-panel">
-          <p className="kicker">{t('elements.preview')}</p>
-          <div className="markdown-preview">
-            <SafeMarkdown content={draft.content} />
-          </div>
-        </div>
+        {!owner && (
+          <SegmentedControl
+            label={t('elements.visibilityLabel')}
+            onChange={setAccess}
+            options={playerAccess.map((item) => ({
+              value: item,
+              label: t(`ui.access.visibility.${item}`),
+            }))}
+            value={access}
+          />
+        )}
         {error && (
-          <p role="alert" className="form-error">
+          <p className="form-error" role="alert">
             {error}
           </p>
         )}
-        <button disabled={save.isPending}>{t('common.save')}</button>
+        <div className="access-dialog-actions">
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
+          <Button disabled={create.isPending} type="submit" variant="primary">
+            {t('elements.create.submit')}
+          </Button>
+        </div>
       </form>
     </ModalDialog>
   );
 }
 
+function ListSkeleton() {
+  const { t } = useTranslation();
+  return (
+    <div className="materials-skeleton">
+      <span className="visually-hidden">{t('common.loading')}</span>
+      {[0, 1, 2, 3, 4].map((row) => (
+        <Skeleton height="2.5rem" key={row} />
+      ))}
+    </div>
+  );
+}
+
 export function ElementsPage() {
   const { campaignId, elementId } = useParams();
-  const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const [params] = useSearchParams();
+  // A link may ask for a type up front, e.g. "?type=LOCATION".
+  const requestedType = elementTypes.find(
+    (type) => type === params.get('type'),
+  );
   const navigate = useNavigate();
   const { api, profile } = useAuth();
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [search, setSearch] = useState('');
-  const [editor, setEditor] = useState<CampaignElement | 'new'>();
-  const [error, setError] = useState<string>();
+  const [accessFilter, setAccessFilter] = useState<AccessFilter>('all');
+  const [creating, setCreating] = useState(false);
+  const [pendingDeletes, setPendingDeletes] = useState<string[]>([]);
   const campaign = useQuery({
     queryKey: ['campaign', campaignId],
     queryFn: () => api.request<Campaign>(`/campaigns/${campaignId}`),
@@ -327,72 +213,93 @@ export function ElementsPage() {
   const contributor = owner || role === 'PLAYER';
   const isAuthor = (item: CampaignElement) =>
     Boolean(profile) && item.createdById === profile?.userId;
-  // Badges are shown only where the element is the viewer's own or the viewer
-  // is the master; there, "not written by the current master" means a player note.
-  const isPlayerNote = (item: CampaignElement) => !(owner && isAuthor(item));
-  const showAccess = (item: CampaignElement) => owner || isAuthor(item);
-  const type = types.includes(params.get('type') as CampaignElementType)
-    ? (params.get('type') as CampaignElementType)
-    : undefined;
-  const visible = useMemo(
+  const listPath = `/campaigns/${campaignId}/elements`;
+
+  const present = useMemo(
     () =>
       (elements.data ?? []).filter(
-        (item) =>
-          (!type || item.type === type) &&
-          `${item.title} ${item.content}`
-            .toLocaleLowerCase(i18n.language)
-            .includes(search.trim().toLocaleLowerCase(i18n.language)),
+        (item) => !pendingDeletes.includes(item.elementId),
       ),
-    [elements.data, type, search, i18n.language],
+    [elements.data, pendingDeletes],
   );
+  const counts = {
+    all: present.length,
+    shared: present.filter((item) => item.access === 'SHARED').length,
+    hidden: present.filter((item) => item.access !== 'SHARED').length,
+  };
+  const groups = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase(i18n.language);
+    const matches = present.filter(
+      (item) =>
+        (accessFilter === 'all' ||
+          (accessFilter === 'shared') === (item.access === 'SHARED')) &&
+        `${item.title} ${item.content ?? ''}`
+          .toLocaleLowerCase(i18n.language)
+          .includes(term),
+    );
+    // The master thinks by type; notes written by players are their own group.
+    const playerNotes = owner
+      ? matches.filter((item) => item.createdById !== profile?.userId)
+      : [];
+    const rest = matches.filter((item) => !playerNotes.includes(item));
+    return [
+      ...elementTypes.map((type) => ({
+        key: type,
+        label: t(`elements.groups.${type}`),
+        items: rest.filter((item) => item.type === type),
+      })),
+      {
+        key: 'PLAYER_NOTES',
+        label: t('elements.groups.PLAYER_NOTES'),
+        items: playerNotes,
+      },
+    ].filter((group) => group.items.length);
+  }, [present, search, accessFilter, owner, profile?.userId, i18n.language, t]);
+
   const selected =
-    elementId && detail.data?.campaignId === campaignId
+    elementId &&
+    detail.data?.campaignId === campaignId &&
+    !pendingDeletes.includes(elementId)
       ? detail.data
       : undefined;
-  const action = useMutation({
-    mutationFn: ({
-      id,
-      verb,
-      access,
-    }: {
-      id: string;
-      verb: 'access' | 'delete' | 'board';
-      access?: CampaignElementAccess;
-    }) =>
-      verb === 'board'
-        ? api.request(`/campaigns/${campaignId}/cards`, {
-            method: 'POST',
-            body: JSON.stringify({
-              cardKind: 'ELEMENT_REFERENCE',
-              elementId: id,
-            }),
+  const unavailable =
+    Boolean(elementId) &&
+    (pendingDeletes.includes(elementId ?? '') ||
+      (detail.error instanceof ApiError && detail.error.status === 404) ||
+      (detail.data !== undefined && detail.data.campaignId !== campaignId));
+
+  // Deleting waits for the notification to expire, so "Undo" costs nothing.
+  const scheduleDelete = (element: CampaignElement) => {
+    const id = element.elementId;
+    setPendingDeletes((current) => [...current, id]);
+    void navigate(listPath);
+    const restore = () =>
+      setPendingDeletes((current) => current.filter((item) => item !== id));
+    toast.show({
+      message: t('elements.deleted', { title: element.title }),
+      onUndo: restore,
+      onExpire: () => {
+        void api
+          .request<void>(`/elements/${id}`, { method: 'DELETE' })
+          .then(async () => {
+            queryClient.removeQueries({ queryKey: ['element', id] });
+            await queryClient.invalidateQueries({
+              queryKey: ['elements', campaignId],
+            });
+            void queryClient.invalidateQueries({
+              queryKey: ['board', campaignId],
+            });
           })
-        : verb === 'access'
-          ? api.request<CampaignElement>(`/elements/${id}/access`, {
-              method: 'PATCH',
-              body: JSON.stringify({ access }),
-            })
-          : api.request<void>(`/elements/${id}`, { method: 'DELETE' }),
-    onSuccess: (_result, variables) => {
-      setError(undefined);
-      void queryClient.invalidateQueries({
-        queryKey: ['elements', campaignId],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: ['element', variables.id],
-      });
-      void queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
-      if (variables.verb === 'delete')
-        void navigate(`/campaigns/${campaignId}/elements`);
-    },
-    onError: (cause) => setError(message(cause, t)),
-  });
-  const refreshElement = (id: string) =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['elements', campaignId] }),
-      queryClient.invalidateQueries({ queryKey: ['element', id] }),
-    ]);
-  if (campaign.isError || elements.isError || detail.isError)
+          .catch((cause) => toast.show({ message: apiErrorText(cause, t) }))
+          .finally(restore);
+      },
+    });
+  };
+
+  const detailFailed =
+    detail.isError &&
+    !(detail.error instanceof ApiError && detail.error.status === 404);
+  if (campaign.isError || elements.isError || detailFailed)
     return (
       <PageError
         error={campaign.error ?? elements.error ?? detail.error ?? undefined}
@@ -403,274 +310,207 @@ export function ElementsPage() {
         }}
       />
     );
+
+  const loading = campaign.isLoading || elements.isLoading;
+  const emptyCatalog = !loading && present.length === 0;
+  const nothingFound = !loading && present.length > 0 && groups.length === 0;
+
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
-      <section className="page-header">
-        <div>
-          <p className="kicker">{t('workspace.elements')}</p>
-          <h2>{t('elements.title')}</h2>
-        </div>
-        {contributor && (
-          <button onClick={() => setEditor('new')}>
-            {t(owner ? 'elements.new' : 'elements.newNote')}
-          </button>
-        )}
-      </section>
-      {editor && (
-        <ElementEditor
-          key={editor === 'new' ? 'new' : editor.elementId}
-          element={editor === 'new' ? undefined : editor}
-          initialType={type ?? 'NOTE'}
-          owner={owner}
-          onClose={() => setEditor(undefined)}
-          onSaved={(saved) => {
-            setEditor(undefined);
+      <div
+        className={`materials-layout ${elementId ? 'materials-layout-detail' : ''}`}
+      >
+        <section
+          aria-label={t(owner ? 'elements.title' : 'elements.caseTitle')}
+          className="materials-list-pane"
+        >
+          <div className="materials-list-head">
+            <div className="materials-heading">
+              <h1>{t(owner ? 'elements.title' : 'elements.caseTitle')}</h1>
+              {contributor && (
+                <Button
+                  icon={Plus}
+                  onClick={() => setCreating(true)}
+                  variant={owner ? 'primary' : 'secondary'}
+                >
+                  {t(owner ? 'elements.new' : 'elements.newNote')}
+                </Button>
+              )}
+            </div>
+            {owner && (
+              <SegmentedControl
+                label={t('elements.accessFilter')}
+                onChange={setAccessFilter}
+                options={[
+                  {
+                    value: 'all',
+                    label: t('elements.filter.all'),
+                    count: counts.all,
+                  },
+                  {
+                    value: 'shared',
+                    label: t('elements.filter.shared'),
+                    count: counts.shared,
+                  },
+                  {
+                    value: 'hidden',
+                    label: t('elements.filter.hidden'),
+                    count: counts.hidden,
+                  },
+                ]}
+                value={accessFilter}
+              />
+            )}
+            <label className="materials-search">
+              <ListFilter {...iconProps} />
+              <span className="visually-hidden">{t('elements.search')}</span>
+              <input
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={t('elements.search')}
+                type="search"
+                value={search}
+              />
+            </label>
+          </div>
+          <nav
+            aria-busy={loading}
+            aria-label={t('elements.listLabel')}
+            className="materials-list"
+          >
+            {loading && <ListSkeleton />}
+            {groups.map((group) => (
+              <section
+                aria-labelledby={`materials-group-${group.key}`}
+                className="materials-group"
+                key={group.key}
+              >
+                <h2 className="materials-group-title">
+                  <span id={`materials-group-${group.key}`}>{group.label}</span>
+                  <span className="numeric">{group.items.length}</span>
+                </h2>
+                <ul>
+                  {group.items.map((item) => (
+                    <li key={item.elementId}>
+                      <Link
+                        aria-current={
+                          item.elementId === elementId ? 'page' : undefined
+                        }
+                        className={
+                          owner && isAuthor(item) && item.access !== 'SHARED'
+                            ? 'materials-row materials-row-hidden'
+                            : 'materials-row'
+                        }
+                        to={`${listPath}/${item.elementId}`}
+                      >
+                        {item.coverUrl ? (
+                          <ProtectedImage
+                            alt=""
+                            className="materials-row-cover"
+                            imageUrl={item.coverUrl}
+                          />
+                        ) : (
+                          <TypeIcon type={item.type} />
+                        )}
+                        <span className="materials-row-title">
+                          {item.title}
+                        </span>
+                        {(owner || isAuthor(item)) && (
+                          <AccessBadge
+                            access={item.access}
+                            variant={
+                              owner && isAuthor(item) ? 'status' : 'visibility'
+                            }
+                          />
+                        )}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+            {nothingFound && (
+              <p className="materials-list-note">
+                {t('elements.nothingFound')}
+              </p>
+            )}
+          </nav>
+          {emptyCatalog && (
+            <EmptyState
+              action={
+                contributor ? (
+                  <Button
+                    icon={Plus}
+                    onClick={() => setCreating(true)}
+                    variant="primary"
+                  >
+                    {t(owner ? 'elements.new' : 'elements.newNote')}
+                  </Button>
+                ) : undefined
+              }
+              title={t(owner ? 'elements.emptyOwner' : 'elements.empty')}
+            >
+              <p>
+                {t(owner ? 'elements.emptyOwnerText' : 'elements.emptyText')}
+              </p>
+            </EmptyState>
+          )}
+        </section>
+        <section className="materials-detail-pane">
+          {selected ? (
+            <ElementDetail
+              backTo={listPath}
+              element={selected}
+              key={selected.elementId}
+              onDelete={scheduleDelete}
+              startEditing={Boolean(
+                (location.state as { edit?: boolean } | null)?.edit,
+              )}
+              viewer={{ owner, contributor, isAuthor: isAuthor(selected) }}
+            />
+          ) : unavailable ? (
+            <EmptyState title={t('elements.unavailable')}>
+              <p>{t('elements.unavailableText')}</p>
+              <Link to={listPath}>
+                {t(owner ? 'elements.backToMaterials' : 'elements.backToCase')}
+              </Link>
+            </EmptyState>
+          ) : elementId ? (
+            <div aria-busy="true" className="material-document">
+              <Skeleton width="8rem" height="1.625rem" radius="pill" />
+              <Skeleton width="60%" height="2.5rem" />
+              <Skeleton height="6rem" />
+            </div>
+          ) : (
+            !emptyCatalog &&
+            !loading && (
+              <p className="materials-select">{t('elements.select')}</p>
+            )
+          )}
+        </section>
+      </div>
+      {creating && (
+        <CreateElementDialog
+          onClose={() => setCreating(false)}
+          onCreated={(created) => {
+            setCreating(false);
+            queryClient.setQueryData(['element', created.elementId], created);
             void queryClient.invalidateQueries({
               queryKey: ['elements', campaignId],
             });
-            void queryClient.invalidateQueries({
-              queryKey: ['element', saved.elementId],
+            void navigate(`${listPath}/${created.elementId}`, {
+              state: { edit: true },
             });
-            void navigate(
-              `/campaigns/${campaignId}/elements/${saved.elementId}`,
-            );
           }}
+          initialType={requestedType}
+          owner={owner}
         />
-      )}
-      {error && (
-        <p role="alert" className="form-error">
-          {error}
-        </p>
-      )}
-      {campaign.isLoading || elements.isLoading || detail.isLoading ? (
-        <p>{t('common.loading')}</p>
-      ) : (
-        <section className="notes-layout">
-          <div className="note-list" aria-label={t('elements.title')}>
-            <div className="filter-row">
-              <Link to={`/campaigns/${campaignId}/elements`}>
-                {t('elements.all')}
-              </Link>
-              {types.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className={type === item ? '' : 'button-ghost'}
-                  onClick={() => setParams({ type: item })}
-                >
-                  {t(`elements.types.${item}`)}
-                </button>
-              ))}
-            </div>
-            <label className="note-search">
-              <span className="visually-hidden">{t('elements.search')}</span>
-              <input
-                type="search"
-                placeholder={t('elements.search')}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </label>
-            {visible.map((item) => (
-              <Link
-                className={`note-list-item ${item.coverUrl ? 'with-cover' : ''} ${elementId === item.elementId ? 'selected' : ''}`}
-                to={`/campaigns/${campaignId}/elements/${item.elementId}`}
-                key={item.elementId}
-              >
-                {item.coverUrl && (
-                  <ProtectedImage
-                    alt=""
-                    className="note-list-cover"
-                    imageUrl={item.coverUrl}
-                  />
-                )}
-                <strong>{item.title}</strong>
-                <small>{t(`elements.types.${item.type}`)}</small>
-                {showAccess(item) && (
-                  <small
-                    className={`visibility-badge visibility-${item.access.toLowerCase()}`}
-                  >
-                    {t(accessLabelKey(item.access, isPlayerNote(item)))}
-                  </small>
-                )}
-              </Link>
-            ))}
-            {!visible.length && (
-              <p className="note-list-empty">{t('elements.empty')}</p>
-            )}
-          </div>
-          <article className="panel note-detail">
-            {selected ? (
-              <>
-                <div className="section-heading">
-                  <div>
-                    <p className="kicker">
-                      {t(`elements.types.${selected.type}`)}
-                    </p>
-                    <h2>{selected.title}</h2>
-                    {showAccess(selected) && (
-                      <span
-                        className={`visibility-badge visibility-${selected.access.toLowerCase()}`}
-                      >
-                        {t(
-                          accessLabelKey(
-                            selected.access,
-                            isPlayerNote(selected),
-                          ),
-                        )}
-                      </span>
-                    )}
-                    {!isAuthor(selected) && (
-                      <p className="muted">
-                        {t('elements.author', {
-                          name:
-                            selected.createdBy.name ??
-                            t('elements.unnamedAuthor'),
-                        })}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                {selected.coverUrl && (
-                  <ProtectedImage
-                    alt=""
-                    className="element-cover"
-                    imageUrl={selected.coverUrl}
-                  />
-                )}
-                <div className="markdown-preview">
-                  <SafeMarkdown content={selected.content} />
-                </div>
-                {selected.type === 'LOCATION' &&
-                  selected.imageUrl &&
-                  isMapUrl(selected.imageUrl) && (
-                    <ElementMapViewer
-                      key={selected.elementId + selected.imageUrl}
-                      imageUrl={selected.imageUrl}
-                      title={selected.title}
-                    />
-                  )}
-                {selected.type === 'NPC' &&
-                  npcFields.map((field) =>
-                    npcText(selected.typeData?.[field]) ? (
-                      <p key={field}>
-                        <strong>{t(`elements.npc.${field}`)}:</strong>{' '}
-                        {npcText(selected.typeData[field])}
-                      </p>
-                    ) : null,
-                  )}
-                {contributor && (
-                  <div className="action-row">
-                    {isAuthor(selected) && (
-                      <label className="element-access-control">
-                        {t('elements.accessLabel')}
-                        <select
-                          value={selected.access}
-                          disabled={action.isPending}
-                          onChange={(event) => {
-                            const access = event.target
-                              .value as CampaignElementAccess;
-                            if (
-                              selected.access === 'SHARED' &&
-                              !window.confirm(t('elements.unshareConfirmation'))
-                            )
-                              return;
-                            action.mutate({
-                              id: selected.elementId,
-                              verb: 'access',
-                              access,
-                            });
-                          }}
-                        >
-                          {(owner ? ownerAccess : playerAccess).map(
-                            (access) => (
-                              <option key={access} value={access}>
-                                {t(accessLabelKey(access, !owner))}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </label>
-                    )}
-                    {selected.access === 'SHARED' && (
-                      <button
-                        disabled={action.isPending}
-                        onClick={() =>
-                          action.mutate({
-                            id: selected.elementId,
-                            verb: 'board',
-                          })
-                        }
-                      >
-                        {t('elements.addToBoard')}
-                      </button>
-                    )}
-                    {isAuthor(selected) && (
-                      <button
-                        className="button-ghost"
-                        onClick={() => setEditor(selected)}
-                      >
-                        {t('common.edit')}
-                      </button>
-                    )}
-                    {isAuthor(selected) && (
-                      <button
-                        className="button-danger"
-                        disabled={action.isPending}
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              t('elements.deleteConfirmation', {
-                                title: selected.title,
-                              }),
-                            )
-                          )
-                            action.mutate({
-                              id: selected.elementId,
-                              verb: 'delete',
-                            });
-                        }}
-                      >
-                        {t('common.delete')}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {contributor && isAuthor(selected) && (
-                  <section className="element-media-controls">
-                    <div>
-                      <MediaUpload
-                        endpoint={`/elements/${selected.elementId}/cover`}
-                        hasImage={Boolean(selected.coverUrl)}
-                        label={t('elements.cover')}
-                        onChanged={() => refreshElement(selected.elementId)}
-                      />
-                      <p className="muted">{t('elements.coverHint')}</p>
-                    </div>
-                    {selected.type === 'LOCATION' && (
-                      <div>
-                        <MediaUpload
-                          endpoint={`/elements/${selected.elementId}/map`}
-                          hasImage={isUploadedMedia(selected.imageUrl)}
-                          label={t('elements.mapFile')}
-                          onChanged={() => refreshElement(selected.elementId)}
-                        />
-                        <p className="muted">{t('elements.mapFileHint')}</p>
-                      </div>
-                    )}
-                  </section>
-                )}
-              </>
-            ) : (
-              <p className="muted">
-                {elementId
-                  ? t('errors.resource.not_found')
-                  : t('elements.select')}
-              </p>
-            )}
-          </article>
-        </section>
       )}
     </CampaignWorkspaceShell>
   );
+}
+
+// The group heading names the type; the row repeats only its icon.
+function TypeIcon({ type }: { type: CampaignElementType }) {
+  const Icon = typeIcons[type];
+  return <Icon {...iconProps} className="materials-row-icon" />;
 }

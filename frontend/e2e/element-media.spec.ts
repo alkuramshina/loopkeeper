@@ -54,7 +54,8 @@ test('the master illustrates a location, players see it only while it is shared'
 
   await signInAs(page, owner);
   await page.goto(elementPath);
-  const detail = page.locator('.note-detail');
+  const detail = page.getByRole('article');
+  await detail.getByRole('button', { name: 'Изменить' }).click();
 
   // Wrong map dimensions are refused with a localized message, nothing is stored.
   expect((await upload(page, 'Файл карты', 800, 600)).status()).toBe(400);
@@ -68,6 +69,7 @@ test('the master illustrates a location, players see it only while it is shared'
   expect((await upload(page, 'Обложка', 800, 600)).ok()).toBeTruthy();
   await expect(detail.locator('img.element-cover')).toBeVisible();
   expect((await upload(page, 'Файл карты', 2000, 1200)).ok()).toBeTruthy();
+  await detail.getByRole('button', { name: 'Готово' }).click();
 
   // The map opens in the built-in viewer: zoom in and reset.
   const map = detail.getByRole('region', { name: 'Открыть карту' });
@@ -97,7 +99,7 @@ test('the master illustrates a location, players see it only while it is shared'
   const playerPage = await playerContext.newPage();
   await signInAs(playerPage, player);
   await playerPage.goto(elementPath);
-  const playerDetail = playerPage.locator('.note-detail');
+  const playerDetail = playerPage.getByRole('article');
   await expect(playerDetail.locator('img.element-cover')).toBeVisible();
   await expect(
     playerDetail.getByRole('img', { name: 'Электростанция' }),
@@ -117,6 +119,7 @@ test('the master illustrates a location, players see it only while it is shared'
   expect((await mediaAs(owner, imageUrl!)).status()).toBe(200);
 
   // Removing the cover takes the old file offline.
+  await detail.getByRole('button', { name: 'Изменить' }).click();
   const removed = page.waitForResponse(
     (response) =>
       response.request().method() === 'DELETE' &&
@@ -140,9 +143,12 @@ test('a player adds a cover to their own note', async ({ page, request }) => {
 
   await signInAs(page, player);
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
+  await page.getByRole('button', { name: 'Изменить' }).click();
   await expect(page.getByLabel('Файл карты')).toHaveCount(0);
   expect((await upload(page, 'Обложка', 600, 900)).ok()).toBeTruthy();
-  await expect(page.locator('.note-detail img.element-cover')).toBeVisible();
+  await expect(
+    page.getByRole('article').locator('img.element-cover'),
+  ).toBeVisible();
 
   // While the note is private, the master cannot fetch its cover.
   const { coverUrl } = await elementMedia(page, player, elementId);

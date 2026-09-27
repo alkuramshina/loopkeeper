@@ -9,12 +9,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
+import { ApiError } from '../../api/client';
+import { ToastProvider } from '../../components/ui/toast';
 import { ElementsPage } from './elements-page';
 
 const request = vi.fn();
 const requestBlob = vi.fn();
 let role: 'OWNER' | 'PLAYER' | 'VIEWER' = 'OWNER';
 let userId = 'master';
+let created: unknown;
 vi.mock('../../auth/auth-context', () => ({
   useAuth: () => ({
     api: { request, requestBlob },
@@ -31,9 +34,10 @@ const privateElement = {
   access: 'MASTER_ONLY',
   title: 'Secret',
   content: 'Hidden',
+  imageUrl: null,
   typeData: {},
-  createdAt: '',
-  updatedAt: '',
+  createdAt: '2026-09-27T10:00:00.000Z',
+  updatedAt: '2026-09-27T10:00:00.000Z',
   createdById: master.userId,
   createdBy: master,
 };
@@ -52,7 +56,6 @@ const playerNote = {
   createdById: player.userId,
   createdBy: player,
 };
-
 const uploadedLocation = {
   ...privateElement,
   elementId: 'uploaded-location',
@@ -61,6 +64,29 @@ const uploadedLocation = {
   content: '',
   imageUrl: '/media/map-asset',
   coverUrl: '/media/cover-asset',
+};
+const members = [
+  { memberId: 'm1', campaignRole: 'OWNER', user: { ...master, email: 'm@x' } },
+  { memberId: 'm2', campaignRole: 'PLAYER', user: { ...player, email: 'p@x' } },
+  {
+    memberId: 'm3',
+    campaignRole: 'VIEWER',
+    user: { userId: 'viewer', name: 'Viewer', email: 'v@x' },
+  },
+];
+// The shared element sits on the board once, with two links to its card.
+const board = {
+  boardId: 'b',
+  cards: [
+    { cardId: 'k1', reference: { kind: 'ELEMENT', elementId: 'shared' } },
+    { cardId: 'k2' },
+    { cardId: 'k3' },
+  ],
+  links: [
+    { linkId: 'l1', fromCardId: 'k1', toCardId: 'k2' },
+    { linkId: 'l2', fromCardId: 'k3', toCardId: 'k1' },
+    { linkId: 'l3', fromCardId: 'k2', toCardId: 'k3' },
+  ],
 };
 
 function listFor(currentRole: typeof role) {
@@ -77,21 +103,31 @@ function renderPage(path = '/campaigns/c/elements') {
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route
-            path="/campaigns/:campaignId/elements"
-            element={<ElementsPage />}
-          />
-          <Route
-            path="/campaigns/:campaignId/elements/:elementId"
-            element={<ElementsPage />}
-          />
-        </Routes>
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route
+              path="/campaigns/:campaignId/elements"
+              element={<ElementsPage />}
+            />
+            <Route
+              path="/campaigns/:campaignId/elements/:elementId"
+              element={<ElementsPage />}
+            />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
     </QueryClientProvider>,
   );
 }
+
+const detail = () => screen.getByRole('article');
+const list = () =>
+  screen.getByRole('navigation', { name: 'Список материалов' });
+const calls = (path: string, method: string) =>
+  request.mock.calls.filter(
+    ([called, init]) => called === path && init?.method === method,
+  );
 
 describe('ElementsPage', () => {
   beforeEach(() => {
@@ -115,11 +151,22 @@ describe('ElementsPage', () => {
           title: 'Campaign',
           currentUserRole: role,
         });
+      if (path === '/game-systems') return Promise.resolve([]);
+      if (path === '/campaigns/c/members') return Promise.resolve(members);
+      if (path === '/campaigns/c/investigation-board')
+        return Promise.resolve(board);
       if (path === '/campaigns/c/elements' && !init)
         return Promise.resolve(listFor(role));
-      if (path === '/elements/shared') return Promise.resolve(sharedElement);
-      if (path === '/elements/private') return Promise.resolve(privateElement);
-      if (path === '/elements/player-note') return Promise.resolve(playerNote);
+      if (path === '/elements/shared' && !init)
+        return Promise.resolve(sharedElement);
+      if (path === '/elements/private' && !init)
+        return Promise.resolve(privateElement);
+      if (path === '/elements/player-note' && !init)
+        return Promise.resolve(playerNote);
+      if (path === '/elements/missing')
+        return Promise.reject(
+          new ApiError(404, 'resource.not_found', 'Not found', undefined),
+        );
       if (path === '/elements/location')
         return Promise.resolve({
           ...sharedElement,
@@ -132,129 +179,271 @@ describe('ElementsPage', () => {
         });
       if (path === '/elements/uploaded-location' && !init)
         return Promise.resolve(uploadedLocation);
-      if (path === '/elements/uploaded-location' && init?.method === 'PATCH')
-        return Promise.resolve(uploadedLocation);
-      if (path === '/elements/private/access' && init?.method === 'PATCH')
-        return Promise.resolve({ ...privateElement, access: 'SHARED' });
-      if (path === '/campaigns/c/elements' && init?.method === 'POST')
+      if (path.endsWith('/access') && init?.method === 'PATCH') {
+        const id = path.split('/')[2];
+        const source = listFor('OWNER').find((item) => item.elementId === id);
         return Promise.resolve({
-          ...privateElement,
-          elementId: 'created',
+          ...source,
           ...JSON.parse(init.body as string),
         });
+      }
+      if (path.startsWith('/elements/') && init?.method === 'PATCH')
+        return Promise.resolve({
+          ...uploadedLocation,
+          ...JSON.parse(init.body as string),
+        });
+      if (path === '/campaigns/c/elements' && init?.method === 'POST') {
+        created = {
+          ...privateElement,
+          elementId: 'created',
+          createdById: userId,
+          ...JSON.parse(init.body as string),
+        };
+        return Promise.resolve(created);
+      }
+      if (path === '/elements/created' && !init)
+        return Promise.resolve(created);
       throw new Error(`Unexpected request: ${path}`);
     });
   });
 
-  it('shows shared elements to viewers read-only, with the board in navigation', async () => {
+  it('groups the master list by type with counts and filters by access', async () => {
+    renderPage();
+    const groups = await within(
+      await screen.findByRole('navigation', {
+        name: 'Список материалов',
+      }),
+    ).findAllByRole('region');
+    expect(
+      groups.map((group) => group.getAttribute('aria-labelledby')),
+    ).toEqual(['materials-group-NOTE', 'materials-group-PLAYER_NOTES']);
+    expect(within(groups[0]).getByRole('heading')).toHaveTextContent(
+      'Заметки2',
+    );
+    expect(within(groups[1]).getByRole('link')).toHaveTextContent(
+      'My hunchМастеру',
+    );
+    // Every row carries its status as icon + word.
+    expect(
+      within(groups[0])
+        .getAllByRole('link')
+        .map((row) => row.textContent),
+    ).toEqual(['SecretСкрыто', 'SharedОткрыто']);
+
+    const filter = screen.getByRole('radiogroup', {
+      name: 'Показать материалы',
+    });
+    expect(
+      within(filter).getByRole('radio', { name: /^Все.*3$/ }),
+    ).toBeChecked();
+    fireEvent.click(
+      within(filter).getByRole('radio', { name: /^Открыто.*1$/ }),
+    );
+    expect(
+      within(list())
+        .getAllByRole('link')
+        .map((row) => row.textContent),
+    ).toEqual(['SharedОткрыто']);
+    fireEvent.click(within(filter).getByRole('radio', { name: /^Скрыто.*2$/ }));
+    fireEvent.change(
+      screen.getByPlaceholderText('Фильтр по названию и тексту'),
+      {
+        target: { value: 'tower' },
+      },
+    );
+    expect(
+      within(list())
+        .getAllByRole('link')
+        .map((row) => row.textContent),
+    ).toEqual(['My hunchМастеру']);
+  });
+
+  it('shows shared elements to viewers read-only', async () => {
     role = 'VIEWER';
     userId = 'viewer';
     renderPage('/campaigns/c/elements/shared');
     expect(
       await screen.findByRole('heading', { name: 'Shared' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Дело' })).toBeInTheDocument();
     expect(screen.queryByText('Secret')).not.toBeInTheDocument();
-    expect(screen.getByText('Автор: Master')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Новый элемент' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Новая заметка' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Добавить на доску' }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Доступ')).not.toBeInTheDocument();
-    expect(
-      screen.getAllByRole('link', { name: 'Доска расследования' }).length,
-    ).toBeGreaterThan(0);
+    expect(within(detail()).getByText('Автор: Master')).toBeInTheDocument();
+    expect(within(detail()).getByText('Заметка')).toBeInTheDocument();
+    expect(detail()).toHaveTextContent(/Изменено /);
+    for (const name of ['Материал', 'Заметка', 'Изменить', 'Ещё действия'])
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    expect(screen.queryByText('Открыто')).not.toBeInTheDocument();
   });
 
-  it('changes access of an own element via the access endpoint', async () => {
+  it('reveals a hidden material only after a preview of what players get', async () => {
     renderPage('/campaigns/c/elements/private');
-    const control = await screen.findByLabelText('Доступ');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Открыть игрокам…' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Открыть игрокам материал «Secret»?',
+    });
+    const preview = within(dialog).getByRole('region', {
+      name: 'Так увидят игроки',
+    });
+    expect(preview).toHaveTextContent('Hidden');
+    expect(await within(dialog).findByText('Увидят 2 участника')).toBeVisible();
     expect(
-      within(control)
-        .getAllByRole('option')
-        .map((option) => option.textContent),
-    ).toEqual(['Только мастер', 'Всем']);
-    fireEvent.change(control, { target: { value: 'SHARED' } });
+      within(dialog).getByText('Player и наблюдатель Viewer'),
+    ).toBeVisible();
+    expect(calls('/elements/private/access', 'PATCH')).toHaveLength(0);
+
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Открыть игрокам' }),
+    );
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith('/elements/private/access', {
         method: 'PATCH',
         body: JSON.stringify({ access: 'SHARED' }),
       }),
     );
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Материал открыт игрокам',
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Скрыть от игроков…' }),
+    ).toBeInTheDocument();
+  });
+
+  it('names how many cards and links hiding removes from the board', async () => {
+    renderPage('/campaigns/c/elements/shared');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Скрыть от игроков…' }),
+    );
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      await within(dialog).findByText('С доски уберутся 1 карточка и 2 связи.'),
+    ).toBeVisible();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Отмена' }));
+    expect(calls('/elements/shared/access', 'PATCH')).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Скрыть от игроков…' }));
+    fireEvent.click(
+      await within(await screen.findByRole('dialog')).findByRole('button', {
+        name: 'Скрыть от игроков',
+      }),
+    );
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('/elements/shared/access', {
+        method: 'PATCH',
+        body: JSON.stringify({ access: 'MASTER_ONLY' }),
+      }),
+    );
   });
 
   it('shows a player note to the master as "to the master" without author controls', async () => {
     renderPage('/campaigns/c/elements/player-note');
-    const heading = await screen.findByRole('heading', { name: 'My hunch' });
-    expect(heading.parentElement).toHaveTextContent('Мастеру');
-    expect(screen.getByText('Автор: Player')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Доступ')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Редактировать' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Удалить' }),
-    ).not.toBeInTheDocument();
+    await screen.findByRole('heading', { name: 'My hunch' });
+    expect(within(detail()).getByText('Мастеру')).toBeInTheDocument();
+    expect(within(detail()).getByText('Автор: Player')).toBeInTheDocument();
+    for (const name of ['Изменить', 'Ещё действия', 'Открыть игрокам…'])
+      expect(
+        within(detail()).queryByRole('button', { name }),
+      ).not.toBeInTheDocument();
   });
 
   it('lets a player manage their own note and only read master materials', async () => {
     role = 'PLAYER';
     userId = 'player';
     renderPage('/campaigns/c/elements/player-note');
-    const control = await screen.findByLabelText('Доступ');
+    const visibility = await screen.findByRole('radiogroup', {
+      name: 'Кто увидит',
+    });
     expect(
-      within(control)
-        .getAllByRole('option')
-        .map((option) => option.textContent),
-    ).toEqual(['Лично', 'Мастеру', 'Всем']);
+      within(visibility)
+        .getAllByRole('radio')
+        .map((radio) => radio.parentElement?.textContent),
+    ).toEqual(['Личное', 'Мастеру', 'Всем']);
     expect(screen.queryByText('Автор: Player')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Удалить' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ещё действия' }));
+    expect(
+      screen.getByRole('menuitem', { name: 'Удалить' }),
+    ).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
 
-    fireEvent.click(screen.getByRole('link', { name: /Shared/ }));
+    // Private and "to the master" switch at once; nothing reaches players.
+    fireEvent.click(within(visibility).getByRole('radio', { name: 'Личное' }));
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('/elements/player-note/access', {
+        method: 'PATCH',
+        body: JSON.stringify({ access: 'PRIVATE' }),
+      }),
+    );
+
+    fireEvent.click(within(list()).getByRole('link', { name: /Shared/ }));
     expect(
       await screen.findByRole('heading', { name: 'Shared' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Автор: Master')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Доступ')).not.toBeInTheDocument();
+    expect(within(detail()).getByText('Автор: Master')).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Кто увидит' })).toBeNull();
     expect(
-      screen.queryByRole('button', { name: 'Удалить' }),
+      within(detail()).queryByRole('button', { name: 'Изменить' }),
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ещё действия' }));
     expect(
-      screen.getByRole('button', { name: 'Добавить на доску' }),
+      screen.getByRole('menuitem', { name: 'Добавить на доску' }),
     ).toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Удалить' })).toBeNull();
   });
 
-  it('creates a private note for a player with the type fixed', async () => {
+  it('creates a private note for a player and opens it for writing', async () => {
     role = 'PLAYER';
     userId = 'player';
-    renderPage('/campaigns/c/elements?type=NPC');
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Новая заметка' }),
-    );
-    expect(screen.getByLabelText('Тип')).toBeDisabled();
-    expect(screen.getByLabelText('Тип')).toHaveValue('NOTE');
-    expect(screen.getByLabelText('Доступ')).toHaveValue('PRIVATE');
-    fireEvent.change(screen.getByLabelText('Название'), {
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Заметка' }));
+    const dialog = screen.getByRole('dialog', { name: 'Новая заметка' });
+    expect(within(dialog).queryByLabelText('Тип')).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('radio', { name: 'Личное' })).toBeChecked();
+    fireEvent.change(within(dialog).getByLabelText('Название'), {
       target: { value: 'Hunch' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Создать' }));
     await waitFor(() =>
-      expect(request).toHaveBeenCalledWith(
-        '/campaigns/c/elements',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            type: 'NOTE',
-            title: 'Hunch',
-            content: '',
-            access: 'PRIVATE',
-          }),
+      expect(request).toHaveBeenCalledWith('/campaigns/c/elements', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'NOTE',
+          title: 'Hunch',
+          content: '',
+          access: 'PRIVATE',
         }),
-      ),
+      }),
+    );
+    expect(await screen.findByLabelText('Текст')).toBeInTheDocument();
+    expect(screen.getByLabelText('Название')).toHaveValue('Hunch');
+  });
+
+  it('creates an NPC hidden from players with its required role', async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Материал' }));
+    const dialog = screen.getByRole('dialog', { name: 'Новый материал' });
+    expect(within(dialog).queryByLabelText('Доступ')).not.toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText('Тип'), {
+      target: { value: 'NPC' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Название'), {
+      target: { value: 'Keeper' },
+    });
+    fireEvent.change(within(dialog).getByLabelText('Роль'), {
+      target: { value: 'Witness' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Создать' }));
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('/campaigns/c/elements', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'NPC',
+          title: 'Keeper',
+          content: '',
+          access: 'MASTER_ONLY',
+          typeData: { role: 'Witness' },
+        }),
+      }),
     );
   });
 
@@ -276,7 +465,7 @@ describe('ElementsPage', () => {
     expect(document.querySelector('script')).toBeNull();
   });
 
-  it('shows uploaded cover and map through protected media with author upload controls', async () => {
+  it('autosaves an edited location and keeps its uploaded map', async () => {
     renderPage('/campaigns/c/elements/uploaded-location');
     expect(
       await screen.findByRole('heading', { name: 'Plant' }),
@@ -291,18 +480,74 @@ describe('ElementsPage', () => {
         { name: 'Plant' },
       ),
     ).toHaveAttribute('src', 'blob:image');
+    // Upload controls belong to editing.
+    expect(screen.queryByLabelText('Обложка')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Изменить' }));
     expect(screen.getByLabelText('Обложка')).toHaveAttribute('type', 'file');
     expect(screen.getByLabelText('Файл карты')).toHaveAttribute('type', 'file');
-
-    // Saving the form keeps the uploaded map: the map link is not sent.
-    fireEvent.click(screen.getByRole('button', { name: 'Редактировать' }));
     expect(screen.getByLabelText('HTTPS-адрес карты')).toHaveValue('');
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Сохранено');
+
+    fireEvent.change(screen.getByLabelText('Название'), {
+      target: { value: 'Old plant' },
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('Сохраняется…');
+    // The map link is not sent, so the uploaded map stays.
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith('/elements/uploaded-location', {
         method: 'PATCH',
-        body: JSON.stringify({ type: 'LOCATION', title: 'Plant', content: '' }),
+        body: JSON.stringify({ title: 'Old plant', content: '' }),
       }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Сохранено'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Готово' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Old plant' }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps an invalid draft local and says what is missing', async () => {
+    renderPage('/campaigns/c/elements/private');
+    fireEvent.click(await screen.findByRole('button', { name: 'Изменить' }));
+    fireEvent.change(screen.getByLabelText('Название'), {
+      target: { value: '  ' },
+    });
+    expect(screen.getByText('Введите название.')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Не сохранено: заполните поля',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Готово' }));
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    expect(calls('/elements/private', 'PATCH')).toHaveLength(0);
+    expect(screen.getByLabelText('Название')).toBeInTheDocument();
+  });
+
+  it('deletes after the undo window, and undo brings the material back', async () => {
+    renderPage('/campaigns/c/elements/private');
+    await screen.findByRole('heading', { name: 'Secret' });
+    fireEvent.click(screen.getByRole('button', { name: 'Ещё действия' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Удалить' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '«Secret» будет удалён',
+    );
+    expect(within(list()).queryByText('Secret')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Отменить' }));
+    expect(within(list()).getByText('Secret')).toBeInTheDocument();
+    expect(calls('/elements/private', 'DELETE')).toHaveLength(0);
+  });
+
+  it('shows a neutral state for a material that is not available', async () => {
+    renderPage('/campaigns/c/elements/missing');
+    expect(
+      await screen.findByRole('heading', { name: 'Материал недоступен' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Возможно, ссылка устарела.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'К материалам' })).toHaveAttribute(
+      'href',
+      '/campaigns/c/elements',
     );
   });
 
@@ -314,34 +559,5 @@ describe('ElementsPage', () => {
       await screen.findByRole('heading', { name: 'Shared' }),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('Обложка')).not.toBeInTheDocument();
-  });
-
-  it('creates an NPC as master-only with required typeData', async () => {
-    renderPage('/campaigns/c/elements?type=NPC');
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Новый элемент' }),
-    );
-    fireEvent.change(screen.getByLabelText('Название'), {
-      target: { value: 'Keeper' },
-    });
-    fireEvent.change(screen.getByLabelText('Роль'), {
-      target: { value: 'Witness' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
-    await waitFor(() =>
-      expect(request).toHaveBeenCalledWith(
-        '/campaigns/c/elements',
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            type: 'NPC',
-            title: 'Keeper',
-            content: '',
-            access: 'MASTER_ONLY',
-            typeData: { role: 'Witness' },
-          }),
-        }),
-      ),
-    );
   });
 });

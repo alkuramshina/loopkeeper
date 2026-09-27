@@ -5,6 +5,10 @@ import { iconProps } from './ui/icon';
 
 type ModalDialogProps = {
   title: string;
+  /** One quiet line under the title. */
+  description?: string;
+  /** Room for a side-by-side layout, e.g. a preview next to its details. */
+  wide?: boolean;
   children: ReactNode;
   onClose: () => void;
 };
@@ -21,10 +25,17 @@ function isOutside(event: MouseEvent<HTMLDialogElement>) {
   );
 }
 
-export function ModalDialog({ title, children, onClose }: ModalDialogProps) {
+export function ModalDialog({
+  title,
+  description,
+  wide,
+  children,
+  onClose,
+}: ModalDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const pressedOutside = useRef(false);
   const titleId = useId();
+  const descriptionId = useId();
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -46,8 +57,9 @@ export function ModalDialog({ title, children, onClose }: ModalDialogProps) {
 
   return (
     <dialog
+      aria-describedby={description ? descriptionId : undefined}
       aria-labelledby={titleId}
-      className="modal-dialog"
+      className={wide ? 'modal-dialog modal-dialog-wide' : 'modal-dialog'}
       onCancel={(event) => {
         event.preventDefault();
         onClose();
@@ -64,7 +76,14 @@ export function ModalDialog({ title, children, onClose }: ModalDialogProps) {
       ref={dialogRef}
     >
       <div className="modal-dialog-header">
-        <h2 id={titleId}>{title}</h2>
+        <div>
+          <h2 id={titleId}>{title}</h2>
+          {description && (
+            <p className="modal-dialog-description" id={descriptionId}>
+              {description}
+            </p>
+          )}
+        </div>
         <button
           aria-label={t('common.close')}
           className="ui-icon-button"

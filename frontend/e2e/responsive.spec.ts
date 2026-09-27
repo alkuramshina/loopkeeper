@@ -120,24 +120,18 @@ for (const { width, height, dialogs } of viewports) {
         await expectNoHorizontalOverflow(page, path);
       }
 
-      // The access switch and actions of an own element wrap instead of overflowing.
+      // The status and actions of an own material wrap instead of overflowing.
       await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
-      await expectClickable(
-        page,
-        page.getByRole('button', { name: 'Добавить на доску' }),
-      );
-      await expectClickable(
-        page,
-        page.getByRole('button', { name: 'Удалить' }).first(),
-      );
+      for (const name of ['Скрыть от игроков…', 'Изменить', 'Ещё действия'])
+        await expectClickable(page, page.getByRole('button', { name }));
 
-      // A long form in a dialog scrolls; its save button is not hidden by navigation.
-      await page.getByRole('button', { name: 'Редактировать' }).click();
+      // The hide dialog fits; its confirmation is not hidden by navigation.
+      await page.getByRole('button', { name: 'Скрыть от игроков…' }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
       await expectClickable(
         page,
-        dialog.getByRole('button', { name: 'Сохранить' }),
+        dialog.getByRole('button', { name: 'Скрыть от игроков', exact: true }),
       );
       await page.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);
@@ -167,9 +161,9 @@ for (const { width, height, dialogs } of viewports) {
         ],
         [
           `/campaigns/${campaignId}/elements`,
+          'Заметка',
           'Новая заметка',
-          'Новый элемент',
-          'Сохранить',
+          'Создать',
         ],
       ];
       for (const [path, opener, title, submit] of dialogs) {
@@ -196,16 +190,18 @@ for (const { width, height, dialogs } of viewports) {
         await expect(dialog).toHaveCount(0);
       }
 
-      // A player's own note: the access switch and actions wrap on screen.
+      // A player's own note: visibility and actions wrap on screen.
       await page.goto(`/campaigns/${campaignId}/elements`);
       await page.getByRole('link', { name: /Заметка игрока/ }).click();
       await expectNoHorizontalOverflow(page, 'player note');
       await expectClickable(
         page,
-        page.getByRole('button', { name: 'Редактировать' }),
+        page.getByRole('button', { name: 'Изменить' }),
       );
+      await page.getByRole('button', { name: 'Изменить' }).click();
+      await expectNoHorizontalOverflow(page, 'player note editor');
       for (const control of [
-        page.locator('.note-detail').getByLabel('Доступ'),
+        page.getByRole('radiogroup', { name: 'Кто увидит' }),
         page.getByLabel('Обложка'),
       ]) {
         await control.scrollIntoViewIfNeeded();

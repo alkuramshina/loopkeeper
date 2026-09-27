@@ -76,11 +76,10 @@ E2E-тесты работают только с базой `loopkeeper_test` и 
 ```sh
 npm run db:test:up
 cd frontend
-npx playwright install chromium   # один раз
 npm run test:e2e                  # или test:e2e:ui для интерактивного режима
 ```
 
-Playwright сам поднимает отдельный API на порту `3100` (база `loopkeeper_test` мигрируется и очищается перед запуском) и Vite на порту `5174`, поэтому рабочие серверы и данные не затрагиваются. Если скачать Chromium нельзя, можно использовать установленный Chrome: `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`.
+Playwright сам поднимает отдельный API на порту `3100` (база `loopkeeper_test` мигрируется и очищается перед запуском) и Vite на порту `5174`, поэтому рабочие серверы и данные не затрагиваются. Локально тесты запускаются в установленном Google Chrome, скачивать браузер не нужно. В CI используется Chromium от Playwright; локально его можно выбрать через `npx playwright install chromium` и `PLAYWRIGHT_CHANNEL=chromium npm run test:e2e`.
 
 ## Полезные команды
 

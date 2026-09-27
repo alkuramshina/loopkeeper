@@ -53,7 +53,7 @@ test('the master invites a player, changes the role and removes the member', asy
   );
   await memberPage.goto(`/campaigns/${campaignId}/elements`);
   await expect(
-    memberPage.getByRole('button', { name: 'Новая заметка' }),
+    memberPage.getByRole('button', { name: 'Заметка', exact: true }),
   ).toBeVisible();
 
   await page.reload();
@@ -70,7 +70,7 @@ test('the master invites a player, changes the role and removes the member', asy
     memberPage.getByRole('heading', { name: 'Каталог кампании' }),
   ).toBeVisible();
   await expect(
-    memberPage.getByRole('button', { name: 'Новая заметка' }),
+    memberPage.getByRole('button', { name: 'Заметка', exact: true }),
   ).toHaveCount(0);
 
   // Removal asks for confirmation and takes the campaign away from the member.

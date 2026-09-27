@@ -327,3 +327,51 @@
     bottom: calc(5rem + env(safe-area-inset-bottom));
   }
 }
+
+/* "More actions" menu */
+.ui-menu {
+  position: relative;
+  display: inline-flex;
+}
+.ui-menu-list {
+  position: absolute;
+  z-index: var(--z-overlay);
+  top: calc(100% + var(--space-1));
+  right: 0;
+  display: grid;
+  min-width: 13rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+.ui-menu-item {
+  display: flex;
+  min-height: var(--control-height);
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: transparent;
+  font: 500 var(--text-base) / 1.2 var(--font-body);
+  text-align: left;
+  white-space: nowrap;
+}
+.ui-menu-item:hover:not(:disabled),
+.ui-menu-item:focus-visible {
+  background: var(--color-hover);
+}
+.ui-menu-item:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+.ui-menu-item-danger {
+  color: var(--color-danger);
+}
+.ui-menu-item-danger:hover:not(:disabled),
+.ui-menu-item-danger:focus-visible {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}

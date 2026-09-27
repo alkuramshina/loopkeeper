@@ -220,7 +220,8 @@ test('P5d: element covers keep their proportions; replacing and removing them wo
   });
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
-  const detail = page.locator('.note-detail');
+  const detail = page.getByRole('article');
+  await detail.getByRole('button', { name: 'Изменить' }).click();
   const cover = detail.locator('img.element-cover');
   const input = page.getByLabel('Обложка');
 
@@ -285,22 +286,21 @@ test('P5d: an uploaded map survives an edit, pans in the viewer and yields to an
     /translate\(0px, 0px\) scale\(1\)/,
   );
 
-  // Saving the form without touching the link keeps the uploaded file.
-  await page.getByRole('button', { name: 'Редактировать' }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog.getByLabel('HTTPS-адрес карты')).toHaveValue('');
-  await expect(dialog.getByText(/Новая ссылка заменит его/)).toBeVisible();
-  await dialog.getByRole('button', { name: 'Сохранить' }).click();
-  await expect(dialog).toHaveCount(0);
+  // Editing other fields without touching the link keeps the uploaded file.
+  const detail = page.getByRole('article');
+  await detail.getByRole('button', { name: 'Изменить' }).click();
+  await expect(detail.getByLabel('HTTPS-адрес карты')).toHaveValue('');
+  await expect(detail.getByText(/Новая ссылка заменит его/)).toBeVisible();
+  await detail.getByLabel('Текст').fill('Причал и маяк.');
+  await expect(detail.getByRole('status')).toHaveText('Сохранено');
   expect((await element(page, owner, elementId)).imageUrl).toBe(uploadedMap);
 
   // An external link replaces the file, which goes offline.
-  await page.getByRole('button', { name: 'Редактировать' }).click();
-  await dialog
+  await detail
     .getByLabel('HTTPS-адрес карты')
     .fill('https://maps.test/port.png');
-  await dialog.getByRole('button', { name: 'Сохранить' }).click();
-  await expect(dialog).toHaveCount(0);
+  await expect(detail.getByRole('status')).toHaveText('Сохранено');
+  await detail.getByRole('button', { name: 'Готово' }).click();
   await expect(image).toHaveAttribute('src', 'https://maps.test/port.png');
   expect((await element(page, owner, elementId)).imageUrl).toBe(
     'https://maps.test/port.png',
@@ -319,6 +319,7 @@ test('P5d: bad map and cover files are refused and nothing is stored', async ({
   });
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
+  await page.getByRole('button', { name: 'Изменить' }).click();
   const files = storedFiles();
 
   const cases: [
@@ -392,13 +393,19 @@ test('P5d: deleting an element removes its cover and map files', async ({
 
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
-  page.once('dialog', (confirm) => void confirm.accept());
+  await page.getByRole('button', { name: 'Ещё действия' }).click();
+  await page.getByRole('menuitem', { name: 'Удалить' }).click();
+  // Closing the notice commits the deletion at once.
+  const deleted = page.waitForResponse(
+    (response) => response.request().method() === 'DELETE' && response.ok(),
+  );
   await page
-    .locator('.note-detail')
-    .getByRole('button', { name: 'Удалить' })
-    .first()
+    .getByRole('status')
+    .filter({ hasText: 'будет удалён' })
+    .getByRole('button', { name: 'Закрыть' })
     .click();
-  await expect(page.getByText('Здесь пока ничего нет.')).toBeVisible();
+  await deleted;
+  await expect(page.getByText('Материалов пока нет')).toBeVisible();
 
   expect(await media(page, owner, coverUrl!)).toBe(404);
   expect(await media(page, owner, imageUrl!)).toBe(404);
@@ -455,11 +462,11 @@ test('P5d: element covers appear whole on board cards and as catalog thumbnails'
   await signInAs(page, player);
   await page.goto(`/campaigns/${campaignId}/elements`);
   for (const title of ['Портрет', 'Пейзаж']) {
-    const item = page.locator('.note-list-item', { hasText: title });
-    const thumbnail = item.locator('img.note-list-cover');
+    const item = page.getByRole('link', { name: title });
+    const thumbnail = item.locator('img.materials-row-cover');
     await expect(thumbnail).toHaveAttribute('src', /^blob:/);
     const thumb = await thumbnail.boundingBox();
-    const text = await item.locator('strong').boundingBox();
+    const text = await item.locator('.materials-row-title').boundingBox();
     expect(thumb!.x + thumb!.width, title).toBeLessThanOrEqual(text!.x + 1);
   }
 
