@@ -267,6 +267,7 @@ const talesFromTheLoopSchema = {
       section: 'conditions',
       type: 'boolean',
     },
+    { key: 'broken', label: 'Broken', section: 'conditions', type: 'boolean' },
   ],
 };
 
@@ -303,15 +304,14 @@ async function seedReferenceData(prisma: PrismaClient) {
       systemSlug: System.TALES_FROM_THE_LOOP,
       name: 'Kid',
       schema: talesFromTheLoopSchema,
-      version: 2,
+      version: 3,
     },
     update: {
       schema: talesFromTheLoopSchema,
-      version: 2,
+      version: 3,
       isActive: true,
     },
   });
-
 }
 
 async function main() {

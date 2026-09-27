@@ -9,6 +9,7 @@ import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { MediaUpload } from '../../components/media-upload';
 import { ProtectedImage } from '../../components/protected-image';
 import { PageError } from '../../components/page-error';
+import './workspace-settings.css';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -79,7 +80,6 @@ export function CampaignSettingsPage() {
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
       <section className="page-header">
-        <p className="kicker">{t('workspace.campaignSettings')}</p>
         <h2>{t('campaignSettings.title')}</h2>
       </section>
       {campaign.isLoading ? (

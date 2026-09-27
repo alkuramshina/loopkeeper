@@ -16,6 +16,7 @@ import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
 import { PageError } from '../../components/page-error';
 import { formText } from '../../components/form-text';
+import './workspace-settings.css';
 
 const roles = ['PLAYER', 'VIEWER'] as const;
 
@@ -161,7 +162,6 @@ export function MembersPage() {
   return (
     <CampaignWorkspaceShell campaign={data}>
       <section className="page-header">
-        <p className="kicker">{t('workspace.members')}</p>
         <h2>{t('members.title')}</h2>
       </section>
       {error && (

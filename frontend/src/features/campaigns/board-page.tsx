@@ -23,7 +23,14 @@ import '@xyflow/react/dist/style.css';
 import './board-redesign.css';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Board, BoardCard, BoardLink, Campaign } from '../../api/client';
+import {
+  Board,
+  BoardCard,
+  BoardLink,
+  Campaign,
+  Character,
+  CharacterTemplate,
+} from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ProtectedImage } from '../../components/protected-image';
 import {
@@ -47,6 +54,7 @@ type NodeDimensions = {
 };
 type BoardNodeData = {
   card: BoardCard;
+  conditions: string[];
   isNew: boolean;
   linkCount: number;
   canManage: boolean;
@@ -65,6 +73,7 @@ function boardNodes(
   canManage: boolean,
   newSinceAt: string | null | undefined,
   userId: string | undefined,
+  characterConditions: Map<string, string[]>,
   onResizeEnd: (cardId: string, dimensions: NodeDimensions) => void,
 ): Node<BoardNodeData>[] {
   return cards.map((card, index) => ({
@@ -78,6 +87,8 @@ function boardNodes(
     height: card.node?.height ?? 160,
     data: {
       card,
+      conditions:
+        characterConditions.get(card.reference?.characterId ?? '') ?? [],
       isNew: Boolean(
         newSinceAt &&
         card.createdAt > newSinceAt &&
@@ -172,6 +183,13 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
       </div>
       <h3>{card.title}</h3>
       {card.content && <p className="flow-card-preview">{card.content}</p>}
+      {data.conditions.length > 0 && (
+        <div className="flow-card-conditions">
+          {data.conditions.map((condition) => (
+            <span key={condition}>{condition}</span>
+          ))}
+        </div>
+      )}
       {card.tags.length > 0 && (
         <small className="flow-card-tags">
           {card.tags.map((tag) => `#${tag}`).join(' ')}
@@ -195,6 +213,16 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
         <Link
           className="flow-card-source nodrag"
           to={`/campaigns/${campaignId}/elements/${card.reference.elementId}`}
+          aria-label={t('board.openSource')}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <ArrowUpRight aria-hidden="true" size={16} />
+        </Link>
+      )}
+      {card.reference?.kind === 'CHARACTER' && card.reference.characterId && (
+        <Link
+          className="flow-card-source nodrag"
+          to={`/campaigns/${campaignId}/characters/${card.reference.characterId}`}
           aria-label={t('board.openSource')}
           onClick={(event) => event.stopPropagation()}
         >
@@ -645,6 +673,25 @@ export function BoardPage() {
     enabled: Boolean(campaignId && campaign.data),
     retry: false,
   });
+  const hasCharacterCards =
+    board.data?.cards.some((card) => card.reference?.kind === 'CHARACTER') ??
+    false;
+  const characters = useQuery({
+    queryKey: ['characters', campaignId],
+    queryFn: () =>
+      api.request<Character[]>(`/campaigns/${campaignId}/characters`),
+    enabled: hasCharacterCards,
+    retry: false,
+  });
+  const templates = useQuery({
+    queryKey: ['character-templates', campaign.data?.system],
+    queryFn: () =>
+      api.request<CharacterTemplate[]>(
+        `/game-systems/${campaign.data?.system}/templates`,
+      ),
+    enabled: hasCharacterCards && Boolean(campaign.data?.system),
+    retry: false,
+  });
   useEffect(() => {
     const cardId = searchParams.get('card');
     const card = board.data?.cards.find((item) => item.cardId === cardId);
@@ -706,12 +753,34 @@ export function BoardPage() {
   // any unsaved local layout instead of replacing the nodes wholesale.
   useEffect(() => {
     if (!board.data) return;
+    const characterConditions = new Map<string, string[]>();
+    for (const character of characters.data ?? []) {
+      const fields =
+        templates.data?.find((item) => item.templateId === character.templateId)
+          ?.schema.fields ?? [];
+      characterConditions.set(
+        character.characterId,
+        fields
+          .filter(
+            (field) =>
+              field.section === 'conditions' &&
+              field.type === 'boolean' &&
+              character.data[field.key] === true,
+          )
+          .map((field) =>
+            t(`case.character.condition.${field.key}`, {
+              defaultValue: field.label,
+            }),
+          ),
+      );
+    }
     const nextNodes = boardNodes(
       board.data.cards,
       board.data.links,
       canManage,
       campaign.data?.newSinceAt,
       profile?.userId,
+      characterConditions,
       persistNodeDimensions,
     );
     setNodes((current) => {
@@ -751,6 +820,8 @@ export function BoardPage() {
     canManage,
     campaign.data?.newSinceAt,
     profile?.userId,
+    characters.data,
+    templates.data,
     persistNodeDimensions,
     setEdges,
     setNodes,

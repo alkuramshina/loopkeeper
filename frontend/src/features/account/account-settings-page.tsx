@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { Avatar } from '../../components/avatar';
 import { formText } from '../../components/form-text';
+import '../campaigns/workspace-settings.css';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -114,7 +115,6 @@ export function AccountSettingsPage() {
         </button>
       </header>
       <section className="page-header">
-        <p className="kicker">{t('account.kicker')}</p>
         <h1>{t('account.title')}</h1>
       </section>
       <div className="settings-grid">

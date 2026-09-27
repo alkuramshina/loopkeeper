@@ -13,6 +13,7 @@ import { ProtectedImage } from '../../components/protected-image';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { PageError } from '../../components/page-error';
+import './workspace-settings.css';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -170,7 +171,6 @@ export function BackgroundSettingsPage() {
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
       <section className="page-header">
-        <p className="kicker">{t('workspace.backgroundSettings')}</p>
         <h2>{t('backgrounds.title')}</h2>
       </section>
       {error && (

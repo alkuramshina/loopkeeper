@@ -152,6 +152,10 @@ export function AppRouter() {
             path="/campaigns/:campaignId/characters"
             element={<CharactersPage />}
           />
+          <Route
+            path="/campaigns/:campaignId/characters/:characterId"
+            element={<CharactersPage />}
+          />
 
           <Route
             path="/campaigns/:campaignId/members"
