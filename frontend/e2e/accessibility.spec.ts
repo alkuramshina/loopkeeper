@@ -238,7 +238,7 @@ test('every dialog is named, keeps focus inside, closes with Escape and returns 
   });
 
   const dialogs: [TestUser, string, string, string][] = [
-    [owner, '/campaigns', 'Новая кампания', 'Новая кампания'],
+    [owner, '/campaigns', 'Создать кампанию', 'Новая кампания'],
     [
       owner,
       `/campaigns/${campaignId}/elements/${elementId}`,
@@ -344,7 +344,7 @@ test('the main forms work with the keyboard alone and announce errors', async ({
 
   // Campaign: a failed save is announced, the retry creates it.
   await page.goto('/campaigns');
-  await page.getByRole('button', { name: 'Новая кампания' }).focus();
+  await page.getByRole('button', { name: 'Создать кампанию' }).focus();
   await page.keyboard.press('Enter');
   const campaignDialog = page.getByRole('dialog', { name: 'Новая кампания' });
   await expect(
@@ -369,7 +369,7 @@ test('the main forms work with the keyboard alone and announce errors', async ({
   await expect(campaignDialog.getByRole('alert')).toBeVisible();
   await page.unroute('**/api/campaigns');
   await expect(
-    campaignDialog.getByRole('button', { name: 'Создать кампанию' }),
+    campaignDialog.getByRole('button', { name: 'Создать' }),
   ).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(campaignDialog).toHaveCount(0);

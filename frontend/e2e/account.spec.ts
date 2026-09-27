@@ -8,8 +8,8 @@ test('M9: renames the account and changes the password', async ({
   const user = await registerUser(request, 'Старое имя');
   await signInAs(page, user);
   await page.goto('/campaigns');
-  await page.locator('.campaign-list-account summary').click();
-  await page.locator('.campaign-list-account').getByRole('link').click();
+  await page.locator('.account-menu summary').click();
+  await page.locator('.account-menu').getByRole('link').click();
   await expect(page).toHaveURL(/\/settings\/account$/);
   await expect(page.getByLabel('Электронная почта')).toBeDisabled();
   await expect(page.getByLabel('Электронная почта')).toHaveValue(user.email);
@@ -66,10 +66,8 @@ test('M9: renames the account and changes the password', async ({
   await page.getByLabel('Пароль').fill(newPassword);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
-  await page.locator('.campaign-list-account summary').click();
+  await page.locator('.account-menu summary').click();
   await expect(
-    page
-      .locator('.campaign-list-account')
-      .getByRole('link', { name: 'Новое имя' }),
+    page.locator('.account-menu').getByRole('link', { name: 'Новое имя' }),
   ).toBeVisible();
 });

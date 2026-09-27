@@ -45,7 +45,7 @@ test('signs up, restores the session on reload and signs out', async ({
   await expect(page).toHaveURL(/\/campaigns$/);
   expect(refreshes.value).toBe(1);
 
-  await page.locator('.campaign-list-account summary').click();
+  await page.locator('.account-menu summary').click();
   await page.getByRole('button', { name: 'Выйти' }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
   await page.reload();
@@ -72,11 +72,9 @@ test('signs in through the form and reports wrong credentials by code', async ({
   await page.getByLabel('Пароль').fill(user.password);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
-  await page.locator('.campaign-list-account summary').click();
+  await page.locator('.account-menu summary').click();
   await expect(
-    page
-      .locator('.campaign-list-account')
-      .getByRole('link', { name: user.name }),
+    page.locator('.account-menu').getByRole('link', { name: user.name }),
   ).toBeVisible();
 });
 
@@ -87,11 +85,9 @@ test('M2: a lost refresh session redirects to sign-in without a refresh loop', a
   const user = await registerUser(request, 'Потерянный');
   await signInAs(page, user);
   await page.goto('/campaigns');
-  await page.locator('.campaign-list-account summary').click();
+  await page.locator('.account-menu summary').click();
   await expect(
-    page
-      .locator('.campaign-list-account')
-      .getByRole('link', { name: user.name }),
+    page.locator('.account-menu').getByRole('link', { name: user.name }),
   ).toBeVisible();
 
   await page.context().clearCookies();
@@ -99,7 +95,7 @@ test('M2: a lost refresh session redirects to sign-in without a refresh loop', a
   await page.reload();
 
   await expect(page).toHaveURL(/\/sign-in$/);
-  await expect(page.locator('.campaign-list-account summary')).toHaveCount(0);
+  await expect(page.locator('.account-menu summary')).toHaveCount(0);
   expect(refreshes.value).toBe(1);
 });
 

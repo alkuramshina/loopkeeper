@@ -117,7 +117,6 @@ export function CampaignSettingsPage() {
                 defaultValue={campaign.data?.description ?? ''}
                 maxLength={1000}
                 name="description"
-                required
               />
             </label>
             {error && (

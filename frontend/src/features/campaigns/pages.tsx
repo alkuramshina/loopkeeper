@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Campaign, GameSystem } from '../../api/client';
@@ -9,10 +9,8 @@ import { ModalDialog } from '../../components/modal-dialog';
 import { ProtectedImage } from '../../components/protected-image';
 import { errorMessage } from '../../components/page-error';
 import { OfflineNotice } from '../../components/offline-notice';
-import { Logo } from '../../components/brand/logo';
-import { Avatar } from '../../components/avatar';
-import { ImageIcon, Link2, Plus } from 'lucide-react';
-import { invitationToken } from './invitation-token';
+import { AppTopbar } from '../../components/app-topbar';
+import { ImageIcon, Plus } from 'lucide-react';
 import './new-since-visit.css';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
@@ -23,13 +21,10 @@ function apiErrorMessage(cause: unknown, t: TFunction) {
 
 export function CampaignListPage() {
   const { t } = useTranslation();
-  const { api, profile, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { api } = useAuth();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
   const [isCreating, setCreating] = useState(false);
-  const [invitationValue, setInvitationValue] = useState('');
-  const [invitationError, setInvitationError] = useState(false);
   const campaigns = useQuery({
     queryKey: ['campaigns'],
     queryFn: () => api.request<Campaign[]>('/campaigns'),
@@ -48,7 +43,7 @@ export function CampaignListPage() {
         method: 'POST',
         body: JSON.stringify({
           title: form.get('title'),
-          description: form.get('description'),
+          description: form.get('description') || undefined,
           system: form.get('system'),
         }),
       });
@@ -67,57 +62,24 @@ export function CampaignListPage() {
     setCreating(true);
   };
 
-  function openInvitation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const token = invitationToken(invitationValue);
-    if (!token) {
-      setInvitationError(true);
-      return;
-    }
-    setInvitationError(false);
-    void navigate(`/invitations/${encodeURIComponent(token)}`);
-  }
-
   return (
-    <main className="campaign-page">
-      <header className="campaign-topbar">
-        <Link className="brand-lock" to="/campaigns">
-          <Logo label={t('appName')} />
-        </Link>
-        <details className="campaign-list-account">
-          <summary>
-            <span>{t('account.title')}</span>
-            <Avatar
-              alt=""
-              seed={profile?.name || profile?.email || ''}
-              size="small"
-            />
-          </summary>
-          <div>
-            <Link to="/settings/account">
-              {profile?.name || profile?.email}
-            </Link>
-            <button type="button" onClick={() => void signOut()}>
-              {t('auth.signOut')}
-            </button>
-          </div>
-        </details>
-      </header>
+    <main className="app-page">
+      <AppTopbar />
       <section className="campaigns-bg">
         <OfflineNotice />
         <header className="campaigns-top">
-          <div>
-            <h1>{t('campaigns.title')}</h1>
-            <p className="campaigns-intro">{t('campaigns.intro')}</p>
-          </div>
+          <h1>{t('campaigns.title')}</h1>
           {campaigns.data?.length ? (
-            <button onClick={openCreate}>
+            <button
+              aria-label={t('campaigns.createCampaign')}
+              onClick={openCreate}
+            >
               <Plus aria-hidden="true" size={18} />
-              {t('campaigns.newCampaign')}
+              {t('campaigns.create')}
             </button>
           ) : null}
         </header>
-        {isCreating ? (
+        {isCreating && (
           <ModalDialog
             onClose={() => {
               setCreating(false);
@@ -148,7 +110,7 @@ export function CampaignListPage() {
               </label>
               <label>
                 {t('campaigns.description')}
-                <textarea name="description" required />
+                <textarea maxLength={1000} name="description" />
               </label>
               {error && (
                 <p className="form-error" role="alert">
@@ -158,7 +120,8 @@ export function CampaignListPage() {
               <button>{t('campaigns.create')}</button>
             </form>
           </ModalDialog>
-        ) : campaigns.isError && !campaigns.data ? (
+        )}
+        {campaigns.isError && !campaigns.data ? (
           // A failed load must not look like an empty list.
           <section className="campaign-page-state">
             <p role="alert">
@@ -207,9 +170,11 @@ export function CampaignListPage() {
                       campaign.system ||
                       t('campaigns.systemFallback')}
                   </p>
-                  <p className="campaign-card-description">
-                    {campaign.description || t('campaigns.descriptionFallback')}
-                  </p>
+                  {campaign.description && (
+                    <p className="campaign-card-description">
+                      {campaign.description}
+                    </p>
+                  )}
                   {(campaign.newVisibleMaterialCount ?? 0) > 0 && (
                     <p className="campaign-card-new">
                       {t('campaigns.newMaterials', {
@@ -231,26 +196,6 @@ export function CampaignListPage() {
             <button onClick={openCreate}>{t('campaigns.firstCampaign')}</button>
           </section>
         )}
-        <form className="campaign-invitation" onSubmit={openInvitation}>
-          <Link2 aria-hidden="true" size={18} />
-          <div>
-            <strong>{t('campaigns.haveInvitation')}</strong>
-            <span>{t('campaigns.pasteInvitation')}</span>
-          </div>
-          <label className="campaign-invitation-input">
-            <span className="sr-only">{t('campaigns.invitationLink')}</span>
-            <input
-              value={invitationValue}
-              onChange={(event) => {
-                setInvitationValue(event.target.value);
-                setInvitationError(false);
-              }}
-              placeholder={t('campaigns.invitationPlaceholder')}
-            />
-          </label>
-          <button type="submit">{t('campaigns.join')}</button>
-          {invitationError && <p role="alert">{t('auth.invitationInvalid')}</p>}
-        </form>
       </section>
     </main>
   );

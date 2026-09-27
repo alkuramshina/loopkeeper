@@ -44,6 +44,19 @@ select {
   color: var(--color-text);
   background: var(--color-surface);
 }
+/* A drawn chevron: the native arrow sits too close to the right edge. */
+select {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%),
+    linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+  background-position:
+    right 1.125rem center,
+    right 0.8rem center;
+  background-size: 0.325rem 0.325rem;
+  background-repeat: no-repeat;
+}
 textarea {
   min-height: 6rem;
   resize: vertical;
@@ -249,22 +262,6 @@ textarea {
   color: var(--color-danger);
   margin: 0;
 }
-.app-page {
-  width: min(100% - 2rem, 72rem);
-  margin: auto;
-  padding-bottom: 3rem;
-}
-.topbar {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  min-height: 4rem;
-  border-bottom: 1px solid var(--color-line);
-}
-.topbar span {
-  margin-left: auto;
-  color: var(--color-text-muted);
-}
 .button-ghost,
 .button-ghost:hover:not(:disabled) {
   background: transparent;
@@ -277,13 +274,6 @@ textarea {
   width: min(100% - 2rem, 70rem);
   margin: 0 auto;
   padding-bottom: 3rem;
-}
-.settings-topbar {
-  justify-content: space-between;
-  display: flex;
-  min-height: 4.5rem;
-  align-items: center;
-  border-bottom: 1px solid var(--color-line);
 }
 .settings-grid {
   display: grid;
@@ -315,13 +305,13 @@ textarea {
 .page-header h1 {
   margin: 0;
 }
-.campaign-page {
+.app-page {
   min-height: 100vh;
   background: var(--color-bg);
 }
-.campaign-topbar {
+.app-topbar {
   display: flex;
-  min-height: 4.5rem;
+  min-height: var(--app-topbar-height);
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -330,20 +320,13 @@ textarea {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-line);
 }
-.campaign-topbar .brand-lock {
+.app-topbar .brand-lock {
   color: inherit;
   text-decoration: none;
 }
-.campaign-account {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-}
 .campaigns-bg {
   width: min(100% - 3rem, 82rem);
-  min-height: calc(100vh - 4.5rem);
+  min-height: calc(100vh - var(--app-topbar-height));
   margin: auto;
   padding: clamp(2rem, 5vw, 3.5rem) 0;
 }
@@ -358,12 +341,6 @@ textarea {
   margin: 0.25rem 0 0;
   font-size: clamp(2rem, 4vw, 2.5rem);
   letter-spacing: -0.03em;
-}
-.campaigns-intro {
-  max-width: 38rem;
-  margin: 0.65rem 0 0;
-  color: var(--color-text-secondary);
-  line-height: 1.55;
 }
 .campaigns-top > button,
 .campaign-empty-state > button,
@@ -488,7 +465,7 @@ textarea {
 }
 .modal-dialog-header {
   display: flex;
-  align-items: start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 1.25rem 1.5rem 0;
@@ -511,19 +488,9 @@ textarea {
   gap: 1rem;
   padding: 1.5rem;
 }
-.campaign-create-wrap {
-  display: grid;
-  place-items: start center;
-}
 .campaign-create-card {
   display: grid;
-  width: min(100%, 34rem);
   gap: 1.125rem;
-  padding: 1.75rem;
-  border: 1px solid var(--color-line);
-  border-radius: 12px;
-  background: var(--color-surface);
-  box-shadow: var(--shadow-md);
 }
 .campaign-create-card h2,
 .panel h2 {
@@ -1210,67 +1177,6 @@ textarea {
   min-height: 100vh;
   background: var(--color-bg);
 }
-.campaign-workspace-shell-topbar {
-  display: flex;
-  min-height: 4.5rem;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 0 1.5rem;
-  color: var(--color-text);
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-line);
-}
-.campaign-workspace-shell-topbar .brand-lock,
-.campaign-workspace-shell-mobile-header .brand-lock {
-  color: inherit;
-  text-decoration: none;
-}
-.campaign-workspace-shell-topbar-actions {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-.campaign-workspace-shell-topbar .campaign-account a {
-  color: inherit;
-}
-.campaign-workspace-shell-title {
-  overflow: hidden;
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.campaign-workspace-shell-body {
-  display: grid;
-  min-height: calc(100vh - 4.5rem);
-  grid-template-columns: 16rem minmax(0, 1fr);
-}
-.campaign-workspace-shell-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 1.75rem;
-  padding: 2rem 1.25rem 1.25rem;
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-line);
-}
-.campaign-workspace-shell-role {
-  margin: 0 0 0.35rem;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.campaign-workspace-shell-sidebar h1 {
-  margin: 0;
-  font-size: 1.25rem;
-  line-height: 1.25;
-}
 .campaign-workspace-shell-navigation {
   display: grid;
   gap: 0.25rem;
@@ -1293,23 +1199,6 @@ textarea {
 }
 .campaign-workspace-shell-navigation a.active {
   box-shadow: inset 3px 0 var(--color-accent);
-}
-.campaign-workspace-shell-profile {
-  display: grid;
-  gap: 0.35rem;
-  margin-top: auto;
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-line);
-}
-.campaign-workspace-shell-profile span {
-  overflow-wrap: anywhere;
-  color: var(--color-text-muted);
-  font-size: 0.8125rem;
-}
-.campaign-workspace-shell-profile .button-ghost {
-  width: fit-content;
-  padding: 0.35rem 0;
-  font-size: 0.875rem;
 }
 .campaign-workspace-shell-content {
   min-width: 0;
@@ -1362,16 +1251,15 @@ input[type='file'] {
   .auth-form {
     gap: 1rem;
   }
-  .campaign-topbar {
-    min-height: 3.75rem;
-    padding: 0 1rem;
+  .app-page {
+    --app-topbar-height: 3.75rem;
   }
-  .campaign-account span {
-    display: none;
+  .app-topbar {
+    padding: 0 1rem;
   }
   .campaigns-bg {
     width: min(100% - 2rem, 82rem);
-    min-height: calc(100vh - 3.75rem);
+    min-height: calc(100vh - var(--app-topbar-height));
     padding-top: 1.75rem;
   }
   .campaigns-top {
@@ -1524,29 +1412,26 @@ summary {
   margin: 0;
   font-family: var(--font-heading);
 }
-.campaigns-intro {
-  margin-top: 0.25rem;
-}
 .campaigns-top > button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   white-space: nowrap;
 }
-.campaign-list-account {
+.account-menu {
   position: relative;
 }
-.campaign-list-account summary {
+.account-menu summary {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   cursor: pointer;
   list-style: none;
 }
-.campaign-list-account summary::-webkit-details-marker {
+.account-menu summary::-webkit-details-marker {
   display: none;
 }
-.campaign-list-account > div {
+.account-menu > div {
   position: absolute;
   z-index: 5;
   right: 0;
@@ -1559,8 +1444,8 @@ summary {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
 }
-.campaign-list-account a,
-.campaign-list-account button {
+.account-menu a,
+.account-menu button {
   display: block;
   width: 100%;
   padding: 0.6rem;
@@ -1571,8 +1456,8 @@ summary {
   text-decoration: none;
   font-size: var(--text-sm);
 }
-.campaign-list-account a:hover,
-.campaign-list-account button:hover {
+.account-menu a:hover,
+.account-menu button:hover {
   background: var(--color-hover);
 }
 .campaign-card {
@@ -1642,68 +1527,27 @@ summary {
   background: var(--color-surface);
   color: var(--color-text);
 }
-.campaign-invitation {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 1.75rem;
-  padding: 1rem 1.25rem;
-  border: 1px dashed var(--color-line-strong);
-  border-radius: var(--radius-lg);
-}
-.campaign-invitation > svg {
-  flex: none;
-  color: var(--color-text-muted);
-}
-.campaign-invitation > div {
-  display: grid;
-  flex: 1 1 12rem;
-  font-size: var(--text-sm);
-}
-.campaign-invitation > div span {
-  color: var(--color-text-secondary);
-}
-.campaign-invitation-input {
-  flex: 2 1 16rem;
-}
-.campaign-invitation-input input {
-  width: 100%;
-}
-.campaign-invitation button {
-  color: var(--color-text);
-  background: var(--color-surface);
-  border: 1px solid var(--color-line);
-  white-space: nowrap;
-}
-.campaign-invitation button:hover {
-  background: var(--color-hover);
-}
-.campaign-invitation [role='alert'] {
-  width: 100%;
-  margin: 0;
-  color: var(--color-danger);
-  font-size: var(--text-sm);
-}
-
 .campaign-workspace-shell {
   display: grid;
   min-height: 100dvh;
   grid-template-columns: 15.5rem minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.campaign-workspace-shell-topbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: sticky;
+  z-index: 10;
+  top: 0;
 }
 .campaign-workspace-shell-sidebar {
   grid-column: 1;
-  grid-row: 1;
+  grid-row: 2;
   position: sticky;
-  top: 0;
-  height: 100dvh;
+  top: var(--app-topbar-height);
+  height: calc(100dvh - var(--app-topbar-height));
   gap: 0;
   padding: 1rem 0.875rem;
-}
-.campaign-workspace-shell-sidebar > .brand-lock {
-  margin: 0.25rem 0.4rem 1.25rem;
-  color: var(--color-text);
-  text-decoration: none;
 }
 .campaign-switcher {
   position: relative;
@@ -1787,62 +1631,9 @@ summary {
   color: var(--color-text-muted);
   font-size: var(--text-xs);
 }
-.campaign-profile-menu {
-  position: relative;
-  margin-top: auto;
-  padding-top: 0.7rem;
-  border-top: 1px solid var(--color-line);
-}
-.campaign-profile-menu summary {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-height: 2.75rem;
-  padding: 0.25rem;
-  cursor: pointer;
-  list-style: none;
-}
-.campaign-profile-menu summary::-webkit-details-marker {
-  display: none;
-}
-.campaign-profile-menu summary span {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--text-sm);
-}
-.campaign-profile-menu-actions {
-  position: absolute;
-  z-index: 20;
-  bottom: calc(100% + 0.4rem);
-  left: 0;
-  right: 0;
-  display: grid;
-  padding: 0.35rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-md);
-}
-.campaign-profile-menu-actions a,
-.campaign-profile-menu-actions button {
-  display: block;
-  padding: 0.6rem;
-  color: var(--color-text);
-  background: transparent;
-  border-radius: var(--radius-md);
-  text-align: left;
-  text-decoration: none;
-  font-size: var(--text-sm);
-}
-.campaign-profile-menu-actions a:hover,
-.campaign-profile-menu-actions button:hover {
-  background: var(--color-hover);
-}
 .campaign-workspace-shell-content {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 2;
   padding: clamp(1rem, 2.5vw, 2rem);
 }
 .campaign-workspace-shell-mobile-header,
@@ -1855,6 +1646,10 @@ summary {
 @media (max-width: 1023px) {
   .campaign-workspace-shell {
     display: block;
+  }
+  /* The compact campaign header takes over, with the same account menu. */
+  .campaign-workspace-shell-topbar {
+    display: none;
   }
   .campaign-workspace-shell-mobile-header {
     display: flex;
@@ -1961,13 +1756,6 @@ summary {
     left: 1.25rem;
     width: 9.25rem;
   }
-  .campaign-invitation {
-    gap: 0.75rem;
-  }
-  .campaign-invitation-input,
-  .campaign-invitation button {
-    flex: 1 1 100%;
-  }
 }
 
 /* On a phone a sheet dialog rises from the bottom edge. */
@@ -1987,7 +1775,6 @@ summary {
    ≥ 1280 — the sidebar with words; 1024–1279 — icons only, the words become
    tooltips; 600–1023 — a header with a slide-out menu; < 600 — the bottom
    navigation. */
-.brand-lock-mark,
 .campaign-switcher-initial,
 .campaign-menu-button {
   display: none;
@@ -2007,17 +1794,6 @@ summary {
     /* Tooltips reach out of the rail. */
     overflow: visible;
   }
-  .campaign-workspace-shell-sidebar > .brand-lock {
-    width: 2.25rem;
-    margin: 0.25rem 0 1.25rem;
-  }
-  .brand-lock-full {
-    display: none;
-  }
-  .brand-lock-mark {
-    display: block;
-    width: 100%;
-  }
   .campaign-switcher {
     display: grid;
     place-items: center;
@@ -2034,8 +1810,7 @@ summary {
   .campaign-switcher-meta,
   .campaign-switcher > svg,
   .campaign-search-trigger kbd,
-  .campaign-nav-group,
-  .campaign-profile-menu summary > svg {
+  .campaign-nav-group {
     display: none;
   }
   .campaign-search-trigger {
@@ -2065,21 +1840,6 @@ summary {
     top: 0.4rem;
     right: 0.4rem;
     margin: 0;
-  }
-  .campaign-profile-menu {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-  .campaign-profile-menu summary {
-    position: relative;
-    justify-content: center;
-  }
-  .campaign-profile-menu-actions {
-    right: auto;
-    bottom: 0;
-    left: calc(100% + 0.5rem);
-    min-width: 12rem;
   }
   /* Words stay the accessible names and appear beside the icon on hover or
      keyboard focus. */

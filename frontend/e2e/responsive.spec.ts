@@ -234,7 +234,7 @@ for (const { width, height, dialogs } of viewports) {
       await signInAs(page, player);
 
       const dialogs: [string, string, string, string][] = [
-        ['/campaigns', 'Новая кампания', 'Новая кампания', 'Создать кампанию'],
+        ['/campaigns', 'Создать кампанию', 'Новая кампания', 'Создать'],
         [
           `/campaigns/${campaignId}/characters`,
           'Создать персонажа',

@@ -89,9 +89,10 @@ describe('CampaignListPage', () => {
     const card = await screen.findByRole('link', { name: /Сигнал из леса/ });
     expect(card).toHaveAttribute('href', '/campaigns/c');
     expect(within(card).getByText('Наблюдатель')).toBeInTheDocument();
+    // Without a description the card shows no placeholder text.
     expect(
-      within(card).getByText('Описание кампании ещё не добавлено.'),
-    ).toBeInTheDocument();
+      card.querySelector('.campaign-card-description'),
+    ).not.toBeInTheDocument();
   });
 
   it('creates a campaign and puts it on top of the list', async () => {
@@ -121,9 +122,7 @@ describe('CampaignListPage', () => {
     fireEvent.change(within(dialog).getByLabelText('Описание'), {
       target: { value: 'Лето 1985 года.' },
     });
-    fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Создать кампанию' }),
-    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Создать' }));
 
     const card = await screen.findByRole('link', { name: /Остров/ });
     expect(within(card).getByText('Мастер')).toBeInTheDocument();
@@ -137,18 +136,30 @@ describe('CampaignListPage', () => {
     });
   });
 
-  it('validates an invitation pasted on the campaign list', () => {
+  it('keeps the campaign list behind the new campaign dialog', async () => {
+    answer(() =>
+      Promise.resolve([
+        { campaignId: 'c', title: 'Сигнал из леса', currentUserRole: 'OWNER' },
+      ]),
+    );
+    renderList();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Создать кампанию' }),
+    );
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Сигнал из леса/, hidden: true }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers no invitation field on the campaign list', () => {
     answer(() => Promise.resolve([]));
     renderList();
-    const input = screen.getByRole('textbox', {
-      name: 'Ссылка или токен приглашения',
-    });
-    fireEvent.change(input, {
-      target: { value: 'https://example.com/campaigns/123' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Присоединиться' }));
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Вставьте корректную ссылку',
-    );
+
+    expect(
+      screen.queryByRole('button', { name: 'Присоединиться' }),
+    ).not.toBeInTheDocument();
   });
 });

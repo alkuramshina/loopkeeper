@@ -169,6 +169,9 @@
   --control-height-lg: 2.75rem;
   --touch-target: 2.75rem;
 
+  /* The shared header of the list, the account and the workspace */
+  --app-topbar-height: 4.5rem;
+
   /* Motion: short and quiet */
   --duration-fast: 120ms;
   --duration-base: 200ms;

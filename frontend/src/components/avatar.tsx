@@ -16,7 +16,8 @@ export function Avatar({ alt, imageUrl, seed, size = 'medium' }: AvatarProps) {
   const fallback = createAvatar(
     { create: createInitials, meta: initialsMeta },
     {
-      backgroundColor: ['e7edf0', 'dce4d1', 'e9d8d9'],
+      backgroundColor: ['1d6378', 'b5543a', '5f7f2c', '7b4a9c', 'a8325a'],
+      textColor: ['ffffff'],
       radius: 50,
       seed: alt || seed,
     },

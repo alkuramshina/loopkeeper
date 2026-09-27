@@ -63,6 +63,14 @@ describe('CampaignWorkspaceShell', () => {
     };
   });
 
+  it('names the campaign in the tab title while inside it', () => {
+    const { unmount } = renderShell(baseCampaign);
+    expect(document.title).toBe('Test campaign — Loopkeeper');
+
+    unmount();
+    expect(document.title).toBe('Loopkeeper');
+  });
+
   it('shows the board and the case but not notes or owner settings to a viewer', () => {
     renderShell(baseCampaign);
 

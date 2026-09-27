@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { Avatar } from '../../components/avatar';
 import { formText } from '../../components/form-text';
+import { AppTopbar } from '../../components/app-topbar';
 import '../campaigns/workspace-settings.css';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
@@ -101,136 +102,127 @@ export function AccountSettingsPage() {
   }
 
   return (
-    <main className="settings-page">
-      <header className="settings-topbar">
-        <button
-          className="button-ghost"
-          onClick={() => void navigate('/campaigns')}
-        >
-          ← {t('workspace.backToCampaigns')}
-        </button>
-        {/* The only sign-out on phones: the mobile workspace header has no room for it. */}
-        <button className="button-ghost" onClick={() => void signOut()}>
-          {t('auth.signOut')}
-        </button>
-      </header>
-      <section className="page-header">
-        <h1>{t('account.title')}</h1>
-      </section>
-      <div className="settings-grid">
-        <form className="panel" onSubmit={(event) => void saveProfile(event)}>
-          <div className="section-heading">
-            <h2>{t('account.profile')}</h2>
-            {profileSaved && (
-              <small className="success-message">{t('account.saved')}</small>
-            )}
-          </div>
-          <div className="account-avatar">
-            <Avatar
-              alt={profile?.name ?? profile?.email ?? ''}
-              imageUrl={profile?.avatarUrl}
-              seed={profile?.userId ?? ''}
-              size="large"
-            />
-            <div>
-              <label>
-                {t('account.avatar')}
-                <input
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void uploadAvatar(file);
-                    event.target.value = '';
-                  }}
-                  type="file"
-                />
-              </label>
-              <p className="muted">{t('account.avatarNotice')}</p>
-              {avatarError && (
-                <p className="form-error" role="alert">
-                  {avatarError}
-                </p>
+    <main className="app-page">
+      <AppTopbar />
+      <div className="settings-page">
+        <section className="page-header">
+          <h1>{t('account.title')}</h1>
+        </section>
+        <div className="settings-grid">
+          <form className="panel" onSubmit={(event) => void saveProfile(event)}>
+            <div className="section-heading">
+              <h2>{t('account.profile')}</h2>
+              {profileSaved && (
+                <small className="success-message">{t('account.saved')}</small>
               )}
-              <div className="action-row">
-                {profile?.avatarUrl?.startsWith('/media/') && (
-                  <button
-                    className="button-ghost"
-                    disabled={uploadingAvatar}
-                    onClick={() => void deleteAvatar()}
-                    type="button"
-                  >
-                    {t('account.deleteAvatar')}
-                  </button>
+            </div>
+            <div className="account-avatar">
+              <Avatar
+                alt={profile?.name ?? profile?.email ?? ''}
+                imageUrl={profile?.avatarUrl}
+                seed={profile?.userId ?? ''}
+                size="large"
+              />
+              <div>
+                <label>
+                  {t('account.avatar')}
+                  <input
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void uploadAvatar(file);
+                      event.target.value = '';
+                    }}
+                    type="file"
+                  />
+                </label>
+                <p className="muted">{t('account.avatarNotice')}</p>
+                {avatarError && (
+                  <p className="form-error" role="alert">
+                    {avatarError}
+                  </p>
                 )}
+                <div className="action-row">
+                  {profile?.avatarUrl?.startsWith('/media/') && (
+                    <button
+                      className="button-ghost"
+                      disabled={uploadingAvatar}
+                      onClick={() => void deleteAvatar()}
+                      type="button"
+                    >
+                      {t('account.deleteAvatar')}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <label>
-            {t('auth.email')}
-            <input disabled type="email" value={profile?.email ?? ''} />
-          </label>
-          <label>
-            {t('auth.name')}
-            <input
-              defaultValue={profile?.name ?? ''}
-              maxLength={100}
-              name="name"
-              required
-            />
-          </label>
-          {profileError && (
-            <p className="form-error" role="alert">
-              {profileError}
-            </p>
-          )}
-          <button disabled={savingProfile}>{t('common.save')}</button>
-        </form>
-        <form
-          className="panel"
-          onSubmit={(event) => void changePassword(event)}
-        >
-          <div className="section-heading">
-            <h2>{t('account.password')}</h2>
-          </div>
-          <p className="muted">{t('account.passwordNotice')}</p>
-          <label>
-            {t('account.currentPassword')}
-            <input
-              autoComplete="current-password"
-              name="currentPassword"
-              required
-              type="password"
-            />
-          </label>
-          <label>
-            {t('account.newPassword')}
-            <input
-              autoComplete="new-password"
-              minLength={8}
-              name="newPassword"
-              required
-              type="password"
-            />
-          </label>
-          <label>
-            {t('account.confirmPassword')}
-            <input
-              autoComplete="new-password"
-              minLength={8}
-              name="confirmation"
-              required
-              type="password"
-            />
-          </label>
-          {passwordError && (
-            <p className="form-error" role="alert">
-              {passwordError}
-            </p>
-          )}
-          <button disabled={changingPassword}>
-            {t('account.changePassword')}
-          </button>
-        </form>
+            <label>
+              {t('auth.email')}
+              <input disabled type="email" value={profile?.email ?? ''} />
+            </label>
+            <label>
+              {t('auth.name')}
+              <input
+                defaultValue={profile?.name ?? ''}
+                maxLength={100}
+                name="name"
+                required
+              />
+            </label>
+            {profileError && (
+              <p className="form-error" role="alert">
+                {profileError}
+              </p>
+            )}
+            <button disabled={savingProfile}>{t('common.save')}</button>
+          </form>
+          <form
+            className="panel"
+            onSubmit={(event) => void changePassword(event)}
+          >
+            <div className="section-heading">
+              <h2>{t('account.password')}</h2>
+            </div>
+            <p className="muted">{t('account.passwordNotice')}</p>
+            <label>
+              {t('account.currentPassword')}
+              <input
+                autoComplete="current-password"
+                name="currentPassword"
+                required
+                type="password"
+              />
+            </label>
+            <label>
+              {t('account.newPassword')}
+              <input
+                autoComplete="new-password"
+                minLength={8}
+                name="newPassword"
+                required
+                type="password"
+              />
+            </label>
+            <label>
+              {t('account.confirmPassword')}
+              <input
+                autoComplete="new-password"
+                minLength={8}
+                name="confirmation"
+                required
+                type="password"
+              />
+            </label>
+            {passwordError && (
+              <p className="form-error" role="alert">
+                {passwordError}
+              </p>
+            )}
+            <button disabled={changingPassword}>
+              {t('account.changePassword')}
+            </button>
+          </form>
+        </div>
       </div>
     </main>
   );

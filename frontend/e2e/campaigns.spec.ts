@@ -2,7 +2,6 @@ import { expect, test } from './support/test';
 import {
   addMember,
   createCampaign,
-  createInvitation,
   registerUser,
   signInAs,
 } from './support/api';
@@ -16,7 +15,7 @@ test('creates the first campaign from the empty state', async ({
   await page.goto('/campaigns');
 
   await expect(
-    page.getByRole('button', { name: 'Новая кампания' }),
+    page.getByRole('button', { name: 'Создать кампанию' }),
   ).toHaveCount(0);
   await page.getByRole('button', { name: 'Создать первую кампанию' }).click();
   const dialog = page.getByRole('dialog', { name: 'Новая кампания' });
@@ -24,34 +23,16 @@ test('creates the first campaign from the empty state', async ({
   await dialog.getByLabel('Описание').fill('Странные машины у озера.');
 
   // The browser blocks submission until a game system is chosen.
-  await dialog.getByRole('button', { name: 'Создать кампанию' }).click();
+  await dialog.getByRole('button', { name: 'Создать' }).click();
   await expect(dialog).toBeVisible();
   await dialog.getByLabel('Игровая система').selectOption({ index: 1 });
-  await dialog.getByRole('button', { name: 'Создать кампанию' }).click();
+  await dialog.getByRole('button', { name: 'Создать' }).click();
 
   await expect(dialog).toHaveCount(0);
   const card = page.getByRole('link', { name: /Лето в Мэларёарна/ });
   await expect(card).toContainText('Мастер');
   await card.click();
   await expect(page).toHaveURL(/\/campaigns\/[^/]+\/board$/);
-});
-
-test('a player joins from a pasted invitation on the campaign list', async ({
-  page,
-  request,
-}) => {
-  const owner = await registerUser(request, 'Мастер');
-  const player = await registerUser(request, 'Игрок');
-  const campaignId = await createCampaign(request, owner, 'Сигнал');
-  const token = await createInvitation(request, owner, campaignId, 'PLAYER');
-  await signInAs(page, player);
-  await page.goto('/campaigns');
-  await page
-    .getByRole('textbox', { name: 'Ссылка или токен приглашения' })
-    .fill(new URL(`/invitations/${token}`, page.url()).href);
-  await page.getByRole('button', { name: 'Присоединиться' }).click();
-  await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
-  await expect(page.locator('.campaign-switcher')).toContainText('Сигнал');
 });
 
 for (const width of [320, 768]) {
@@ -174,35 +155,28 @@ for (const viewport of [
 
     // From the campaign list.
     await page.goto('/campaigns');
-    await page.locator('.campaign-list-account summary').click();
-    await page.locator('.campaign-list-account').getByRole('link').click();
+    await page.locator('.account-menu summary').click();
+    await page.locator('.account-menu').getByRole('link').click();
     await expect(
       page.getByRole('heading', { name: 'Настройки аккаунта' }),
     ).toBeVisible();
     await page.goto('/campaigns');
-    await page.locator('.campaign-list-account summary').click();
+    await page.locator('.account-menu summary').click();
     await page.getByRole('button', { name: 'Выйти' }).click();
     await expect(page).toHaveURL(/\/sign-in/);
 
-    // From the workspace: the visible account link leads to settings, which
-    // offer sign-out on every screen size.
+    // From the workspace: the same avatar menu on every screen size, in the
+    // shared header on a desktop and in the campaign header below it.
     await signInAs(page, owner);
     await page.goto(`/campaigns/${campaignId}/characters`);
-    if (viewport.name === 'desktop') {
-      await page.locator('.campaign-profile-menu summary').click();
-      await page
-        .locator('.campaign-profile-menu')
-        .getByRole('link', { name: 'Настройки аккаунта' })
-        .click();
-    } else {
-      await page
-        .locator('.campaign-workspace-shell-mobile-header')
-        .getByRole('link', { name: 'Настройки аккаунта' })
-        .click();
-    }
+    const menu = page.locator('.account-menu').filter({ visible: true });
+    await expect(menu).toHaveCount(1);
+    await menu.locator('summary').click();
+    await menu.getByRole('link').click();
     await expect(
       page.getByRole('heading', { name: 'Настройки аккаунта' }),
     ).toBeVisible();
+    await page.locator('.account-menu summary').click();
     await page.getByRole('button', { name: 'Выйти' }).click();
     await expect(page).toHaveURL(/\/sign-in/);
     await page.goto(`/campaigns/${campaignId}/characters`);

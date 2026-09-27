@@ -14,10 +14,11 @@ export class CreateCampaignDto {
   @MaxLength(100)
   title!: string;
 
-  @ApiProperty({ maxLength: 1000 })
+  @ApiPropertyOptional({ maxLength: 1000 })
+  @IsOptional()
   @IsString()
   @MaxLength(1000)
-  description!: string;
+  description?: string;
 
   @ApiPropertyOptional({ enum: System })
   @IsOptional()

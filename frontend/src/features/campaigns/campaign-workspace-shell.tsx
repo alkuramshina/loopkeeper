@@ -17,9 +17,8 @@ import {
 import { Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { OfflineNotice } from '../../components/offline-notice';
-import { Logo, LogoMark } from '../../components/brand/logo';
 import { mediaQueries, useMediaQuery } from '../../theme/breakpoints';
-import { Avatar } from '../../components/avatar';
+import { AccountMenu, AppTopbar } from '../../components/app-topbar';
 import { useCampaignVisit } from './use-campaign-visit';
 import { CampaignSearch } from './campaign-search';
 import './new-since-visit.css';
@@ -33,7 +32,7 @@ export function CampaignWorkspaceShell({
   campaign,
   children,
 }: CampaignWorkspaceShellProps) {
-  const { api, profile, signOut } = useAuth();
+  const { api } = useAuth();
   useCampaignVisit(campaign);
   const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -65,6 +64,15 @@ export function CampaignWorkspaceShell({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+  const campaignTitle = campaign?.title;
+  useEffect(() => {
+    if (!campaignTitle) return;
+    const appName = t('appName');
+    document.title = `${campaignTitle} — ${appName}`;
+    return () => {
+      document.title = appName;
+    };
+  }, [campaignTitle, t]);
   const gameSystems = useQuery({
     queryKey: ['game-systems'],
     queryFn: () => api.request<GameSystem[]>('/game-systems'),
@@ -158,6 +166,7 @@ export function CampaignWorkspaceShell({
 
   return (
     <div className="campaign-workspace-shell">
+      <AppTopbar className="campaign-workspace-shell-topbar" />
       <aside
         className={`campaign-workspace-shell-sidebar${menuOpen ? ' campaign-workspace-shell-sidebar-open' : ''}`}
         id="campaign-sidebar"
@@ -167,10 +176,6 @@ export function CampaignWorkspaceShell({
           if ((event.target as Element).closest('a')) setMenuOpen(false);
         }}
       >
-        <Link className="brand-lock" to="/campaigns">
-          <Logo className="brand-lock-full" label={t('appName')} />
-          <LogoMark className="brand-lock-mark" label={t('appName')} />
-        </Link>
         <Link
           className="campaign-switcher"
           to="/campaigns"
@@ -210,25 +215,6 @@ export function CampaignWorkspaceShell({
             </>
           )}
         </nav>
-        <details className="campaign-profile-menu">
-          <summary>
-            <Avatar
-              alt=""
-              seed={profile?.name || profile?.email || ''}
-              size="small"
-            />
-            <span className="rail-label">
-              {profile?.name || profile?.email}
-            </span>
-            <ChevronDown aria-hidden="true" size={16} />
-          </summary>
-          <div className="campaign-profile-menu-actions">
-            <Link to="/settings/account">{t('account.title')}</Link>
-            <button type="button" onClick={() => void signOut()}>
-              {t('auth.signOut')}
-            </button>
-          </div>
-        </details>
       </aside>
       {menuOpen && (
         <div
@@ -265,13 +251,7 @@ export function CampaignWorkspaceShell({
         >
           <Search aria-hidden="true" size={21} />
         </button>
-        <Link to="/settings/account" aria-label={t('account.title')}>
-          <Avatar
-            alt=""
-            seed={profile?.name || profile?.email || ''}
-            size="small"
-          />
-        </Link>
+        <AccountMenu />
       </header>
       <main className="campaign-workspace-shell-content">
         <OfflineNotice />
