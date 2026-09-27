@@ -50,7 +50,7 @@ test('signs up, restores the session on reload and signs out', async ({
   await expect(page).toHaveURL(/\/sign-in$/);
   await page.reload();
   await expect(
-    page.getByRole('heading', { name: 'Войдите в Loopkeeper' }),
+    page.getByRole('heading', { name: 'С возвращением' }),
   ).toBeVisible();
 });
 
@@ -114,6 +114,9 @@ test('keeps the invitation through sign-in and joins the campaign', async ({
 
   await page.goto(`/invitations/${token}`);
   await expect(page).toHaveURL(/\/sign-in\?invitation=/);
+  await expect(page.getByRole('status')).toContainText(
+    'Мастер приглашает вас в кампанию «Кампания по ссылке».',
+  );
 
   await page.getByLabel('Электронная почта').fill(invited.email);
   await page.getByLabel('Пароль').fill(invited.password);

@@ -34,3 +34,14 @@ export class CreatedCampaignInvitationResponseDto extends CampaignInvitationResp
   })
   token!: string;
 }
+
+export class CampaignInvitationPreviewResponseDto {
+  @ApiProperty()
+  campaignTitle!: string;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  masterName!: string | null;
+
+  @ApiProperty({ enum: CampaignRole })
+  role!: CampaignRole;
+}

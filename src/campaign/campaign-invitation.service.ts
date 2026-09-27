@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { CampaignRole } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import * as argon2 from 'argon2';
 import { DomainException } from '../common/exceptions/domain.exception';
@@ -69,25 +70,32 @@ export class CampaignInvitationService {
     }
   }
 
-  async accept(userId: string, token: string) {
-    const [invitationId, secret, ...extraParts] = token.split('.');
-    if (!invitationId || !secret || extraParts.length > 0) {
-      throw this.invitationNotFound();
-    }
-
-    const invitation = await this.prisma.campaignInvitation.findUnique({
-      where: { invitationId },
+  // Public: the token itself is the secret, so the answer is limited to what
+  // the invitee needs to recognise the invitation before signing in.
+  async preview(token: string) {
+    const invitation = await this.findUsableInvitation(token);
+    const campaign = await this.prisma.campaign.findUniqueOrThrow({
+      where: { campaignId: invitation.campaignId },
+      select: {
+        title: true,
+        members: {
+          where: { campaignRole: CampaignRole.OWNER },
+          select: { user: { select: { name: true } } },
+          take: 1,
+        },
+      },
     });
 
-    if (
-      !invitation ||
-      invitation.acceptedAt ||
-      invitation.revokedAt ||
-      invitation.expiresAt <= new Date() ||
-      !(await argon2.verify(invitation.tokenHash, secret))
-    ) {
-      throw this.invitationNotFound();
-    }
+    return {
+      campaignTitle: campaign.title,
+      masterName: campaign.members[0]?.user.name ?? null,
+      role: invitation.role,
+    };
+  }
+
+  async accept(userId: string, token: string) {
+    const invitation = await this.findUsableInvitation(token);
+    const { invitationId } = invitation;
 
     return this.prisma.$transaction(async (tx) => {
       const existingMember = await tx.campaignMember.findUnique({
@@ -128,6 +136,29 @@ export class CampaignInvitationService {
         },
       });
     });
+  }
+
+  private async findUsableInvitation(token: string) {
+    const [invitationId, secret, ...extraParts] = token.split('.');
+    if (!invitationId || !secret || extraParts.length > 0) {
+      throw this.invitationNotFound();
+    }
+
+    const invitation = await this.prisma.campaignInvitation.findUnique({
+      where: { invitationId },
+    });
+
+    if (
+      !invitation ||
+      invitation.acceptedAt ||
+      invitation.revokedAt ||
+      invitation.expiresAt <= new Date() ||
+      !(await argon2.verify(invitation.tokenHash, secret))
+    ) {
+      throw this.invitationNotFound();
+    }
+
+    return invitation;
   }
 
   private invitationNotFound(): DomainException {

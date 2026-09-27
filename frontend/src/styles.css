@@ -49,6 +49,8 @@ textarea {
   resize: vertical;
 }
 .auth-page {
+  /* The form title and the image caption start at the same height. */
+  --auth-content-top: clamp(8.5rem, 24vh, 13rem);
   min-height: 100vh;
   background: var(--color-bg);
 }
@@ -60,15 +62,12 @@ textarea {
 .auth-brand {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  padding: clamp(2.5rem, 6vw, 4rem);
+  padding: var(--auth-content-top) clamp(2.5rem, 6vw, 4rem) 3rem;
   background: var(--color-media-backdrop);
   color: var(--color-on-image);
-  --logo-ink: var(--color-on-image);
-  --logo-face: transparent;
 }
 .auth-brand-image {
   position: absolute;
@@ -106,12 +105,9 @@ textarea {
 .brand-lock .logo {
   width: 9.25rem;
 }
-.auth-brand .brand-lock {
-  width: 11.875rem;
-}
 .auth-brand-title {
   max-width: 21rem;
-  margin: clamp(3rem, 8vw, 7rem) 0 0;
+  margin: 0;
   font-size: clamp(2.4rem, 4vw, 3rem);
   font-weight: 700;
   line-height: 1.15;
@@ -124,16 +120,8 @@ textarea {
   font-size: 1.05rem;
   line-height: 1.6;
 }
-.auth-note {
-  max-width: 20rem;
-  margin: 2rem 0 0;
-  padding-top: 1.125rem;
-  border-top: 1px solid var(--color-on-image-line);
-  color: var(--color-on-image);
-  font-size: 0.8125rem;
-  line-height: 1.5;
-}
 .auth-main {
+  position: relative;
   display: grid;
   min-width: 0;
   align-content: start;
@@ -159,22 +147,34 @@ textarea {
   border-radius: 0;
   box-shadow: none;
 }
-.auth-mobile-brand {
-  display: none;
-}
-.auth-card > .kicker {
-  margin: 0 0 0.75rem;
-}
 .auth-card > h1 {
   margin: 0;
   font-size: 2rem;
   line-height: 1.2;
   letter-spacing: -0.025em;
 }
-.auth-intro {
+.auth-intro,
+.auth-invitation {
   margin: 0.65rem 0 2rem;
   color: var(--color-text-secondary);
   line-height: 1.55;
+}
+.auth-invitation {
+  min-height: 4.5rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-muted-bg);
+  font-size: 0.9375rem;
+}
+.auth-invitation span {
+  color: var(--color-text-secondary);
+}
+.auth-invitation.is-unavailable {
+  border-color: var(--color-danger-line);
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
 }
 .auth-form,
 .panel {
@@ -223,46 +223,6 @@ textarea {
 }
 .auth-submit:hover:not(:disabled) {
   background: var(--color-accent-hover);
-}
-.auth-separator {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin: 1.75rem 0;
-  color: var(--color-text-muted);
-  font-size: 0.8125rem;
-}
-.auth-separator::before,
-.auth-separator::after {
-  height: 1px;
-  flex: 1;
-  content: '';
-  background: var(--color-line);
-}
-.auth-invitation-button {
-  width: 100%;
-  min-height: 2.75rem;
-  border: 1px solid var(--color-line);
-  color: var(--color-text);
-  background: var(--color-surface);
-  font-weight: 700;
-}
-.auth-invitation-button:hover:not(:disabled) {
-  border-color: var(--color-line-strong);
-  background: var(--color-hover);
-}
-.auth-invitation-entry {
-  display: grid;
-  gap: 0.875rem;
-  padding: 1rem;
-  border: 1px solid var(--color-line);
-  border-radius: 8px;
-  background: var(--color-muted-bg);
-}
-.auth-invitation-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
 }
 .auth-switch {
   margin: 1.5rem 0 0;
@@ -1392,11 +1352,6 @@ input[type='file'] {
     min-height: 0;
     padding-bottom: 2rem;
   }
-  .auth-mobile-brand {
-    display: block;
-    width: 9.25rem;
-    margin: 0 0 3.25rem;
-  }
   .auth-card > h1 {
     font-size: 1.875rem;
   }
@@ -1527,10 +1482,17 @@ summary {
 .auth-main {
   grid-column: 1;
   grid-row: 1;
-  align-content: center;
+  align-content: start;
   min-height: 100dvh;
-  padding: 3rem 1.5rem;
+  padding: var(--auth-content-top) 1.5rem 3rem;
   background: var(--color-surface);
+}
+/* Pinned to the card's left edge so the title keeps the shared top line. */
+.auth-logo {
+  position: absolute;
+  top: clamp(2rem, 6vh, 3rem);
+  left: max(1.5rem, calc(50% - 11.875rem));
+  width: 11.875rem;
 }
 .auth-brand {
   grid-column: 2;
@@ -1539,14 +1501,6 @@ summary {
 .auth-card {
   width: min(100%, 23.75rem);
   min-height: 0;
-}
-.auth-card .auth-mobile-brand {
-  display: block;
-  width: 11.875rem;
-  margin: 0 0 2.75rem;
-}
-.auth-card > .kicker {
-  display: none;
 }
 .auth-card > h1 {
   font-family: var(--font-heading);
@@ -1999,8 +1953,13 @@ summary {
     min-height: 100dvh;
     padding: 2rem 1.25rem;
   }
-  .auth-card .auth-mobile-brand {
-    margin-bottom: 2.75rem;
+  .auth-main {
+    padding-top: 7rem;
+  }
+  .auth-logo {
+    top: 2rem;
+    left: 1.25rem;
+    width: 9.25rem;
   }
   .campaign-invitation {
     gap: 0.75rem;

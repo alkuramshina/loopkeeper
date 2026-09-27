@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../i18n';
@@ -16,9 +17,11 @@ vi.mock('../auth/auth-context', () => ({
 
 function renderAt(entry: string) {
   render(
-    <MemoryRouter initialEntries={[entry]}>
-      <AppRouter />
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[entry]}>
+        <AppRouter />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -34,7 +37,7 @@ describe('AppRouter', () => {
     renderAt('/invitations/token-1');
 
     expect(
-      await screen.findByRole('heading', { name: 'Войдите в Loopkeeper' }),
+      await screen.findByRole('heading', { name: 'С возвращением' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('link', { name: 'Создать аккаунт' }),
@@ -59,7 +62,7 @@ describe('AppRouter', () => {
     renderAt('/campaigns');
 
     expect(
-      await screen.findByRole('heading', { name: 'Войдите в Loopkeeper' }),
+      await screen.findByRole('heading', { name: 'С возвращением' }),
     ).toBeInTheDocument();
   });
 });

@@ -217,6 +217,35 @@ describe('Campaign membership lifecycle (e2e)', () => {
       );
   });
 
+  it('previews a usable invitation without authentication', async () => {
+    const { owner, outsider, campaignId } = await setup();
+    const { token } = await invite(owner, campaignId, 'PLAYER');
+
+    await http()
+      .get(`/invitations/${token}`)
+      .expect(200)
+      .expect((response) =>
+        expect(response.body).toEqual({
+          campaignTitle: 'Mystery',
+          masterName: 'owner@loopkeeper.dev',
+          role: 'PLAYER',
+        }),
+      );
+
+    await http()
+      .post(`/invitations/${token}/accept`)
+      .set(outsider.headers)
+      .expect(201);
+    for (const unusable of [token, 'no-dot', `${token}x`]) {
+      await http()
+        .get(`/invitations/${unusable}`)
+        .expect(404)
+        .expect((response) =>
+          expect(response.body.code).toBe('invitation.not_found'),
+        );
+    }
+  });
+
   it('rejects invitations for the owner and existing members without using them up', async () => {
     const { owner, player, outsider, campaignId } = await setup();
     const { token } = await invite(owner, campaignId, 'VIEWER');

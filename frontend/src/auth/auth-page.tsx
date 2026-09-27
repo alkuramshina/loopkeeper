@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ApiError } from '../api/client';
+import { useQuery } from '@tanstack/react-query';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ApiError, InvitationPreview } from '../api/client';
 import { useAuth } from './auth-context';
 import { Logo } from '../components/brand/logo';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +9,6 @@ import lakeNight from '../assets/auth/lake-night.png';
 import substationAutumn from '../assets/auth/substation-autumn.png';
 import bridgeWinter from '../assets/auth/bridge-winter.png';
 import radioField from '../assets/auth/radio-field.png';
-import { invitationToken } from '../features/campaigns/invitation-token';
 
 export const brandVariantKeys = [
   'focus',
@@ -16,14 +16,12 @@ export const brandVariantKeys = [
   'table',
   'signals',
 ] as const;
-export const brandVariantStorageKey = 'loopkeeper.auth-brand-variant';
 export const brandImageKeys = [
   'lake',
   'substation',
   'bridge',
   'radio',
 ] as const;
-export const brandImageStorageKey = 'loopkeeper.auth-brand-image';
 
 type BrandImageKey = (typeof brandImageKeys)[number];
 
@@ -34,58 +32,38 @@ const brandImages: Record<BrandImageKey, string> = {
   radio: radioField,
 };
 
-// Storage access throws when the browser blocks it; the auth page must still
-// render, so fall back to an unsaved random choice.
-function selectSessionChoice<T extends string>(
-  keys: readonly T[],
-  storageKey: string,
-): T {
-  try {
-    const stored = window.sessionStorage.getItem(storageKey);
-    if (stored && keys.includes(stored as T)) {
-      return stored as T;
-    }
-  } catch {
-    // Ignore and pick a fresh variant below.
-  }
-
-  const choice = keys[Math.floor(Math.random() * keys.length)];
-  try {
-    window.sessionStorage.setItem(storageKey, choice);
-  } catch {
-    // The choice then stays stable only for this component instance.
-  }
-  return choice;
+// A fresh pick on every page load. The brand panel stays the same when
+// switching between the forms because the page component stays mounted.
+function pickRandom<T>(keys: readonly T[]): T {
+  return keys[Math.floor(Math.random() * keys.length)];
 }
 
 export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const { t } = useTranslation();
-  const { signIn, signUp } = useAuth();
-  const navigate = useNavigate();
+  const { api, signIn, signUp } = useAuth();
   const [searchParams] = useSearchParams();
+  const invitation = searchParams.get('invitation');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState<string>();
-  const [invitationValue, setInvitationValue] = useState('');
-  const [invitationError, setInvitationError] = useState<string>();
-  const [isInvitationEntryOpen, setInvitationEntryOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [brandVariant] = useState(() =>
-    selectSessionChoice(brandVariantKeys, brandVariantStorageKey),
-  );
-  const [brandImage] = useState(() =>
-    selectSessionChoice(brandImageKeys, brandImageStorageKey),
-  );
+  const [brandVariant] = useState(() => pickRandom(brandVariantKeys));
+  const [brandImage] = useState(() => pickRandom(brandImageKeys));
+  const invitationPreview = useQuery({
+    queryKey: ['invitation-preview', invitation],
+    queryFn: () =>
+      api.request<InvitationPreview>(
+        `/invitations/${encodeURIComponent(invitation ?? '')}`,
+      ),
+    enabled: Boolean(invitation),
+    retry: false,
+  });
   const isSignUp = mode === 'sign-up';
-  const brandCopyPath = `auth.brandVariants.${brandVariant}.${
-    isSignUp ? 'signUp' : 'signIn'
-  }`;
+  const brandCopyPath = `auth.brandVariants.${brandVariant}`;
 
   useEffect(() => {
     setError(undefined);
-    setInvitationError(undefined);
-    setInvitationEntryOpen(false);
     setPassword('');
     setSubmitting(false);
   }, [mode]);
@@ -115,17 +93,6 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     }
   }
 
-  function continueWithInvitation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const token = invitationToken(invitationValue);
-    if (!token) {
-      setInvitationError(t('auth.invitationInvalid'));
-      return;
-    }
-
-    void navigate(`/invitations/${encodeURIComponent(token)}`);
-  }
-
   // Keep a pending invitation when switching between sign-in and sign-up.
   const switchPath = `${isSignUp ? '/sign-in' : '/sign-up'}${
     searchParams.size ? `?${searchParams.toString()}` : ''
@@ -135,34 +102,22 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   return (
     <main className="auth-page">
       <div className="auth-layout">
-        <aside className="auth-brand" aria-label={t('appName')}>
-          <img
-            alt=""
-            className="auth-brand-image"
-            data-variant={brandImage}
-            src={brandImages[brandImage]}
-          />
-          <div>
-            <Logo className="brand-lock" label={t('appName')} />
-            <p className="auth-brand-title">{t(`${brandCopyPath}.title`)}</p>
-            <p className="auth-brand-body">{t(`${brandCopyPath}.body`)}</p>
-          </div>
-          <p className="auth-note">
-            {t(isSignUp ? 'auth.signUpPrivacyNote' : 'auth.signInPrivacyNote')}
-          </p>
-        </aside>
         <section className="auth-main" aria-labelledby="auth-page-title">
+          <Logo className="auth-logo" label={t('appName')} />
           <div className="auth-card">
-            <Logo className="auth-mobile-brand" label={t('appName')} />
-            <p className="kicker">
-              {t(isSignUp ? 'auth.signUpKicker' : 'auth.signInKicker')}
-            </p>
             <h1 id="auth-page-title">
               {t(isSignUp ? 'auth.signUpTitle' : 'auth.signInTitle')}
             </h1>
-            <p className="auth-intro">
-              {t(isSignUp ? 'auth.signUpIntro' : 'auth.signInIntro')}
-            </p>
+            {invitation ? (
+              <InvitationBanner
+                failed={invitationPreview.isError}
+                preview={invitationPreview.data}
+              />
+            ) : (
+              <p className="auth-intro">
+                {t(isSignUp ? 'auth.signUpIntro' : 'auth.signInIntro')}
+              </p>
+            )}
             <form
               className="auth-form"
               key={mode}
@@ -217,54 +172,6 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
                 {t(isSignUp ? 'auth.signUp' : 'auth.signIn')}
               </button>
             </form>
-            <div className="auth-separator" aria-hidden="true">
-              <span>{t('auth.separator')}</span>
-            </div>
-            {!isInvitationEntryOpen ? (
-              <button
-                className="auth-invitation-button"
-                onClick={() => {
-                  setInvitationEntryOpen(true);
-                  setInvitationError(undefined);
-                }}
-                type="button"
-              >
-                {t('auth.useInvitation')}
-              </button>
-            ) : (
-              <form
-                className="auth-invitation-entry"
-                onSubmit={continueWithInvitation}
-              >
-                <label className="auth-field">
-                  {t('auth.invitationLink')}
-                  <input
-                    autoComplete="off"
-                    onChange={(event) => setInvitationValue(event.target.value)}
-                    placeholder={t('auth.invitationPlaceholder')}
-                    required
-                    value={invitationValue}
-                  />
-                </label>
-                {invitationError && (
-                  <p className="auth-error" role="alert">
-                    {invitationError}
-                  </p>
-                )}
-                <div className="auth-invitation-actions">
-                  <button
-                    className="button-ghost"
-                    onClick={() => setInvitationEntryOpen(false)}
-                    type="button"
-                  >
-                    {t('common.cancel')}
-                  </button>
-                  <button type="submit">
-                    {t('auth.continueWithInvitation')}
-                  </button>
-                </div>
-              </form>
-            )}
             <p className="auth-switch">
               {t(isSignUp ? 'auth.haveAccount' : 'auth.newHere')}{' '}
               <Link
@@ -279,7 +186,47 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             </p>
           </div>
         </section>
+        <aside className="auth-brand" aria-label={t('appName')}>
+          <img
+            alt=""
+            className="auth-brand-image"
+            data-variant={brandImage}
+            src={brandImages[brandImage]}
+          />
+          <p className="auth-brand-title">{t(`${brandCopyPath}.title`)}</p>
+          <p className="auth-brand-body">{t(`${brandCopyPath}.body`)}</p>
+        </aside>
       </div>
     </main>
+  );
+}
+
+function InvitationBanner({
+  failed,
+  preview,
+}: {
+  failed: boolean;
+  preview?: InvitationPreview;
+}) {
+  const { t } = useTranslation();
+  if (failed) {
+    return (
+      <p className="auth-invitation is-unavailable" role="status">
+        {t('auth.invitationUnavailable')}
+      </p>
+    );
+  }
+  // Keep the space while loading so the form does not jump.
+  if (!preview) return <p aria-hidden="true" className="auth-invitation" />;
+  return (
+    <p className="auth-invitation" role="status">
+      {preview.masterName
+        ? t('auth.invitationFrom', {
+            master: preview.masterName,
+            title: preview.campaignTitle,
+          })
+        : t('auth.invitation', { title: preview.campaignTitle })}{' '}
+      <span>{t('auth.invitationNext')}</span>
+    </p>
   );
 }

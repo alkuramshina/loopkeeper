@@ -266,4 +266,10 @@ export type CampaignInvitation = {
   createdById: string;
 };
 
+export type InvitationPreview = {
+  campaignTitle: string;
+  masterName: string | null;
+  role: 'PLAYER' | 'VIEWER';
+};
+
 export type CreatedCampaignInvitation = CampaignInvitation & { token: string };

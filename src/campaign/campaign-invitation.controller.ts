@@ -16,8 +16,10 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
+import { Public } from '../auth/decorators/public.decorator';
 import { CampaignInvitationService } from './campaign-invitation.service';
 import {
+  CampaignInvitationPreviewResponseDto,
   CampaignInvitationResponseDto,
   CreatedCampaignInvitationResponseDto,
 } from './dto/campaign-invitation-response.dto';
@@ -65,6 +67,14 @@ export class CampaignInvitationController {
       campaignId,
       invitationId,
     );
+  }
+
+  @Public()
+  @ApiOperation({ summary: 'Describe a usable invitation before signing in' })
+  @ApiOkResponse({ type: CampaignInvitationPreviewResponseDto })
+  @Get('invitations/:token')
+  preview(@Param('token') token: string) {
+    return this.invitations.preview(token);
   }
 
   @ApiOperation({ summary: 'Accept a campaign invitation' })
