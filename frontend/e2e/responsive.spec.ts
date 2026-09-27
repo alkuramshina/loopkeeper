@@ -1,4 +1,4 @@
-import { expect, Locator, Page, test } from '@playwright/test';
+import { expect, Locator, Page, test } from './support/test';
 import {
   createCampaignWithRoles,
   createElement,
@@ -122,6 +122,74 @@ for (const width of [320, 768]) {
       );
       await page.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);
+    });
+
+    test('long dialogs scroll inside the screen and keep their submit button reachable', async ({
+      page,
+      request,
+    }) => {
+      const { campaignId, player } = await createCampaignWithRoles(request);
+      await createElement(request, player, campaignId, {
+        type: 'NOTE',
+        title: 'Заметка игрока',
+        access: 'SHARED',
+      });
+      await signInAs(page, player);
+
+      const dialogs: [string, string, string, string][] = [
+        ['/campaigns', 'Новая кампания', 'Новая кампания', 'Создать кампанию'],
+        [
+          `/campaigns/${campaignId}/characters`,
+          'Создать персонажа',
+          'Новый персонаж',
+          'Создать персонажа',
+        ],
+        [
+          `/campaigns/${campaignId}/elements`,
+          'Новая заметка',
+          'Новый элемент',
+          'Сохранить',
+        ],
+      ];
+      for (const [path, opener, title, submit] of dialogs) {
+        await page.goto(path);
+        await page.getByRole('button', { name: opener }).first().click();
+        const dialog = page.getByRole('dialog', { name: title });
+        await expect(dialog).toBeVisible();
+        const fits = await dialog.evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          return (
+            box.top >= 0 &&
+            box.bottom <= window.innerHeight &&
+            box.left >= 0 &&
+            box.right <= window.innerWidth
+          );
+        });
+        expect(fits, `${title}: the dialog fits the viewport`).toBe(true);
+        await expectClickable(
+          page,
+          dialog.getByRole('button', { name: submit }).last(),
+        );
+        await expectNoHorizontalOverflow(page, `${title} dialog`);
+        await page.keyboard.press('Escape');
+        await expect(dialog).toHaveCount(0);
+      }
+
+      // A player's own note: the access switch and actions wrap on screen.
+      await page.goto(`/campaigns/${campaignId}/elements`);
+      await page.getByRole('link', { name: /Заметка игрока/ }).click();
+      await expectNoHorizontalOverflow(page, 'player note');
+      await expectClickable(
+        page,
+        page.getByRole('button', { name: 'Редактировать' }),
+      );
+      for (const control of [
+        page.locator('.note-detail').getByLabel('Доступ'),
+        page.getByLabel('Обложка'),
+      ]) {
+        await control.scrollIntoViewIfNeeded();
+        await expect(control).toBeInViewport({ ratio: 1 });
+      }
     });
   });
 }

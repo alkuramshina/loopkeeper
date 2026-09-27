@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/test';
 import { registerUser, signInAs } from './support/api';
 
 test('M9: renames the account and changes the password', async ({

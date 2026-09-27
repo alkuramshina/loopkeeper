@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useId, useRef } from 'react';
+import { MouseEvent, ReactNode, useEffect, useId, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 type ModalDialogProps = {
@@ -7,8 +7,21 @@ type ModalDialogProps = {
   onClose: () => void;
 };
 
+// Backdrop clicks target the dialog element itself, outside its box.
+function isOutside(event: MouseEvent<HTMLDialogElement>) {
+  if (event.target !== event.currentTarget) return false;
+  const box = event.currentTarget.getBoundingClientRect();
+  return (
+    event.clientX < box.left ||
+    event.clientX > box.right ||
+    event.clientY < box.top ||
+    event.clientY > box.bottom
+  );
+}
+
 export function ModalDialog({ title, children, onClose }: ModalDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const pressedOutside = useRef(false);
   const titleId = useId();
   const { t } = useTranslation();
 
@@ -36,6 +49,15 @@ export function ModalDialog({ title, children, onClose }: ModalDialogProps) {
       onCancel={(event) => {
         event.preventDefault();
         onClose();
+      }}
+      // A press that starts and ends on the backdrop closes the dialog; a text
+      // selection dragged out of the form does not.
+      onPointerDown={(event) => {
+        pressedOutside.current = isOutside(event);
+      }}
+      onClick={(event) => {
+        if (pressedOutside.current && isOutside(event)) onClose();
+        pressedOutside.current = false;
       }}
       ref={dialogRef}
     >

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/test';
 import { createCampaignWithRoles, registerUser, signInAs } from './support/api';
 
 // M13: loading, empty, unavailable and network failure must look different.

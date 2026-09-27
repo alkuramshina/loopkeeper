@@ -102,3 +102,4 @@ nestjs-debug.log
 resources/
 AGENTS.md
 CLAUDE.md
+Claude outputs/

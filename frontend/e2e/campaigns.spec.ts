@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './support/test';
 import {
   addMember,
   createCampaign,
@@ -91,4 +91,80 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
     playerPage.getByRole('heading', { name: 'Здесь пока нет кампаний' }),
   ).toBeVisible();
   await playerContext.close();
+});
+
+test('the whole campaign card opens the campaign', async ({
+  page,
+  request,
+}) => {
+  const owner = await registerUser(request, 'Мастер');
+  const campaignId = await createCampaign(request, owner, 'Остров');
+  await signInAs(page, owner);
+  await page.goto('/campaigns');
+
+  // No separate small open button: a click on the description text is enough.
+  const card = page.getByRole('link', { name: /Остров/ });
+  await expect(card.getByRole('button')).toHaveCount(0);
+  await card.getByText('Кампания для браузерных тестов').click();
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/characters`);
+});
+
+for (const viewport of [
+  { name: 'desktop', width: 1280, height: 800 },
+  { name: 'phone', width: 390, height: 800 },
+]) {
+  test(`account settings and sign-out are reachable from the list and the workspace (${viewport.name})`, async ({
+    page,
+    request,
+  }) => {
+    await page.setViewportSize(viewport);
+    const owner = await registerUser(request, 'Мастер');
+    const campaignId = await createCampaign(request, owner);
+    await signInAs(page, owner);
+
+    // From the campaign list.
+    await page.goto('/campaigns');
+    await page.getByRole('link', { name: 'Мастер', exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: 'Настройки аккаунта' }),
+    ).toBeVisible();
+    await page.goto('/campaigns');
+    await page.getByRole('button', { name: 'Выйти' }).click();
+    await expect(page).toHaveURL(/\/sign-in/);
+
+    // From the workspace: the visible account link leads to settings, which
+    // offer sign-out on every screen size.
+    await signInAs(page, owner);
+    await page.goto(`/campaigns/${campaignId}/characters`);
+    await page
+      .getByRole('link', { name: /^(Мастер|Настройки аккаунта)$/ })
+      .filter({ visible: true })
+      .click();
+    await expect(
+      page.getByRole('heading', { name: 'Настройки аккаунта' }),
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Выйти' }).click();
+    await expect(page).toHaveURL(/\/sign-in/);
+    await page.goto(`/campaigns/${campaignId}/characters`);
+    await expect(page).toHaveURL(/\/sign-in/);
+  });
+}
+
+test('backgrounds are configured inside campaign settings, not in the main navigation', async ({
+  page,
+  request,
+}) => {
+  const owner = await registerUser(request, 'Мастер');
+  const campaignId = await createCampaign(request, owner);
+  await signInAs(page, owner);
+  await page.goto(`/campaigns/${campaignId}/characters`);
+
+  const navigation = page.locator('.campaign-workspace-shell-navigation');
+  await expect(navigation.getByRole('link', { name: 'Фоны' })).toHaveCount(0);
+  await navigation.getByRole('link', { name: 'Настройки кампании' }).click();
+  await page.getByRole('link', { name: 'Фоны' }).click();
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/settings/backgrounds`);
+  await expect(
+    page.getByRole('heading', { name: 'Фоны кампании' }),
+  ).toBeVisible();
 });

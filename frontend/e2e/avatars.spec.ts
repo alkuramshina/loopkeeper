@@ -1,4 +1,4 @@
-import { Browser, expect, Page, test } from '@playwright/test';
+import { Browser, expect, Page, test } from './support/test';
 import {
   createCampaignWithRoles,
   createPlayerCharacter,

@@ -305,6 +305,7 @@ textarea {
   padding-bottom: 3rem;
 }
 .settings-topbar {
+  justify-content: space-between;
   display: flex;
   min-height: 4.5rem;
   align-items: center;
@@ -1299,6 +1300,13 @@ textarea {
 }
 .flow-card.selected {
   box-shadow: 0 0 0 2px #6d1f2580;
+}
+/* React Flow removes the focus ring of cards; keyboard users need one. */
+.board-canvas .react-flow__node.selectable:focus-visible,
+.board-canvas .react-flow__edge.selectable:focus-visible {
+  outline: 2px solid #6d1f25;
+  outline-offset: 3px;
+  border-radius: 8px;
 }
 .flow-card h3,
 .flow-card p {

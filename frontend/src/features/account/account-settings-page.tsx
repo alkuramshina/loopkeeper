@@ -108,6 +108,10 @@ export function AccountSettingsPage() {
         >
           ← {t('workspace.backToCampaigns')}
         </button>
+        {/* The only sign-out on phones: the mobile workspace header has no room for it. */}
+        <button className="button-ghost" onClick={() => void signOut()}>
+          {t('auth.signOut')}
+        </button>
       </header>
       <section className="page-header">
         <p className="kicker">{t('account.kicker')}</p>

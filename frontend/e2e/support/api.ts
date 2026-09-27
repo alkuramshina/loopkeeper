@@ -1,4 +1,4 @@
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
 
 // Test data is prepared through the real API (via the Vite proxy) instead of
 // clicking through the UI, so each spec only exercises the flow it is about.
@@ -260,4 +260,96 @@ export async function listCampaignTitles(
     await request.get('/api/campaigns', { headers: user.headers }),
   );
   return campaigns.map((campaign) => campaign.title);
+}
+
+/** A second, independent browser session (its own cookies) for another user. */
+export async function openAs(
+  browser: Browser,
+  user: TestUser,
+  path: string,
+): Promise<Page> {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await signInAs(page, user);
+  await page.goto(path);
+  return page;
+}
+
+export async function createElementCard(
+  request: APIRequestContext,
+  user: TestUser,
+  campaignId: string,
+  elementId: string,
+  node: { x: number; y: number; width: number; height: number },
+): Promise<string> {
+  const card = await json<{ cardId: string }>(
+    await request.post(`/api/campaigns/${campaignId}/cards`, {
+      headers: user.headers,
+      data: { cardKind: 'ELEMENT_REFERENCE', elementId, tags: [] },
+    }),
+  );
+  await json(
+    await request.patch(`/api/investigation-board/nodes/${card.cardId}`, {
+      headers: user.headers,
+      data: node,
+    }),
+  );
+  return card.cardId;
+}
+
+/** Uploads through a purpose-specific endpoint and returns the new `/media/…` URL holder. */
+export async function uploadMedia(
+  request: APIRequestContext,
+  user: TestUser,
+  endpoint: string,
+  buffer: Buffer,
+): Promise<void> {
+  await json(
+    await request.post(`/api${endpoint}`, {
+      headers: user.headers,
+      multipart: {
+        file: { name: 'image.png', mimeType: 'image/png', buffer },
+      },
+    }),
+  );
+}
+
+/** Uploads a local background and shows it to every member of the campaign. */
+export async function setFixedBackground(
+  request: APIRequestContext,
+  owner: TestUser,
+  campaignId: string,
+  image: Buffer,
+): Promise<string> {
+  const background = await json<{
+    backgroundId: string;
+    name: string;
+    imageUrl: string;
+  }>(
+    await request.post(`/api/campaigns/${campaignId}/backgrounds`, {
+      headers: owner.headers,
+      multipart: {
+        file: { name: 'background.png', mimeType: 'image/png', buffer: image },
+      },
+    }),
+  );
+  await json(
+    await request.patch(`/api/campaigns/${campaignId}/background-settings`, {
+      headers: owner.headers,
+      data: {
+        selectionMode: 'FIXED',
+        fixedBackgroundId: background.backgroundId,
+        backgrounds: [
+          {
+            backgroundId: background.backgroundId,
+            name: background.name || 'Туман',
+            imageUrl: background.imageUrl,
+            isEnabled: true,
+            sortOrder: 0,
+          },
+        ],
+      },
+    }),
+  );
+  return background.imageUrl;
 }

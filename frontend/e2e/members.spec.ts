@@ -1,4 +1,4 @@
-import { expect, Page, test } from '@playwright/test';
+import { expect, Page, test } from './support/test';
 import {
   createCampaign,
   listCampaignTitles,
@@ -121,4 +121,75 @@ test('a revoked invitation link no longer works', async ({
     'Приглашение недоступно.',
   );
   expect(await listCampaignTitles(request, latecomer)).toEqual([]);
+});
+
+test('members and invitations are separate; the master row cannot be managed', async ({
+  page,
+  request,
+}) => {
+  const owner = await registerUser(request, 'Мастер');
+  const campaignId = await createCampaign(request, owner);
+  await signInAs(page, owner);
+  await page.goto(`/campaigns/${campaignId}/members`);
+
+  const membersSection = page
+    .locator('.member-section')
+    .filter({ has: page.getByRole('heading', { name: 'Участники кампании' }) });
+  const invitationsSection = page
+    .locator('.member-section')
+    .filter({ has: page.getByRole('heading', { name: 'Приглашения' }) });
+  await expect(membersSection).toHaveCount(1);
+  await expect(invitationsSection).toHaveCount(1);
+
+  // Joining is invitation-only: there is no email lookup or direct add.
+  await expect(page.locator('input[type=email]')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Добавить участника' }),
+  ).toHaveCount(0);
+
+  const rows = membersSection.locator('.member-row');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('Мастер');
+  await expect(rows.first().locator('.role-badge')).toHaveText('Мастер');
+  await expect(rows.first().locator('select, button')).toHaveCount(0);
+  await expect(
+    membersSection.getByText('Кроме мастера в кампании пока никого нет.'),
+  ).toBeVisible();
+});
+
+test('the copied invitation link lets a second account join only this campaign', async ({
+  browser,
+  context,
+  page,
+  request,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const owner = await registerUser(request, 'Мастер');
+  const player = await registerUser(request, 'Лена');
+  const campaignId = await createCampaign(request, owner, 'Сигнал');
+  await createCampaign(request, owner, 'Другая кампания');
+
+  await signInAs(page, owner);
+  await page.goto(`/campaigns/${campaignId}/members`);
+  await createInvitationLink(page, 'PLAYER');
+  await page.getByRole('button', { name: 'Скопировать ссылку' }).click();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toMatch(/\/invitations\/[^/]+$/);
+  expect(copied).toBe(
+    await page.locator('.created-invitation code').textContent(),
+  );
+
+  const playerContext = await browser.newContext();
+  const playerPage = await playerContext.newPage();
+  await signInAs(playerPage, player);
+  await playerPage.goto(new URL(copied).pathname);
+  await expect(playerPage).toHaveURL(
+    new RegExp(`/campaigns/${campaignId}(/[a-z]+)?$`),
+  );
+  await playerPage.goto('/campaigns');
+  await expect(playerPage.locator('.campaign-card')).toHaveCount(1);
+  await expect(playerPage.locator('.campaign-card')).toContainText('Сигнал');
+  await expect(playerPage.locator('.campaign-card')).toContainText('Игрок');
+  expect(await listCampaignTitles(request, player)).toEqual(['Сигнал']);
+  await playerContext.close();
 });

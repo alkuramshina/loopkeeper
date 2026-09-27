@@ -263,13 +263,34 @@ function CardEditor({
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });
 
+  // Move keyboard focus into the inspector and give it back on close.
+  const inspectorRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    inspectorRef.current
+      ?.querySelector<HTMLElement>(
+        'input:not([type=hidden]):not(:disabled), textarea:not(:disabled), select',
+      )
+      ?.focus();
+    return () => {
+      if (opener?.isConnected) opener.focus();
+    };
+  }, [target]);
+
   const heading = isNew
     ? t('board.newCard')
     : card
       ? t('board.editCard')
       : t('board.editLink');
   return (
-    <aside className="board-inspector panel">
+    <aside
+      aria-label={heading}
+      className="board-inspector panel"
+      ref={inspectorRef}
+    >
       <div className="section-heading">
         <h2>{heading}</h2>
         <button className="button-ghost" type="button" onClick={onClose}>
