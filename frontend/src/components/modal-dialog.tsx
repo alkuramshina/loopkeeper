@@ -9,6 +9,8 @@ type ModalDialogProps = {
   description?: string;
   /** Room for a side-by-side layout, e.g. a preview next to its details. */
   wide?: boolean;
+  /** On a phone, a sheet along the bottom edge instead of a centred box. */
+  sheet?: boolean;
   children: ReactNode;
   onClose: () => void;
 };
@@ -29,6 +31,7 @@ export function ModalDialog({
   title,
   description,
   wide,
+  sheet,
   children,
   onClose,
 }: ModalDialogProps) {
@@ -59,7 +62,13 @@ export function ModalDialog({
     <dialog
       aria-describedby={description ? descriptionId : undefined}
       aria-labelledby={titleId}
-      className={wide ? 'modal-dialog modal-dialog-wide' : 'modal-dialog'}
+      className={[
+        'modal-dialog',
+        wide && 'modal-dialog-wide',
+        sheet && 'modal-dialog-sheet',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       onCancel={(event) => {
         event.preventDefault();
         onClose();

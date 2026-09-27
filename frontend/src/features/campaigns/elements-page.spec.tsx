@@ -114,6 +114,11 @@ function renderPage(path = '/campaigns/c/elements') {
               path="/campaigns/:campaignId/elements/:elementId"
               element={<ElementsPage />}
             />
+            <Route path="/campaigns/:campaignId/case" element={<p>Case</p>} />
+            <Route
+              path="/campaigns/:campaignId/case/:elementId"
+              element={<p>Case reader</p>}
+            />
           </Routes>
         </MemoryRouter>
       </ToastProvider>
@@ -258,21 +263,13 @@ describe('ElementsPage', () => {
     ).toEqual(['My hunchМастеру']);
   });
 
-  it('shows shared elements to viewers read-only', async () => {
-    role = 'VIEWER';
-    userId = 'viewer';
+  it('sends players and viewers to the case, keeping the material', async () => {
+    role = 'PLAYER';
     renderPage('/campaigns/c/elements/shared');
-    expect(
-      await screen.findByRole('heading', { name: 'Shared' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Дело' })).toBeInTheDocument();
-    expect(screen.queryByText('Secret')).not.toBeInTheDocument();
-    expect(within(detail()).getByText('Автор: Master')).toBeInTheDocument();
-    expect(within(detail()).getByText('Заметка')).toBeInTheDocument();
-    expect(detail()).toHaveTextContent(/Изменено /);
-    for (const name of ['Материал', 'Заметка', 'Изменить', 'Ещё действия'])
-      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
-    expect(screen.queryByText('Открыто')).not.toBeInTheDocument();
+    expect(await screen.findByText('Case reader')).toBeInTheDocument();
+    role = 'VIEWER';
+    renderPage();
+    expect(await screen.findByText('Case')).toBeInTheDocument();
   });
 
   it('reveals a hidden material only after a preview of what players get', async () => {
@@ -345,77 +342,6 @@ describe('ElementsPage', () => {
       expect(
         within(detail()).queryByRole('button', { name }),
       ).not.toBeInTheDocument();
-  });
-
-  it('lets a player manage their own note and only read master materials', async () => {
-    role = 'PLAYER';
-    userId = 'player';
-    renderPage('/campaigns/c/elements/player-note');
-    const visibility = await screen.findByRole('radiogroup', {
-      name: 'Кто увидит',
-    });
-    expect(
-      within(visibility)
-        .getAllByRole('radio')
-        .map((radio) => radio.parentElement?.textContent),
-    ).toEqual(['Личное', 'Мастеру', 'Всем']);
-    expect(screen.queryByText('Автор: Player')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Ещё действия' }));
-    expect(
-      screen.getByRole('menuitem', { name: 'Удалить' }),
-    ).toBeInTheDocument();
-    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
-
-    // Private and "to the master" switch at once; nothing reaches players.
-    fireEvent.click(within(visibility).getByRole('radio', { name: 'Личное' }));
-    await waitFor(() =>
-      expect(request).toHaveBeenCalledWith('/elements/player-note/access', {
-        method: 'PATCH',
-        body: JSON.stringify({ access: 'PRIVATE' }),
-      }),
-    );
-
-    fireEvent.click(within(list()).getByRole('link', { name: /Shared/ }));
-    expect(
-      await screen.findByRole('heading', { name: 'Shared' }),
-    ).toBeInTheDocument();
-    expect(within(detail()).getByText('Автор: Master')).toBeInTheDocument();
-    expect(screen.queryByRole('radiogroup', { name: 'Кто увидит' })).toBeNull();
-    expect(
-      within(detail()).queryByRole('button', { name: 'Изменить' }),
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Ещё действия' }));
-    expect(
-      screen.getByRole('menuitem', { name: 'Добавить на доску' }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('menuitem', { name: 'Удалить' })).toBeNull();
-  });
-
-  it('creates a private note for a player and opens it for writing', async () => {
-    role = 'PLAYER';
-    userId = 'player';
-    renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'Заметка' }));
-    const dialog = screen.getByRole('dialog', { name: 'Новая заметка' });
-    expect(within(dialog).queryByLabelText('Тип')).not.toBeInTheDocument();
-    expect(within(dialog).getByRole('radio', { name: 'Личное' })).toBeChecked();
-    fireEvent.change(within(dialog).getByLabelText('Название'), {
-      target: { value: 'Hunch' },
-    });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Создать' }));
-    await waitFor(() =>
-      expect(request).toHaveBeenCalledWith('/campaigns/c/elements', {
-        method: 'POST',
-        body: JSON.stringify({
-          type: 'NOTE',
-          title: 'Hunch',
-          content: '',
-          access: 'PRIVATE',
-        }),
-      }),
-    );
-    expect(await screen.findByLabelText('Текст')).toBeInTheDocument();
-    expect(screen.getByLabelText('Название')).toHaveValue('Hunch');
   });
 
   it('creates an NPC hidden from players with its required role', async () => {
@@ -549,15 +475,5 @@ describe('ElementsPage', () => {
       'href',
       '/campaigns/c/elements',
     );
-  });
-
-  it('hides element media controls from readers who are not the author', async () => {
-    role = 'PLAYER';
-    userId = 'player';
-    renderPage('/campaigns/c/elements/shared');
-    expect(
-      await screen.findByRole('heading', { name: 'Shared' }),
-    ).toBeInTheDocument();
-    expect(screen.queryByLabelText('Обложка')).not.toBeInTheDocument();
   });
 });

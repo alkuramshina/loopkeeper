@@ -26,6 +26,12 @@ const CharactersPage = lazy(async () => ({
 const ElementsPage = lazy(async () => ({
   default: (await import('../features/campaigns/elements-page')).ElementsPage,
 }));
+const CasePage = lazy(async () => ({
+  default: (await import('../features/campaigns/case-page')).CasePage,
+}));
+const NotesPage = lazy(async () => ({
+  default: (await import('../features/campaigns/notes-page')).NotesPage,
+}));
 const MembersPage = lazy(async () => ({
   default: (await import('../features/campaigns/members-page')).MembersPage,
 }));
@@ -122,6 +128,16 @@ export function AppRouter() {
           <Route
             path="/campaigns/:campaignId/elements/:elementId"
             element={<ElementsPage />}
+          />
+          <Route path="/campaigns/:campaignId/case" element={<CasePage />} />
+          <Route
+            path="/campaigns/:campaignId/case/:elementId"
+            element={<CasePage />}
+          />
+          <Route path="/campaigns/:campaignId/notes" element={<NotesPage />} />
+          <Route
+            path="/campaigns/:campaignId/notes/:elementId"
+            element={<NotesPage />}
           />
 
           <Route

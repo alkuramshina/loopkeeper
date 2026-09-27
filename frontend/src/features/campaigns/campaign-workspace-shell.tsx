@@ -3,7 +3,9 @@ import { NavLink, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
+  FileCheck2,
   FolderOpen,
+  PencilLine,
   LayoutDashboard,
   Settings2,
   Users,
@@ -46,11 +48,28 @@ export function CampaignWorkspaceShell({
       label: t('workspace.board'),
       icon: LayoutDashboard,
     },
-    {
-      to: `${basePath}/elements`,
-      label: t(isOwner ? 'workspace.materials' : 'workspace.case'),
-      icon: FolderOpen,
-    },
+    isOwner
+      ? {
+          to: `${basePath}/elements`,
+          label: t('workspace.materials'),
+          icon: FolderOpen,
+        }
+      : {
+          to: `${basePath}/case`,
+          label: t('workspace.case'),
+          icon: FileCheck2,
+        },
+    // Only a player writes notes of their own.
+    ...(campaign.currentUserRole === 'PLAYER'
+      ? [
+          {
+            to: `${basePath}/notes`,
+            label: t('workspace.notes'),
+            shortLabel: t('workspace.notesShort'),
+            icon: PencilLine,
+          },
+        ]
+      : []),
     {
       to: `${basePath}/characters`,
       label: t('workspace.characters'),
@@ -71,15 +90,23 @@ export function CampaignWorkspaceShell({
         },
       ]
     : [];
-  const navLinks = (items: typeof primary, mobile = false) =>
-    items.map(({ to, label, icon: Icon }) => (
+  type NavItem = {
+    to: string;
+    label: string;
+    /** A shorter word for the phone's bottom navigation. */
+    shortLabel?: string;
+    icon: typeof LayoutDashboard;
+  };
+  const navLinks = (items: NavItem[], mobile = false) =>
+    items.map(({ to, label, shortLabel, icon: Icon }) => (
       <NavLink
+        aria-label={mobile && shortLabel ? label : undefined}
         key={to}
         to={to}
         className={({ isActive }) => (isActive ? 'active' : undefined)}
       >
         <Icon aria-hidden="true" size={mobile ? 18 : 17} strokeWidth={1.8} />
-        <span>{label}</span>
+        <span>{mobile ? (shortLabel ?? label) : label}</span>
       </NavLink>
     ));
 

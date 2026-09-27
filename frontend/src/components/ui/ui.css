@@ -110,6 +110,8 @@
 
 /* Segmented control */
 .ui-segmented {
+  /* Keeps the visually hidden radios inside, e.g. in a scrolling row. */
+  position: relative;
   display: inline-flex;
   max-width: 100%;
   flex-wrap: wrap;

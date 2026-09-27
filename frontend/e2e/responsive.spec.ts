@@ -137,16 +137,84 @@ for (const { width, height, dialogs } of viewports) {
       await expect(dialog).toHaveCount(0);
     });
 
+    test('the player’s case, reading and notes fit the screen', async ({
+      page,
+      request,
+    }) => {
+      const { campaignId, owner, player } =
+        await createCampaignWithRoles(request);
+      await createPlayerCharacter(request, player, campaignId, 'Майя');
+      const materialId = await createElement(request, owner, campaignId, {
+        type: 'LOCATION',
+        title: 'Трансформаторная будка на краю поля у старой дороги',
+        content: 'Дверь заперта снаружи. '.repeat(30),
+        access: 'SHARED',
+      });
+      await createElement(request, owner, campaignId, {
+        type: 'NPC',
+        title: 'Смотритель Берг',
+        typeData: { role: 'Смотритель' },
+        access: 'SHARED',
+      });
+      const noteId = await createElement(request, player, campaignId, {
+        type: 'NOTE',
+        title: 'Кто взял ключ в 23:40? Спросить у Рикарды',
+        content: 'Текст '.repeat(40),
+      });
+      await signInAs(page, player);
+
+      for (const path of [
+        `/campaigns/${campaignId}/case`,
+        `/campaigns/${campaignId}/case/${materialId}`,
+        `/campaigns/${campaignId}/notes`,
+        `/campaigns/${campaignId}/notes/${noteId}`,
+      ]) {
+        await page.goto(path);
+        await expect(page.getByText('Загрузка…')).toHaveCount(0);
+        await page.waitForLoadState('networkidle');
+        await expectNoHorizontalOverflow(page, path);
+      }
+
+      // The reader's actions stay above the bottom navigation.
+      await page.goto(`/campaigns/${campaignId}/case/${materialId}`);
+      for (const name of ['Добавить на доску', 'Заметка'])
+        await expectClickable(
+          page,
+          page.getByRole('button', { name, exact: true }),
+        );
+
+      // The quick note is always one step away: in the side column or, on a
+      // phone, behind a button above the navigation.
+      await page.goto(`/campaigns/${campaignId}/case`);
+      const quickNote = page.getByRole('form', { name: 'Быстрая заметка' });
+      if (width < 600) {
+        await expect(quickNote).toBeHidden();
+        await expectClickable(
+          page,
+          page.getByRole('button', { name: 'Быстрая заметка' }),
+        );
+      } else {
+        await expect(quickNote).toBeVisible();
+      }
+    });
+
     if (!dialogs) return;
 
     test('long dialogs scroll inside the screen and keep their submit button reachable', async ({
       page,
       request,
     }) => {
-      const { campaignId, player } = await createCampaignWithRoles(request);
-      await createElement(request, player, campaignId, {
+      const { campaignId, owner, player } =
+        await createCampaignWithRoles(request);
+      const noteId = await createElement(request, player, campaignId, {
         type: 'NOTE',
         title: 'Заметка игрока',
+        access: 'SHARED',
+      });
+      const materialId = await createElement(request, owner, campaignId, {
+        type: 'LOCATION',
+        title: 'Будка',
+        content: 'Текст '.repeat(80),
         access: 'SHARED',
       });
       await signInAs(page, player);
@@ -159,11 +227,12 @@ for (const { width, height, dialogs } of viewports) {
           'Новый персонаж',
           'Создать персонажа',
         ],
+        // Reading a material, the quick note opens as a sheet on a phone.
         [
-          `/campaigns/${campaignId}/elements`,
+          `/campaigns/${campaignId}/case/${materialId}`,
           'Заметка',
-          'Новая заметка',
-          'Создать',
+          'Быстрая заметка',
+          'Сохранить заметку',
         ],
       ];
       for (const [path, opener, title, submit] of dialogs) {
@@ -190,18 +259,20 @@ for (const { width, height, dialogs } of viewports) {
         await expect(dialog).toHaveCount(0);
       }
 
-      // A player's own note: visibility and actions wrap on screen.
-      await page.goto(`/campaigns/${campaignId}/elements`);
-      await page.getByRole('link', { name: /Заметка игрока/ }).click();
-      await expectNoHorizontalOverflow(page, 'player note');
-      await expectClickable(
-        page,
-        page.getByRole('button', { name: 'Изменить' }),
-      );
-      await page.getByRole('button', { name: 'Изменить' }).click();
+      // The case and a player's own note: visibility and actions wrap on
+      // screen.
+      await page.goto(`/campaigns/${campaignId}/case`);
+      await expect(
+        page.getByRole('heading', { name: 'Дело', exact: true }),
+      ).toBeVisible();
+      await expectNoHorizontalOverflow(page, 'case');
+      await page.goto(`/campaigns/${campaignId}/notes/${noteId}`);
+      await expect(page.getByLabel('Название')).toHaveValue('Заметка игрока');
       await expectNoHorizontalOverflow(page, 'player note editor');
+      for (const name of ['Добавить на доску', 'Ещё действия'])
+        await expectClickable(page, page.getByRole('button', { name }));
       for (const control of [
-        page.getByRole('radiogroup', { name: 'Кто увидит' }),
+        page.getByRole('radiogroup', { name: 'Кто видит' }),
         page.getByLabel('Обложка'),
       ]) {
         await control.scrollIntoViewIfNeeded();

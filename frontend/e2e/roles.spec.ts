@@ -54,10 +54,16 @@ test('M5: a viewer reads the board and catalog without editing controls', async 
   ).toHaveCount(0);
 
   await navigation.getByRole('link', { name: 'Дело' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Дело', exact: true }),
+  ).toBeVisible();
   for (const name of ['Материал', 'Заметка'])
     await expect(page.getByRole('button', { name, exact: true })).toHaveCount(
       0,
     );
+  await expect(page.getByRole('form', { name: 'Быстрая заметка' })).toHaveCount(
+    0,
+  );
 
   for (const section of ['members', 'settings']) {
     await page.goto(`/campaigns/${campaignId}/${section}`);
@@ -189,12 +195,12 @@ test('a player demoted to viewer loses their private notes but keeps reading sha
     title: 'Общая находка',
     access: 'SHARED',
   });
-  const catalog = `/campaigns/${campaignId}/elements`;
-  const items = page.locator('.materials-row-title');
-
   await signInAs(page, player);
-  await page.goto(catalog);
-  await expect(items).toHaveText(['Личное подозрение', 'Общая находка']);
+  await page.goto(`/campaigns/${campaignId}/notes`);
+  await expect(page.locator('.note-row-title')).toHaveText([
+    'Общая находка',
+    'Личное подозрение',
+  ]);
 
   const ownerPage = await openAs(
     browser,
@@ -210,7 +216,10 @@ test('a player demoted to viewer loses their private notes but keeps reading sha
   await ownerPage.getByLabel('Роль для Игрок').selectOption('VIEWER');
   await demoted;
 
+  // A viewer has no notes screen; the shared note stays readable in the case.
   await page.reload();
+  await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/case$`));
+  const items = page.locator('.case-card-title, .case-row-title');
   await expect(items).toHaveText(['Общая находка']);
   await items.first().click();
   const detail = page.getByRole('article');
@@ -220,9 +229,10 @@ test('a player demoted to viewer loses their private notes but keeps reading sha
   for (const name of ['Изменить', 'Ещё действия'])
     await expect(detail.getByRole('button', { name })).toHaveCount(0);
   await expect(
-    detail.getByRole('radiogroup', { name: 'Кто увидит' }),
+    detail.getByRole('radiogroup', { name: 'Кто видит' }),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: 'Заметка', exact: true }),
-  ).toHaveCount(0);
+  for (const name of ['Заметка', 'Добавить на доску'])
+    await expect(page.getByRole('button', { name, exact: true })).toHaveCount(
+      0,
+    );
 });

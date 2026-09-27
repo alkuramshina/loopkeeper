@@ -16,6 +16,10 @@ function list(page: Page) {
   return page.getByRole('navigation', { name: 'Список материалов' });
 }
 
+function recent(page: Page) {
+  return page.getByRole('region', { name: /Недавно обновлено/ });
+}
+
 function accessSaved(page: Page) {
   return page.waitForResponse(
     (response) =>
@@ -99,10 +103,16 @@ test('F13d: the master writes a location, reveals it after a preview, and hiding
     detail(page).getByRole('button', { name: 'Скрыть от игроков…' }),
   ).toBeVisible();
 
-  // A player reads it without author controls and pins it to the board.
+  // A player finds it in the case, reads it without author controls and pins
+  // it to the board.
   const playerPage = await openAs(browser, player, catalog);
-  await expect(playerPage.getByRole('heading', { name: 'Дело' })).toBeVisible();
-  await list(playerPage)
+  await expect(playerPage).toHaveURL(
+    new RegExp(`/campaigns/${campaignId}/case$`),
+  );
+  await expect(
+    playerPage.getByRole('heading', { name: 'Дело', exact: true }),
+  ).toBeVisible();
+  await recent(playerPage)
     .getByRole('link', { name: /Старая вышка/ })
     .click();
   await expect(detail(playerPage)).toContainText('Гудит по ночам.');
@@ -116,7 +126,9 @@ test('F13d: the master writes a location, reveals it after a preview, and hiding
       response.url().endsWith('/cards') &&
       response.status() === 201,
   );
-  await openMenuItem(playerPage, 'Добавить на доску');
+  await detail(playerPage)
+    .getByRole('button', { name: 'Добавить на доску' })
+    .click();
   await pinned;
   await expect(
     playerPage
@@ -124,11 +136,13 @@ test('F13d: the master writes a location, reveals it after a preview, and hiding
       .filter({ hasText: 'Материал добавлен на доску' }),
   ).toBeVisible();
   await expect(
-    playerPage.getByRole('menuitem', { name: 'Удалить' }),
+    detail(playerPage).getByRole('button', { name: 'Ещё действия' }),
   ).toHaveCount(0);
 
   // Pinning twice is refused in plain words.
-  await openMenuItem(playerPage, 'Добавить на доску');
+  await detail(playerPage)
+    .getByRole('button', { name: 'Добавить на доску' })
+    .click();
   await expect(
     playerPage
       .getByRole('status')
@@ -143,13 +157,14 @@ test('F13d: the master writes a location, reveals it after a preview, and hiding
 
   // A viewer reads the revealed location but has no actions on it.
   const viewerPage = await openAs(browser, viewer, catalog);
-  await list(viewerPage)
+  await recent(viewerPage)
     .getByRole('link', { name: /Старая вышка/ })
     .click();
   await expect(detail(viewerPage)).toContainText('Гудит по ночам.');
-  await expect(
-    detail(viewerPage).getByRole('button', { name: 'Ещё действия' }),
-  ).toHaveCount(0);
+  for (const name of ['Ещё действия', 'Добавить на доску', 'Заметка'])
+    await expect(detail(viewerPage).getByRole('button', { name })).toHaveCount(
+      0,
+    );
 
   // Hiding names its consequence; cancelling keeps everything as it was.
   let patches = 0;
@@ -179,49 +194,57 @@ test('F13d: the master writes a location, reveals it after a preview, and hiding
   await playerPage.getByRole('button', { name: 'Обновить' }).click();
   await expect(card).toHaveCount(0);
   await playerPage.goto(catalog);
-  await expect(playerPage.getByText('Здесь пока ничего нет.')).toBeVisible();
+  await expect(playerPage.getByText('Дело пока пустое')).toBeVisible();
   expect((await getBoard(request, owner, campaignId)).cards).toHaveLength(0);
 });
 
-test('F13d: a player keeps a private note, shows it to the master, edits and deletes it', async ({
+test('F13e: a player keeps a private note, shows it to the master, edits and deletes it', async ({
   browser,
   page,
   request,
 }) => {
   const { campaignId, owner, player, viewer } =
     await createCampaignWithRoles(request);
-  const catalog = `/campaigns/${campaignId}/elements`;
+  const notes = `/campaigns/${campaignId}/notes`;
+  const notesList = page.getByRole('navigation', { name: 'Список заметок' });
 
   await signInAs(page, player);
-  await page.goto(catalog);
-  await expect(page.getByRole('button', { name: 'Материал' })).toHaveCount(0);
+  await page.goto(notes);
+  await expect(
+    page.getByRole('heading', { name: 'Мои заметки' }),
+  ).toBeVisible();
+  // A new note opens at once, private, with its title ready to type.
   await page.getByRole('button', { name: 'Заметка' }).first().click();
-  const dialog = page.getByRole('dialog', { name: 'Новая заметка' });
-  await expect(dialog.getByLabel('Тип')).toHaveCount(0);
-  await expect(dialog.getByRole('radio', { name: 'Личное' })).toBeChecked();
-  await dialog.getByLabel('Название').fill('Подозрение');
-  await dialog.getByRole('button', { name: 'Создать' }).click();
-  await detail(page).getByLabel('Текст').fill('Сторож что-то скрывает.');
-  await expect(detail(page).getByRole('status')).toHaveText('Сохранено');
+  const title = detail(page).getByLabel('Название');
+  await expect(title).toBeFocused();
+  await title.fill('Подозрение');
+  const visibility = detail(page).getByRole('radiogroup', {
+    name: 'Кто видит',
+  });
+  await expect(visibility.getByRole('radio', { name: 'Личное' })).toBeChecked();
+  await detail(page)
+    .getByLabel('Текст', { exact: true })
+    .fill('Сторож что-то скрывает.');
+  await expect(detail(page).getByRole('status')).toHaveText(/^Сохранено · /);
   const noteUrl = page.url();
+  const elementPath = noteUrl.replace('/notes/', '/elements/');
 
   // Private: nobody else sees it, not even the master, not even by URL.
   expect(await listElementTitles(request, owner, campaignId)).toEqual([]);
   const ownerPage = await openAs(browser, owner, noteUrl);
+  await expect(ownerPage).toHaveURL(elementPath);
   await expect(
     ownerPage.getByRole('heading', { name: 'Материал недоступен' }),
   ).toBeVisible();
   await expect(ownerPage.getByText('Возможно, ссылка устарела.')).toBeVisible();
 
-  const visibility = detail(page).getByRole('radiogroup', {
-    name: 'Кто увидит',
-  });
   const toMaster = accessSaved(page);
   await visibility.getByText('Мастеру').click();
   await toMaster;
   await expect(
     visibility.getByRole('radio', { name: 'Мастеру' }),
   ).toBeChecked();
+  await expect(detail(page)).toContainText('Видите вы и мастер');
 
   await ownerPage.reload();
   await expect(
@@ -238,31 +261,24 @@ test('F13d: a player keeps a private note, shows it to the master, edits and del
     );
   expect(await listElementTitles(request, viewer, campaignId)).toEqual([]);
 
-  // The author edits the note in place; the change reaches the master.
-  await detail(page).getByRole('button', { name: 'Изменить' }).click();
-  await detail(page).getByLabel('Название').fill('Подозрение: сторож');
-  await expect(detail(page).getByRole('status')).toHaveText('Сохранено');
-  await detail(page).getByRole('button', { name: 'Готово' }).click();
-  await expect(
-    detail(page).getByRole('heading', { name: 'Подозрение: сторож' }),
-  ).toBeVisible();
+  // The author edits in place with autosave; the change reaches the master.
+  await title.fill('Подозрение: сторож');
+  await expect(notesList).toContainText('Подозрение: сторож');
   expect(await listElementTitles(request, owner, campaignId)).toEqual([
     'Подозрение: сторож',
   ]);
 
   // Deleting can be undone for a few seconds; closing the notice commits it.
   await openMenuItem(page, 'Удалить');
-  await expect(page).toHaveURL(new RegExp(`${catalog}$`));
+  await expect(page).toHaveURL(new RegExp(`${notes}$`));
   const notice = page.getByRole('status').filter({
     hasText: '«Подозрение: сторож» будет удалён',
   });
   await notice.getByRole('button', { name: 'Отменить' }).click();
-  await expect(list(page)).toContainText('Подозрение: сторож');
+  await expect(notesList).toContainText('Подозрение: сторож');
   expect(await listElementTitles(request, owner, campaignId)).toHaveLength(1);
 
-  await list(page)
-    .getByRole('link', { name: /Подозрение/ })
-    .click();
+  await notesList.getByRole('link', { name: /Подозрение/ }).click();
   await openMenuItem(page, 'Удалить');
   const deleted = page.waitForResponse(
     (response) => response.request().method() === 'DELETE' && response.ok(),
@@ -273,7 +289,7 @@ test('F13d: a player keeps a private note, shows it to the master, edits and del
     .getByRole('button', { name: 'Закрыть' })
     .click();
   await deleted;
-  await expect(page.getByText('Здесь пока ничего нет.')).toBeVisible();
+  await expect(page.getByText('Заметок пока нет')).toBeVisible();
   expect(await listElementTitles(request, owner, campaignId)).toEqual([]);
 });
 

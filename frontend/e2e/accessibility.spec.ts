@@ -156,6 +156,32 @@ test('main screens have no automatically detectable accessibility violations in 
       await expectNoAxeViolations(page, `${where}, ${colorScheme}`);
     }
   }
+
+  // The player's own screens: the case, reading, and notes.
+  const noteId = await createElement(request, player, campaignId, {
+    type: 'NOTE',
+    title: 'Кто взял ключ?',
+    content: 'Спросить у **Рикарды**.',
+    access: 'SHARED',
+  });
+  await signInAs(page, player);
+  const playerScreens: [string, string, string][] = [
+    ['case', `/campaigns/${campaignId}/case`, 'Недавно обновлено'],
+    [
+      'case reading',
+      `/campaigns/${campaignId}/case/${elementId}`,
+      'Старая вышка',
+    ],
+    ['notes', `/campaigns/${campaignId}/notes/${noteId}`, 'Кто видит'],
+  ];
+  for (const colorScheme of variations) {
+    await page.emulateMedia({ colorScheme });
+    for (const [where, path, marker] of playerScreens) {
+      await page.goto(path);
+      await expect(page.getByText(marker).first()).toBeVisible();
+      await expectNoAxeViolations(page, `${where}, ${colorScheme}`);
+    }
+  }
 });
 
 /** Tabs through the page and checks every stop: visible focus, DOM order. */

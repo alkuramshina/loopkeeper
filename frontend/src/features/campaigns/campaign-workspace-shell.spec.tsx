@@ -47,13 +47,14 @@ describe('CampaignWorkspaceShell', () => {
     vi.clearAllMocks();
   });
 
-  it('shows the board but not owner settings to a viewer', () => {
+  it('shows the board and the case but not notes or owner settings to a viewer', () => {
     renderShell(baseCampaign);
 
     expect(
       screen.getAllByRole('navigation', { name: 'Разделы кампании' }),
     ).toHaveLength(2);
     expect(screen.getAllByRole('link', { name: 'Дело' })).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: 'Мои заметки' })).toBeNull();
     expect(
       screen.getByRole('link', { name: 'Выбрать другую кампанию' }),
     ).toHaveAttribute('href', '/campaigns');
@@ -81,5 +82,20 @@ describe('CampaignWorkspaceShell', () => {
     expect(
       screen.queryByRole('link', { name: 'Фоны' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('gives a player the case and their own notes', () => {
+    renderShell({ ...baseCampaign, currentUserRole: 'PLAYER' });
+
+    for (const name of ['Дело', 'Мои заметки'])
+      expect(screen.getAllByRole('link', { name })).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Дело' })[0]).toHaveAttribute(
+      'href',
+      '/campaigns/campaign-1/case',
+    );
+    expect(
+      screen.getAllByRole('link', { name: 'Мои заметки' })[0],
+    ).toHaveAttribute('href', '/campaigns/campaign-1/notes');
+    expect(screen.queryByRole('link', { name: 'Материалы' })).toBeNull();
   });
 });

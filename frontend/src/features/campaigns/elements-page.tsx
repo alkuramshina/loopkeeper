@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Link,
+  Navigate,
   useLocation,
   useNavigate,
   useParams,
@@ -13,7 +14,6 @@ import {
   ApiError,
   Campaign,
   CampaignElement,
-  CampaignElementAccess,
   CampaignElementType,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
@@ -34,11 +34,6 @@ import { apiErrorText, elementTypes, npcLimits } from './element-model';
 import './materials.css';
 
 type AccessFilter = 'all' | 'shared' | 'hidden';
-const playerAccess: CampaignElementAccess[] = [
-  'PRIVATE',
-  'MASTER_ONLY',
-  'SHARED',
-];
 
 /**
  * A new material starts from its type and name (and an NPC's role, which the
@@ -46,12 +41,10 @@ const playerAccess: CampaignElementAccess[] = [
  * master's material always starts hidden: revealing is a separate step.
  */
 function CreateElementDialog({
-  owner,
   initialType,
   onClose,
   onCreated,
 }: {
-  owner: boolean;
   initialType?: CampaignElementType;
   onClose: () => void;
   onCreated: (element: CampaignElement) => void;
@@ -60,9 +53,8 @@ function CreateElementDialog({
   const { api } = useAuth();
   const { t } = useTranslation();
   const [type, setType] = useState<CampaignElementType>(
-    owner ? (initialType ?? 'LOCATION') : 'NOTE',
+    initialType ?? 'LOCATION',
   );
-  const [access, setAccess] = useState<CampaignElementAccess>('PRIVATE');
   const [title, setTitle] = useState('');
   const [role, setRole] = useState('');
   const [error, setError] = useState<string>();
@@ -74,7 +66,7 @@ function CreateElementDialog({
           type,
           title: title.trim(),
           content: '',
-          access: owner ? 'MASTER_ONLY' : access,
+          access: 'MASTER_ONLY',
           ...(type === 'NPC' ? { typeData: { role: role.trim() } } : {}),
         }),
       }),
@@ -84,11 +76,9 @@ function CreateElementDialog({
 
   return (
     <ModalDialog
-      description={t(
-        owner ? 'elements.create.hint' : 'elements.create.noteHint',
-      )}
+      description={t('elements.create.hint')}
       onClose={onClose}
-      title={t(owner ? 'elements.create.title' : 'elements.create.noteTitle')}
+      title={t('elements.create.title')}
     >
       <form
         onSubmit={(event: FormEvent<HTMLFormElement>) => {
@@ -96,23 +86,21 @@ function CreateElementDialog({
           create.mutate();
         }}
       >
-        {owner && (
-          <label>
-            {t('elements.type')}
-            <select
-              onChange={(event) =>
-                setType(event.target.value as CampaignElementType)
-              }
-              value={type}
-            >
-              {elementTypes.map((item) => (
-                <option key={item} value={item}>
-                  {t(`elements.types.${item}`)}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        <label>
+          {t('elements.type')}
+          <select
+            onChange={(event) =>
+              setType(event.target.value as CampaignElementType)
+            }
+            value={type}
+          >
+            {elementTypes.map((item) => (
+              <option key={item} value={item}>
+                {t(`elements.types.${item}`)}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           {t('elements.name')}
           <input
@@ -132,17 +120,6 @@ function CreateElementDialog({
               value={role}
             />
           </label>
-        )}
-        {!owner && (
-          <SegmentedControl
-            label={t('elements.visibilityLabel')}
-            onChange={setAccess}
-            options={playerAccess.map((item) => ({
-              value: item,
-              label: t(`ui.access.visibility.${item}`),
-            }))}
-            value={access}
-          />
         )}
         {error && (
           <p className="form-error" role="alert">
@@ -210,7 +187,6 @@ export function ElementsPage() {
   });
   const role = campaign.data?.currentUserRole;
   const owner = role === 'OWNER';
-  const contributor = owner || role === 'PLAYER';
   const isAuthor = (item: CampaignElement) =>
     Boolean(profile) && item.createdById === profile?.userId;
   const listPath = `/campaigns/${campaignId}/elements`;
@@ -311,6 +287,15 @@ export function ElementsPage() {
       />
     );
 
+  // Players read the case and write their own notes; the list is the master's.
+  if (role && !owner)
+    return (
+      <Navigate
+        replace
+        to={`/campaigns/${campaignId}/case${elementId ? `/${elementId}` : ''}`}
+      />
+    );
+
   const loading = campaign.isLoading || elements.isLoading;
   const emptyCatalog = !loading && present.length === 0;
   const nothingFound = !loading && present.length > 0 && groups.length === 0;
@@ -321,21 +306,19 @@ export function ElementsPage() {
         className={`materials-layout ${elementId ? 'materials-layout-detail' : ''}`}
       >
         <section
-          aria-label={t(owner ? 'elements.title' : 'elements.caseTitle')}
+          aria-label={t('elements.title')}
           className="materials-list-pane"
         >
           <div className="materials-list-head">
             <div className="materials-heading">
-              <h1>{t(owner ? 'elements.title' : 'elements.caseTitle')}</h1>
-              {contributor && (
-                <Button
-                  icon={Plus}
-                  onClick={() => setCreating(true)}
-                  variant={owner ? 'primary' : 'secondary'}
-                >
-                  {t(owner ? 'elements.new' : 'elements.newNote')}
-                </Button>
-              )}
+              <h1>{t('elements.title')}</h1>
+              <Button
+                icon={Plus}
+                onClick={() => setCreating(true)}
+                variant="primary"
+              >
+                {t('elements.new')}
+              </Button>
             </div>
             {owner && (
               <SegmentedControl
@@ -437,21 +420,17 @@ export function ElementsPage() {
           {emptyCatalog && (
             <EmptyState
               action={
-                contributor ? (
-                  <Button
-                    icon={Plus}
-                    onClick={() => setCreating(true)}
-                    variant="primary"
-                  >
-                    {t(owner ? 'elements.new' : 'elements.newNote')}
-                  </Button>
-                ) : undefined
+                <Button
+                  icon={Plus}
+                  onClick={() => setCreating(true)}
+                  variant="primary"
+                >
+                  {t('elements.new')}
+                </Button>
               }
-              title={t(owner ? 'elements.emptyOwner' : 'elements.empty')}
+              title={t('elements.emptyOwner')}
             >
-              <p>
-                {t(owner ? 'elements.emptyOwnerText' : 'elements.emptyText')}
-              </p>
+              <p>{t('elements.emptyOwnerText')}</p>
             </EmptyState>
           )}
         </section>
@@ -465,14 +444,16 @@ export function ElementsPage() {
               startEditing={Boolean(
                 (location.state as { edit?: boolean } | null)?.edit,
               )}
-              viewer={{ owner, contributor, isAuthor: isAuthor(selected) }}
+              viewer={{
+                owner,
+                contributor: owner,
+                isAuthor: isAuthor(selected),
+              }}
             />
           ) : unavailable ? (
             <EmptyState title={t('elements.unavailable')}>
               <p>{t('elements.unavailableText')}</p>
-              <Link to={listPath}>
-                {t(owner ? 'elements.backToMaterials' : 'elements.backToCase')}
-              </Link>
+              <Link to={listPath}>{t('elements.backToMaterials')}</Link>
             </EmptyState>
           ) : elementId ? (
             <div aria-busy="true" className="material-document">
@@ -502,7 +483,6 @@ export function ElementsPage() {
             });
           }}
           initialType={requestedType}
-          owner={owner}
         />
       )}
     </CampaignWorkspaceShell>

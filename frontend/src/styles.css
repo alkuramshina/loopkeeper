@@ -2054,3 +2054,16 @@ summary {
     flex: 1 1 100%;
   }
 }
+
+/* On a phone a sheet dialog rises from the bottom edge. */
+@media (max-width: 599px) {
+  .modal-dialog-sheet {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 3rem);
+    margin: auto 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    border-bottom: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+}

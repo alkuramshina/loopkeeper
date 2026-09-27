@@ -16,20 +16,20 @@ test('a dialog closes by the cross, Escape and a click outside without moving th
   page,
   request,
 }) => {
-  const { campaignId, player } = await createCampaignWithRoles(request);
-  await createElement(request, player, campaignId, {
+  const { campaignId, owner } = await createCampaignWithRoles(request);
+  await createElement(request, owner, campaignId, {
     type: 'NOTE',
     title: 'Старая заметка',
   });
-  await signInAs(page, player);
+  await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements`);
   await expect(
     page.getByRole('link', { name: /Старая заметка/ }),
   ).toBeVisible();
   const before = await position(page, '.materials-row');
 
-  const opener = page.getByRole('button', { name: 'Заметка', exact: true });
-  const dialog = page.getByRole('dialog', { name: 'Новая заметка' });
+  const opener = page.getByRole('button', { name: 'Материал', exact: true });
+  const dialog = page.getByRole('dialog', { name: 'Новый материал' });
   const closeWays: [string, () => Promise<void>][] = [
     ['cross', () => dialog.getByRole('button', { name: 'Закрыть' }).click()],
     ['Escape', () => page.keyboard.press('Escape')],

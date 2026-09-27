@@ -42,7 +42,8 @@
   .materials-detail-pane {
     display: block;
   }
-  .material-toolbar .material-back {
+  /* The list stays beside the detail, so there is nothing to go back to. */
+  .materials-layout .material-back {
     display: none;
   }
 }
@@ -503,5 +504,32 @@
   }
   .material-toolbar-reveal > .ui-button {
     width: 100%;
+  }
+}
+
+/* A reader's frequent actions stay at hand under the text. */
+.material-reader-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-line);
+  background: var(--color-bg);
+}
+/* Above the phone's bottom navigation, which is fixed below 800px. */
+@media (max-width: 799px) {
+  .material-reader-actions {
+    bottom: calc(3.35rem + max(0.35rem, env(safe-area-inset-bottom)));
+  }
+}
+@media (max-width: 599px) {
+  .material-reader-actions {
+    padding-inline: var(--space-4);
+  }
+  .material-reader-actions > .ui-button {
+    flex: 1 1 auto;
   }
 }

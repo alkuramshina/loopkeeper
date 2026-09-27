@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useId, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -11,11 +11,7 @@ import {
   Pencil,
   Trash2,
 } from 'lucide-react';
-import {
-  ApiError,
-  CampaignElement,
-  CampaignElementAccess,
-} from '../../api/client';
+import { CampaignElement } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { MediaUpload } from '../../components/media-upload';
 import { ProtectedImage } from '../../components/protected-image';
@@ -25,13 +21,9 @@ import { AccessBadge } from '../../components/ui/access-badge';
 import { Button } from '../../components/ui/button';
 import { iconProps } from '../../components/ui/icon';
 import { MenuButton, MenuItem } from '../../components/ui/menu-button';
-import { SegmentedControl } from '../../components/ui/segmented-control';
-import { useToast } from '../../components/ui/toast';
 import { TypeTag } from '../../components/ui/type-tag';
-import { HideDialog, RevealDialog } from './element-access-dialogs';
 import { ElementMapViewer } from './element-map-viewer';
 import {
-  apiErrorText,
   externalMapUrl,
   formatChanged,
   isExternalMapUrl,
@@ -41,18 +33,13 @@ import {
   npcLimits,
   npcText,
 } from './element-model';
+import { useAccessChange, useAddToBoard } from './use-element-actions';
 
 export type Viewer = {
   owner: boolean;
   contributor: boolean;
   isAuthor: boolean;
 };
-
-const playerAccess: CampaignElementAccess[] = [
-  'PRIVATE',
-  'MASTER_ONLY',
-  'SHARED',
-];
 
 type Draft = {
   title: string;
@@ -91,6 +78,7 @@ function MaterialToolbar({
   onRetry,
   beforeAccessChange,
   onDelete,
+  hasReaderActions,
 }: {
   element: CampaignElement;
   viewer: Viewer;
@@ -102,88 +90,25 @@ function MaterialToolbar({
   onRetry: () => void;
   beforeAccessChange: () => Promise<boolean>;
   onDelete: (element: CampaignElement) => void;
+  hasReaderActions: boolean;
 }) {
-  const { campaignId } = useParams();
-  const { api } = useAuth();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const toast = useToast();
-  const [dialog, setDialog] = useState<
-    { kind: 'reveal' } | { kind: 'hide'; target: CampaignElementAccess }
-  >();
-  const [dialogError, setDialogError] = useState<string>();
   const { owner, contributor, isAuthor } = viewer;
   const canEdit = contributor && isAuthor;
   const playerNote = !(owner && isAuthor);
-
-  const changeAccess = useMutation({
-    mutationFn: (access: CampaignElementAccess) =>
-      api.request<CampaignElement>(`/elements/${element.elementId}/access`, {
-        method: 'PATCH',
-        body: JSON.stringify({ access }),
-      }),
-    onSuccess: (saved, access) => {
-      queryClient.setQueryData(['element', element.elementId], saved);
-      void queryClient.invalidateQueries({
-        queryKey: ['elements', campaignId],
-      });
-      void queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
-      setDialog(undefined);
-      if (owner)
-        toast.show({
-          message: t(
-            access === 'SHARED' ? 'elements.revealed' : 'elements.hidden',
-          ),
-        });
-    },
-    onError: (cause) => {
-      if (dialog) setDialogError(apiErrorText(cause, t));
-      else toast.show({ message: apiErrorText(cause, t) });
-    },
+  // The preview must show what is saved, including the last keystrokes; an
+  // unsaved draft keeps its status message instead.
+  const accessChange = useAccessChange({
+    element,
+    owner,
+    beforeChange: beforeAccessChange,
   });
-
-  const addToBoard = useMutation({
-    mutationFn: () =>
-      api.request(`/campaigns/${campaignId}/cards`, {
-        method: 'POST',
-        body: JSON.stringify({
-          cardKind: 'ELEMENT_REFERENCE',
-          elementId: element.elementId,
-        }),
-      }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
-      toast.show({ message: t('elements.addedToBoard') });
-    },
-    onError: (cause) =>
-      toast.show({
-        message:
-          cause instanceof ApiError && cause.status === 409
-            ? t('elements.alreadyOnBoard')
-            : apiErrorText(cause, t),
-      }),
-  });
-
-  const openDialog = async (
-    next: { kind: 'reveal' } | { kind: 'hide'; target: CampaignElementAccess },
-  ) => {
-    // The preview must show what is saved, including the last keystrokes;
-    // an unsaved draft keeps its status message instead.
-    if (!(await beforeAccessChange())) return;
-    setDialogError(undefined);
-    setDialog(next);
-  };
-
-  const requestAccess = (access: CampaignElementAccess) => {
-    if (access === element.access) return;
-    if (access === 'SHARED') void openDialog({ kind: 'reveal' });
-    else if (element.access === 'SHARED')
-      void openDialog({ kind: 'hide', target: access });
-    else changeAccess.mutate(access);
-  };
+  const requestAccess = accessChange.request;
+  const addToBoard = useAddToBoard(element.elementId);
 
   const menu: MenuItem[] = [
-    ...(contributor && element.access === 'SHARED'
+    // A reader's own action bar already offers the board.
+    ...(contributor && element.access === 'SHARED' && !hasReaderActions
       ? [
           {
             label: t('elements.addToBoard'),
@@ -271,39 +196,7 @@ function MaterialToolbar({
           )}
         </div>
       )}
-      {canEdit && !owner && (
-        <div className="material-toolbar-reveal">
-          <SegmentedControl
-            label={t('elements.visibilityLabel')}
-            onChange={requestAccess}
-            options={playerAccess.map((access) => ({
-              value: access,
-              label: t(`ui.access.visibility.${access}`),
-            }))}
-            value={element.access}
-          />
-        </div>
-      )}
-      {dialog?.kind === 'reveal' && (
-        <RevealDialog
-          element={element}
-          error={dialogError}
-          onClose={() => setDialog(undefined)}
-          onConfirm={() => changeAccess.mutate('SHARED')}
-          owner={owner}
-          pending={changeAccess.isPending}
-        />
-      )}
-      {dialog?.kind === 'hide' && (
-        <HideDialog
-          element={element}
-          error={dialogError}
-          onClose={() => setDialog(undefined)}
-          onConfirm={() => changeAccess.mutate(dialog.target)}
-          owner={owner}
-          pending={changeAccess.isPending}
-        />
-      )}
+      {accessChange.dialogs}
     </header>
   );
 }
@@ -618,12 +511,15 @@ export function ElementDetail({
   backTo,
   startEditing,
   onDelete,
+  readerActions,
 }: {
   element: CampaignElement;
   viewer: Viewer;
   backTo: string;
   startEditing: boolean;
   onDelete: (element: CampaignElement) => void;
+  /** Frequent actions of a reader, kept at hand below the text. */
+  readerActions?: ReactNode;
 }) {
   const canEdit = viewer.contributor && viewer.isAuthor;
   const [editing, setEditing] = useState(startEditing && canEdit);
@@ -648,6 +544,7 @@ export function ElementDetail({
         beforeAccessChange={() => flushRef.current()}
         editing={editing}
         element={element}
+        hasReaderActions={Boolean(readerActions)}
         onDelete={onDelete}
         onDone={() => {
           // Leave editing only when everything is saved; otherwise the
@@ -677,6 +574,9 @@ export function ElementDetail({
           <ReadMaterial element={element} viewer={viewer} />
         )}
       </div>
+      {readerActions && (
+        <footer className="material-reader-actions">{readerActions}</footer>
+      )}
     </article>
   );
 }
