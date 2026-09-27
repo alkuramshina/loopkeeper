@@ -2,6 +2,7 @@ import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, Locator, Page, test } from './support/test';
 import {
+  beginReturnVisit,
   createCampaign,
   createCampaignWithRoles,
   createElement,
@@ -417,6 +418,7 @@ test('P5d: element covers appear on board cards and in case previews', async ({
   request,
 }) => {
   const { campaignId, owner, player } = await createCampaignWithRoles(request);
+  await beginReturnVisit(request, player, campaignId);
   const portrait = await createElement(request, owner, campaignId, {
     type: 'NPC',
     title: 'Портрет',
@@ -462,7 +464,7 @@ test('P5d: element covers appear on board cards and in case previews', async ({
   await signInAs(page, player);
   await page.goto(`/campaigns/${campaignId}/elements`);
   for (const title of ['Портрет', 'Пейзаж']) {
-    const item = page.getByRole('link', { name: title });
+    const item = page.getByRole('link', { name: new RegExp(title) });
     const thumbnail = item.locator('img.case-card-cover');
     await expect(thumbnail).toHaveAttribute('src', /^blob:/);
     const thumb = await thumbnail.boundingBox();

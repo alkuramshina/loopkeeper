@@ -59,6 +59,7 @@ export class ElementService {
         title: dto.title,
         content: dto.content,
         access,
+        sharedAt: access === CampaignElementAccess.SHARED ? new Date() : null,
         typeData: (dto.typeData ?? {}) as Prisma.InputJsonValue,
         sortOrder: dto.sortOrder,
         imageUrl: dto.imageUrl,
@@ -164,13 +165,26 @@ export class ElementService {
     this.validateAccess(isOwner, access);
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
+      const current = await tx.campaignElement.findFirst({
+        where: { elementId, ...editableElementWhere(userId) },
+        select: { access: true },
+      });
+      if (!current) throw this.notFound();
       // Leaving SHARED removes reference cards; their nodes and links cascade.
       if (access !== CampaignElementAccess.SHARED) {
         await tx.investigationCard.deleteMany({ where: { elementId } });
       }
       return tx.campaignElement.update({
         where: { elementId },
-        data: { access },
+        data: {
+          access,
+          ...(access !== current.access
+            ? {
+                sharedAt:
+                  access === CampaignElementAccess.SHARED ? new Date() : null,
+              }
+            : {}),
+        },
         include: elementInclude,
       });
     });

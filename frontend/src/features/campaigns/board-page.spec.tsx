@@ -71,6 +71,8 @@ describe('BoardPage', () => {
           cards,
           links: [],
         });
+      if (path === '/campaigns/c/visit')
+        return Promise.resolve({ newSinceAt: null });
       throw new Error(`Unexpected request: ${path}`);
     });
   });

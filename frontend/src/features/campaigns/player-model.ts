@@ -1,8 +1,5 @@
 import { Board, CampaignElement } from '../../api/client';
 
-/** How many materials the case shows large at the top. */
-export const recentLimit = 4;
-
 const dayKey = (iso: string) => {
   const date = new Date(iso);
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
@@ -11,26 +8,29 @@ const dayKey = (iso: string) => {
 /**
  * The case: what is open to the group, newest first, without the notes of
  * `authorId` (a player keeps those in "My notes"). The
- * most recent day comes first and large (until "new since the last visit"
- * exists, the day of the latest change stands in for it); the rest follows
- * grouped by day.
+ * new materials since the last visit come first; the rest follows by day.
  */
 export function caseEntries(
   elements: CampaignElement[],
   authorId: string | undefined,
+  newSinceAt?: string | null,
 ) {
   const shared = elements
     .filter((item) => item.access === 'SHARED' && item.createdById !== authorId)
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const latestDay = shared[0] ? dayKey(shared[0].updatedAt) : undefined;
-  const recent = shared
-    .filter((item) => dayKey(item.updatedAt) === latestDay)
-    .slice(0, recentLimit);
+    .sort((a, b) =>
+      (b.sharedAt ?? b.updatedAt).localeCompare(a.sharedAt ?? a.updatedAt),
+    );
+  const recent = newSinceAt
+    ? shared.filter((item) => item.sharedAt && item.sharedAt > newSinceAt)
+    : [];
+  const recentIds = new Set(recent.map((item) => item.elementId));
   const earlier: { day: string; items: CampaignElement[] }[] = [];
-  for (const item of shared.slice(recent.length)) {
-    const day = dayKey(item.updatedAt);
+  for (const item of shared.filter(
+    (candidate) => !recentIds.has(candidate.elementId),
+  )) {
+    const day = dayKey(item.sharedAt ?? item.updatedAt);
     const last = earlier[earlier.length - 1];
-    if (last && dayKey(last.items[0].updatedAt) === day) last.items.push(item);
+    if (last && last.day === day) last.items.push(item);
     else earlier.push({ day, items: [item] });
   }
   return { all: shared, recent, earlier };

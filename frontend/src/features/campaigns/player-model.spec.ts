@@ -29,16 +29,21 @@ const element = (
 });
 
 describe('caseEntries', () => {
-  it('puts the latest day first and groups the rest by day, newest first', () => {
+  it('puts newly shared materials first and groups the rest by day', () => {
     const entries = caseEntries(
       [
         element('old', new Date(2026, 8, 6, 12).toISOString()),
-        element('latest', new Date(2026, 8, 20, 19, 52).toISOString()),
-        element('same-day', new Date(2026, 8, 20, 19, 40).toISOString()),
+        element('latest', new Date(2026, 8, 20, 19, 52).toISOString(), {
+          sharedAt: new Date(2026, 8, 20, 19, 52).toISOString(),
+        }),
+        element('same-day', new Date(2026, 8, 20, 19, 40).toISOString(), {
+          sharedAt: new Date(2026, 8, 20, 19, 40).toISOString(),
+        }),
         element('middle-a', new Date(2026, 8, 14, 18).toISOString()),
         element('middle-b', new Date(2026, 8, 14, 10).toISOString()),
       ],
       'player',
+      new Date(2026, 8, 19).toISOString(),
     );
     expect(entries.recent.map((item) => item.elementId)).toEqual([
       'latest',
@@ -62,16 +67,13 @@ describe('caseEntries', () => {
     expect(entries.all.map((item) => item.elementId)).toEqual(['shared']);
   });
 
-  it('shows at most four materials large', () => {
+  it('does not mark old materials as new on the first visit', () => {
     const items = [0, 1, 2, 3, 4, 5].map((minute) =>
       element(`m${minute}`, new Date(2026, 8, 20, 12, minute).toISOString()),
     );
     const entries = caseEntries(items, 'player');
-    expect(entries.recent).toHaveLength(4);
-    expect(entries.earlier[0].items.map((item) => item.elementId)).toEqual([
-      'm1',
-      'm0',
-    ]);
+    expect(entries.recent).toHaveLength(0);
+    expect(entries.earlier[0].items).toHaveLength(6);
   });
 });
 

@@ -17,7 +17,7 @@ function list(page: Page) {
 }
 
 function recent(page: Page) {
-  return page.getByRole('region', { name: /Недавно обновлено/ });
+  return page.getByRole('region', { name: 'Ранее' });
 }
 
 function accessSaved(page: Page) {

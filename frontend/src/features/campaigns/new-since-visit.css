@@ -1,0 +1,30 @@
+.campaign-nav-new {
+  width: 0.375rem;
+  height: 0.375rem;
+  flex: none;
+  border-radius: 50%;
+  background: var(--new-mark);
+}
+
+.campaign-workspace-shell-navigation .campaign-nav-new {
+  margin-left: auto;
+}
+
+@media (max-width: 1023px) {
+  .campaign-workspace-shell-mobile-navigation a {
+    position: relative;
+  }
+
+  .campaign-workspace-shell-mobile-navigation .campaign-nav-new {
+    position: absolute;
+    top: 0.35rem;
+    right: calc(50% - 1.1rem);
+  }
+}
+
+.campaign-card .campaign-card-new {
+  margin: 0.5rem 0 0;
+  color: var(--new-mark);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}

@@ -65,6 +65,8 @@ describe('CharactersPage', () => {
           characterId: 'pc',
           ...JSON.parse(init.body as string),
         });
+      if (path === '/campaigns/c/visit')
+        return Promise.resolve({ newSinceAt: null });
       throw new Error(`Unexpected request: ${path}`);
     });
   });

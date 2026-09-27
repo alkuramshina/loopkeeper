@@ -131,6 +131,8 @@ describe('NotesPage', () => {
         return Promise.resolve(stored[id]);
       }
       if (init?.method === 'DELETE') return Promise.resolve(undefined);
+      if (path === '/campaigns/c/visit')
+        return Promise.resolve({ newSinceAt: null });
       throw new Error(`Unexpected request: ${path}`);
     });
   });

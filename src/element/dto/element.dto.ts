@@ -133,6 +133,9 @@ export class ElementResponseDto {
   @ApiProperty({ format: 'date-time' })
   updatedAt!: Date;
 
+  @ApiPropertyOptional({ nullable: true, format: 'date-time' })
+  sharedAt!: Date | null;
+
   @ApiProperty({ format: 'uuid' })
   createdById!: string;
 

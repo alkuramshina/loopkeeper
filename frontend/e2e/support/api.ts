@@ -1,4 +1,5 @@
 import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
+import { Client } from 'pg';
 
 // Test data is prepared through the real API (via the Vite proxy) instead of
 // clicking through the UI, so each spec only exercises the flow it is about.
@@ -124,6 +125,40 @@ export async function createCampaignWithRoles(
   await addMember(request, owner, campaignId, player, 'PLAYER');
   await addMember(request, owner, campaignId, viewer, 'VIEWER');
   return { campaignId, owner, player, viewer };
+}
+
+/** Give a member a prior visit so newly shared material can be exercised in browser tests. */
+export async function beginReturnVisit(
+  request: APIRequestContext,
+  member: TestUser,
+  campaignId: string,
+): Promise<void> {
+  const first = await request.post(`/api/campaigns/${campaignId}/visit`, {
+    headers: member.headers,
+  });
+  expect(first.ok()).toBeTruthy();
+  expect((await first.json()).newSinceAt).toBeNull();
+  const url =
+    process.env.LOOPKEEPER_TEST_DATABASE_URL ??
+    'postgresql://loopkeeper:loopkeeper@localhost:5433/loopkeeper_test';
+  if (new URL(url).pathname !== '/loopkeeper_test')
+    throw new Error('Test database required');
+  const db = new Client({ connectionString: url });
+  await db.connect();
+  try {
+    await db.query(
+      `UPDATE campaign_participant_states SET "lastVisitAt" = NOW() - INTERVAL '2 hours'
+       WHERE "memberId" = (SELECT "memberId" FROM campaign_members WHERE "campaignId" = $1 AND "userId" = $2)`,
+      [campaignId, member.userId],
+    );
+  } finally {
+    await db.end();
+  }
+  const next = await request.post(`/api/campaigns/${campaignId}/visit`, {
+    headers: member.headers,
+  });
+  expect(next.ok()).toBeTruthy();
+  expect((await next.json()).newSinceAt).not.toBeNull();
 }
 
 const kidData = {

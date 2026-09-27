@@ -205,7 +205,9 @@ function RecentCard({
         <span className="case-card-meta">
           <TypeTag type={element.type} />
           <NewMark>
-            {t('case.updated', { when: formatChanged(element.updatedAt, t) })}
+            {t('case.opened', {
+              when: formatChanged(element.sharedAt ?? element.updatedAt, t),
+            })}
           </NewMark>
         </span>
         <strong className="case-card-title">{element.title}</strong>
@@ -256,8 +258,9 @@ function CaseOverview({
       caseEntries(
         elements.filter((item) => filter === 'all' || item.type === filter),
         notesElsewhere,
+        campaign.newSinceAt,
       ),
-    [elements, filter, notesElsewhere],
+    [campaign.newSinceAt, elements, filter, notesElsewhere],
   );
   const total = caseEntries(elements, notesElsewhere).all.length;
   const path = (item: CampaignElement) =>
@@ -309,28 +312,28 @@ function CaseOverview({
           <p className="case-note">{t('case.nothingOfType')}</p>
         ) : (
           <>
-            <section aria-labelledby="case-recent" className="case-section">
-              <h2 className="case-section-title" id="case-recent">
-                <NewMark>
-                  {t('case.recent', {
-                    date: dayFormat.format(
-                      new Date(entries.recent[0].updatedAt),
-                    ),
-                  })}
-                </NewMark>
-              </h2>
-              <ul className="case-recent-grid">
-                {entries.recent.map((item) => (
-                  <li key={item.elementId}>
-                    <RecentCard
-                      element={item}
-                      onBoard={onBoard.has(item.elementId)}
-                      to={path(item)}
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {entries.recent.length > 0 && (
+              <section aria-labelledby="case-recent" className="case-section">
+                <h2 className="case-section-title" id="case-recent">
+                  <NewMark>
+                    {t('case.recent', {
+                      date: dayFormat.format(new Date(campaign.newSinceAt!)),
+                    })}
+                  </NewMark>
+                </h2>
+                <ul className="case-recent-grid">
+                  {entries.recent.map((item) => (
+                    <li key={item.elementId}>
+                      <RecentCard
+                        element={item}
+                        onBoard={onBoard.has(item.elementId)}
+                        to={path(item)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
             {entries.earlier.length > 0 && (
               <section aria-labelledby="case-earlier" className="case-section">
                 <h2 className="case-section-title" id="case-earlier">
@@ -338,7 +341,9 @@ function CaseOverview({
                 </h2>
                 <div className="case-earlier">
                   {entries.earlier.map((group) => {
-                    const date = new Date(group.items[0].updatedAt);
+                    const date = new Date(
+                      group.items[0].sharedAt ?? group.items[0].updatedAt,
+                    );
                     return (
                       <section
                         aria-label={dayFormat.format(date)}

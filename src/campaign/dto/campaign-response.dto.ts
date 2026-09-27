@@ -27,6 +27,17 @@ export class CampaignResponseDto {
   @ApiProperty({ enum: CampaignRole })
   currentUserRole!: CampaignRole;
 
+  @ApiPropertyOptional({ nullable: true, format: 'date-time' })
+  newSinceAt!: Date | null;
+
+  @ApiProperty({ minimum: 0 })
+  newVisibleMaterialCount!: number;
+
   @ApiProperty({ type: CampaignBackgroundRenderConfigDto })
   backgroundConfig!: CampaignBackgroundRenderConfigDto;
+}
+
+export class CampaignVisitResponseDto {
+  @ApiPropertyOptional({ nullable: true, format: 'date-time' })
+  newSinceAt!: Date | null;
 }

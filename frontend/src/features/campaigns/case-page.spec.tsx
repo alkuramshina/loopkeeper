@@ -42,6 +42,7 @@ const booth = {
   content: 'Дверь **заперта** снаружи.',
   createdAt: at(20, 19),
   updatedAt: at(20, 19),
+  sharedAt: at(20, 19),
 };
 const journal = {
   ...base,
@@ -50,6 +51,7 @@ const journal = {
   title: 'Запись в журнале',
   createdAt: at(20, 18),
   updatedAt: at(20, 18),
+  sharedAt: at(20, 18),
 };
 const berg = {
   ...base,
@@ -58,6 +60,7 @@ const berg = {
   title: 'Смотритель Берг',
   createdAt: at(14, 12),
   updatedAt: at(14, 12),
+  sharedAt: at(14, 12),
 };
 const myNote = {
   ...base,
@@ -151,7 +154,11 @@ describe('CasePage', () => {
           title: 'Лето петли',
           system: 'tftl',
           currentUserRole: role,
+          newSinceAt: at(19, 12),
+          newVisibleMaterialCount: 2,
         });
+      if (path === '/campaigns/c/visit')
+        return Promise.resolve({ newSinceAt: at(19, 12) });
       if (path === '/game-systems') return Promise.resolve([]);
       if (path === '/campaigns/c/elements' && !init)
         return Promise.resolve(elements);
@@ -174,10 +181,10 @@ describe('CasePage', () => {
     });
   });
 
-  it('shows what others opened, the latest day large and the rest by day', async () => {
+  it('shows newly opened materials since the last visit and the rest by day', async () => {
     renderPage();
     const recent = await screen.findByRole('region', {
-      name: /Недавно обновлено · 20 сентября/,
+      name: /Новое с прошлого визита · 19 сентября/,
     });
     expect(
       within(recent)
@@ -194,7 +201,10 @@ describe('CasePage', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'NPC' }));
     expect(
-      screen.getByRole('region', { name: /Недавно обновлено · 14 сентября/ }),
+      screen.queryByRole('region', { name: /Новое с прошлого визита/ }),
+    ).toBeNull();
+    expect(
+      screen.getByRole('region', { name: '14 сентября' }),
     ).toHaveTextContent('Смотритель Берг');
     expect(screen.queryByText('Трансформаторная будка')).toBeNull();
   });
@@ -255,7 +265,7 @@ describe('CasePage', () => {
   it('lets a viewer read without notes or a character', async () => {
     role = 'VIEWER';
     renderPage();
-    await screen.findByRole('region', { name: /Недавно обновлено/ });
+    await screen.findByRole('region', { name: /Новое с прошлого визита/ });
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('region', { name: 'Мой персонаж' }),

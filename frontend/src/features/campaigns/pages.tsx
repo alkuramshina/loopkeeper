@@ -13,6 +13,7 @@ import { Logo } from '../../components/brand/logo';
 import { Avatar } from '../../components/avatar';
 import { ImageIcon, Link2, Plus } from 'lucide-react';
 import { invitationToken } from './invitation-token';
+import './new-since-visit.css';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -209,6 +210,13 @@ export function CampaignListPage() {
                   <p className="campaign-card-description">
                     {campaign.description || t('campaigns.descriptionFallback')}
                   </p>
+                  {(campaign.newVisibleMaterialCount ?? 0) > 0 && (
+                    <p className="campaign-card-new">
+                      {t('campaigns.newMaterials', {
+                        count: campaign.newVisibleMaterialCount,
+                      })}
+                    </p>
+                  )}
                 </div>
               </Link>
             ))}

@@ -100,6 +100,8 @@ describe('MembersPage', () => {
         });
       if (init?.method === 'PATCH' || init?.method === 'DELETE')
         return Promise.resolve(undefined);
+      if (path === '/campaigns/c/visit')
+        return Promise.resolve({ newSinceAt: null });
       throw new Error(`Unexpected request: ${path}`);
     });
   });

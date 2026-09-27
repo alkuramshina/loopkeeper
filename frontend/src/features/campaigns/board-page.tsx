@@ -34,6 +34,7 @@ import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { errorMessage, PageError } from '../../components/page-error';
 import { formText } from '../../components/form-text';
 import { TypeTag } from '../../components/ui/type-tag';
+import { NewMark } from '../../components/ui/new-mark';
 import { AccessBadge } from '../../components/ui/access-badge';
 import { useToast } from '../../components/ui/toast';
 import { ArrowUpRight, Link2, Maximize2, Plus, Search } from 'lucide-react';
@@ -46,6 +47,7 @@ type NodeDimensions = {
 };
 type BoardNodeData = {
   card: BoardCard;
+  isNew: boolean;
   linkCount: number;
   canManage: boolean;
   onResizeEnd: (dimensions: NodeDimensions) => void;
@@ -61,6 +63,8 @@ function boardNodes(
   cards: BoardCard[],
   links: BoardLink[],
   canManage: boolean,
+  newSinceAt: string | null | undefined,
+  userId: string | undefined,
   onResizeEnd: (cardId: string, dimensions: NodeDimensions) => void,
 ): Node<BoardNodeData>[] {
   return cards.map((card, index) => ({
@@ -74,6 +78,11 @@ function boardNodes(
     height: card.node?.height ?? 160,
     data: {
       card,
+      isNew: Boolean(
+        newSinceAt &&
+        card.createdAt > newSinceAt &&
+        card.createdBy?.userId !== userId,
+      ),
       linkCount: links.filter(
         (link) =>
           link.fromCardId === card.cardId || link.toCardId === card.cardId,
@@ -84,13 +93,24 @@ function boardNodes(
   }));
 }
 
-function boardEdges(links: BoardLink[]): Edge[] {
+function boardEdges(
+  links: BoardLink[],
+  newSinceAt?: string | null,
+  userId?: string,
+  newLabel?: string,
+): Edge[] {
   const pathStrategy: Edge['type'] = 'default';
   return links.map((link) => ({
     id: link.linkId,
     source: link.fromCardId,
     target: link.toCardId,
-    label: link.label,
+    label:
+      newSinceAt &&
+      link.createdAt &&
+      link.createdAt > newSinceAt &&
+      link.createdById !== userId
+        ? [link.label, newLabel].filter(Boolean).join(' · ')
+        : link.label,
     type: pathStrategy,
   }));
 }
@@ -133,6 +153,7 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
         />
       )}
       <div className="flow-card-top">
+        {data.isNew && <NewMark />}
         <TypeTag
           type={
             card.cardKind === 'FREE'
@@ -587,7 +608,7 @@ function parseTags(value: string) {
 
 export function BoardPage() {
   const { campaignId } = useParams();
-  const { api } = useAuth();
+  const { api, profile } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [editor, setEditor] = useState<EditorTarget>();
@@ -683,6 +704,8 @@ export function BoardPage() {
       board.data.cards,
       board.data.links,
       canManage,
+      campaign.data?.newSinceAt,
+      profile?.userId,
       persistNodeDimensions,
     );
     setNodes((current) => {
@@ -702,7 +725,12 @@ export function BoardPage() {
         };
       });
     });
-    const nextEdges = boardEdges(board.data.links);
+    const nextEdges = boardEdges(
+      board.data.links,
+      campaign.data?.newSinceAt,
+      profile?.userId,
+      t('ui.newMark'),
+    );
     setEdges((current) => {
       const selected = new Set(
         current.filter((edge) => edge.selected).map((edge) => edge.id),
@@ -712,7 +740,16 @@ export function BoardPage() {
         selected: canManage && selected.has(edge.id),
       }));
     });
-  }, [board.data, canManage, persistNodeDimensions, setEdges, setNodes]);
+  }, [
+    board.data,
+    canManage,
+    campaign.data?.newSinceAt,
+    profile?.userId,
+    persistNodeDimensions,
+    setEdges,
+    setNodes,
+    t,
+  ]);
   const createLink = useMutation({
     mutationFn: (connection: Connection) =>
       api.request<BoardLink>(`/campaigns/${campaignId}/investigation-links`, {
@@ -787,11 +824,25 @@ export function BoardPage() {
   }));
   const visibleEdges = edges.map((edge) => ({
     ...edge,
-    className: selectedCardId
-      ? edge.source === selectedCardId || edge.target === selectedCardId
-        ? 'board-edge-connected'
-        : 'board-edge-dimmed'
-      : '',
+    className: [
+      selectedCardId
+        ? edge.source === selectedCardId || edge.target === selectedCardId
+          ? 'board-edge-connected'
+          : 'board-edge-dimmed'
+        : '',
+      board.data?.links.some(
+        (link) =>
+          link.linkId === edge.id &&
+          data?.newSinceAt &&
+          link.createdAt &&
+          link.createdAt > data.newSinceAt &&
+          link.createdById !== profile?.userId,
+      )
+        ? 'board-edge-new'
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' '),
   }));
   const background = useCampaignBackground(campaignId, data?.backgroundConfig);
   // A failed refresh keeps the last snapshot on screen; only a board that

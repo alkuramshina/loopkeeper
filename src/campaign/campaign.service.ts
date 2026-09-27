@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CampaignRole, Prisma } from '@prisma/client';
+import { CampaignElementAccess, CampaignRole, Prisma } from '@prisma/client';
 import { CampaignBackgroundDto } from './dto/campaign-background-settings.dto';
 import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,6 +8,7 @@ import { CampaignAccessService } from './access/campaign-access.service';
 import { memberCampaignWhere } from './access/campaign-membership';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
+import { nextVisitWindow } from './visit-window';
 
 const campaignForCurrentUser = (userId: string) =>
   ({
@@ -23,7 +24,11 @@ const campaignForCurrentUser = (userId: string) =>
     backgrounds: true,
     members: {
       where: { userId },
-      select: { campaignRole: true },
+      select: {
+        campaignRole: true,
+        memberId: true,
+        participantState: { select: { newSinceAt: true } },
+      },
     },
   }) satisfies Prisma.CampaignSelect;
 
@@ -49,7 +54,7 @@ export class CampaignService {
       select: campaignForCurrentUser(userId),
     });
 
-    return this.presentCampaign(campaign);
+    return this.presentCampaign(campaign, 0);
   }
 
   async findAll(userId: string) {
@@ -59,7 +64,14 @@ export class CampaignService {
       select: campaignForCurrentUser(userId),
     });
 
-    return campaigns.map((campaign) => this.presentCampaign(campaign));
+    return Promise.all(
+      campaigns.map(async (campaign) =>
+        this.presentCampaign(
+          campaign,
+          await this.countNewMaterials(userId, campaign),
+        ),
+      ),
+    );
   }
 
   async findOne(userId: string, campaignId: string) {
@@ -76,7 +88,43 @@ export class CampaignService {
       );
     }
 
-    return this.presentCampaign(campaign);
+    return this.presentCampaign(
+      campaign,
+      await this.countNewMaterials(userId, campaign),
+    );
+  }
+
+  async visit(userId: string, campaignId: string) {
+    await this.campaignAccess.requireMember(userId, campaignId);
+    return this.prisma.$transaction(async (tx) => {
+      const members = await tx.$queryRaw<{ memberId: string }[]>`
+        SELECT "memberId" FROM "campaign_members"
+        WHERE "userId" = ${userId} AND "campaignId" = ${campaignId}
+        FOR UPDATE`;
+      const member = members[0];
+      if (!member) {
+        throw new DomainException(
+          HttpStatus.NOT_FOUND,
+          'campaign.not_found',
+          'Campaign not found',
+        );
+      }
+      const state = await tx.campaignParticipantState.findUnique({
+        where: { memberId: member.memberId },
+      });
+      const now = new Date();
+      const newSinceAt = nextVisitWindow(
+        state?.lastVisitAt ?? null,
+        state?.newSinceAt ?? null,
+        now,
+      );
+      await tx.campaignParticipantState.upsert({
+        where: { memberId: member.memberId },
+        create: { memberId: member.memberId, lastVisitAt: now, newSinceAt },
+        update: { lastVisitAt: now, newSinceAt },
+      });
+      return { newSinceAt };
+    });
   }
 
   async update(
@@ -117,7 +165,10 @@ export class CampaignService {
     if (oldStorageKey) {
       await this.mediaService.removeStorageFile(oldStorageKey);
     }
-    return this.presentCampaign(campaign);
+    return this.presentCampaign(
+      campaign,
+      await this.countNewMaterials(userId, campaign),
+    );
   }
 
   async remove(userId: string, campaignId: string) {
@@ -152,6 +203,7 @@ export class CampaignService {
     campaign: Prisma.CampaignGetPayload<{
       select: ReturnType<typeof campaignForCurrentUser>;
     }>,
+    newVisibleMaterialCount: number,
   ) {
     const {
       members,
@@ -163,6 +215,8 @@ export class CampaignService {
     return {
       ...campaignData,
       currentUserRole: members[0].campaignRole,
+      newSinceAt: members[0].participantState?.newSinceAt ?? null,
+      newVisibleMaterialCount,
       backgroundConfig: {
         selectionMode: backgroundSelectionMode,
         fixedBackgroundId,
@@ -171,5 +225,25 @@ export class CampaignService {
         ),
       },
     };
+  }
+
+  private countNewMaterials(
+    userId: string,
+    campaign: Prisma.CampaignGetPayload<{
+      select: ReturnType<typeof campaignForCurrentUser>;
+    }>,
+  ) {
+    const member = campaign.members[0];
+    const since = member.participantState?.newSinceAt;
+    if (!since || member.campaignRole === CampaignRole.OWNER)
+      return Promise.resolve(0);
+    return this.prisma.campaignElement.count({
+      where: {
+        campaignId: campaign.campaignId,
+        access: CampaignElementAccess.SHARED,
+        sharedAt: { gt: since },
+        createdById: { not: userId },
+      },
+    });
   }
 }

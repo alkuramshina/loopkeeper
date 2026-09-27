@@ -123,6 +123,8 @@ model CampaignParticipantState {
   memberId  String         @id
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+  lastVisitAt DateTime?
+  newSinceAt DateTime?
 
   @@map("campaign_participant_states")
 }
@@ -158,6 +160,7 @@ model CampaignElement {
   title              String
   content            String?
   access             CampaignElementAccess @default(MASTER_ONLY)
+  sharedAt           DateTime?
   typeData           Json                  @default("{}")
   sortOrder          Int                   @default(0)
   imageUrl           String?
@@ -169,6 +172,7 @@ model CampaignElement {
   investigationCards InvestigationCard[]   @relation("InvestigationCardElement")
 
   @@index([campaignId, type, access])
+  @@index([campaignId, access, sharedAt])
   @@map("campaign_elements")
 }
 

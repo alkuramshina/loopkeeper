@@ -125,8 +125,12 @@ test('a viewer sees the board with its background and links but cannot change an
 
   const mutations: string[] = [];
   page.on('request', (outgoing) => {
-    // Session refreshes are not board changes.
-    if (outgoing.method() !== 'GET' && !outgoing.url().includes('/api/auth/'))
+    // Session refreshes and visit recording are not board changes.
+    if (
+      outgoing.method() !== 'GET' &&
+      !outgoing.url().includes('/api/auth/') &&
+      !outgoing.url().endsWith('/visit')
+    )
       mutations.push(`${outgoing.method()} ${outgoing.url()}`);
   });
   await signInAs(page, viewer);

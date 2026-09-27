@@ -90,3 +90,9 @@ Playwright сам поднимает отдельный API на порту `310
 | `npm run db:reset`       | Удалить локальную базу и создать её заново        |
 | `npm run prisma:migrate` | Создать и применить новую миграцию при разработке |
 | `npm run prisma:studio`  | Открыть просмотр базы в браузере                  |
+
+## Campaign visit API
+
+`POST /campaigns/:campaignId/visit` records a visit by the authenticated campaign member and returns `{ "newSinceAt": string | null }`. The first visit returns `null`. After a gap of more than one hour, the previous visit becomes the boundary for new activity; repeat visits within the hour preserve that boundary. A nonmember receives `404`.
+
+Campaign responses include the current member's `newSinceAt` and `newVisibleMaterialCount`. The count includes only currently shared materials opened after that boundary by someone else. Element responses include `sharedAt` for the last transition to `SHARED`; it is cleared when the element is hidden.

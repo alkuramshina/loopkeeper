@@ -140,6 +140,8 @@ export type Campaign = {
   description?: string | null;
   system?: string | null;
   currentUserRole: 'OWNER' | 'PLAYER' | 'VIEWER';
+  newSinceAt?: string | null;
+  newVisibleMaterialCount?: number;
   backgroundConfig?: CampaignBackgroundConfig;
   coverUrl?: string | null;
 };
@@ -159,6 +161,7 @@ export type CampaignElement = {
   typeData: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+  sharedAt?: string | null;
   createdById: string;
   createdBy: { userId: string; name: string | null };
 };
@@ -191,6 +194,8 @@ export type BoardCard = {
 
 export type BoardLink = {
   linkId: string;
+  createdAt?: string;
+  createdById?: string;
   fromCardId: string;
   toCardId: string;
   label?: string | null;

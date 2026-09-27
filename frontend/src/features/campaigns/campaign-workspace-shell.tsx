@@ -17,6 +17,8 @@ import { useAuth } from '../../auth/auth-context';
 import { OfflineNotice } from '../../components/offline-notice';
 import { Logo } from '../../components/brand/logo';
 import { Avatar } from '../../components/avatar';
+import { useCampaignVisit } from './use-campaign-visit';
+import './new-since-visit.css';
 
 type CampaignWorkspaceShellProps = {
   campaign?: Campaign;
@@ -28,6 +30,7 @@ export function CampaignWorkspaceShell({
   children,
 }: CampaignWorkspaceShellProps) {
   const { api, profile, signOut } = useAuth();
+  useCampaignVisit(campaign);
   const { t } = useTranslation();
   const gameSystems = useQuery({
     queryKey: ['game-systems'],
@@ -107,6 +110,11 @@ export function CampaignWorkspaceShell({
       >
         <Icon aria-hidden="true" size={mobile ? 18 : 17} strokeWidth={1.8} />
         <span>{mobile ? (shortLabel ?? label) : label}</span>
+        {!isOwner &&
+          to.endsWith('/case') &&
+          (campaign.newVisibleMaterialCount ?? 0) > 0 && (
+            <span className="campaign-nav-new" aria-label={t('ui.newMark')} />
+          )}
       </NavLink>
     ));
 

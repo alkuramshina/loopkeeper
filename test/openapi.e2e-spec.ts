@@ -26,6 +26,9 @@ describe('OpenAPI contract', () => {
       scheme: 'bearer',
     });
     expect(document.paths['/campaigns']).toHaveProperty('get');
+    expect(document.paths['/campaigns/{campaignId}/visit']).toHaveProperty(
+      'post',
+    );
     expect(document.paths['/campaigns/{campaignId}/cards']).toHaveProperty(
       'post',
     );
@@ -63,6 +66,21 @@ describe('OpenAPI contract', () => {
           },
         },
       },
+    });
+    expect(
+      document.paths['/campaigns/{campaignId}/visit'].post?.responses?.['200'],
+    ).toMatchObject({
+      content: {
+        'application/json': {
+          schema: { $ref: '#/components/schemas/CampaignVisitResponseDto' },
+        },
+      },
+    });
+    expect(document.components?.schemas?.CampaignResponseDto).toMatchObject({
+      properties: expect.objectContaining({
+        newSinceAt: expect.any(Object),
+        newVisibleMaterialCount: expect.any(Object),
+      }),
     });
     expect(boardOperation?.responses?.['200']).toMatchObject({
       content: {

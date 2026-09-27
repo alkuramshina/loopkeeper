@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -19,7 +20,10 @@ import {
 import { ApiCommonErrors } from '../common/swagger/api-errors.decorator';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { CampaignService } from './campaign.service';
-import { CampaignResponseDto } from './dto/campaign-response.dto';
+import {
+  CampaignResponseDto,
+  CampaignVisitResponseDto,
+} from './dto/campaign-response.dto';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 
@@ -62,6 +66,18 @@ export class CampaignController {
     @Request() request: { user: TokenPayloadDto },
   ) {
     return this.campaignService.findOne(request.user.userId, campaignId);
+  }
+
+  @ApiOperation({ summary: 'Record a campaign visit for the current member' })
+  @ApiOkResponse({ type: CampaignVisitResponseDto })
+  @ApiCommonErrors({ badRequest: false })
+  @Post(':campaignId/visit')
+  @HttpCode(200)
+  visit(
+    @Param('campaignId') campaignId: string,
+    @Request() request: { user: TokenPayloadDto },
+  ) {
+    return this.campaignService.visit(request.user.userId, campaignId);
   }
 
   @ApiOperation({ summary: 'Update a campaign as its owner' })

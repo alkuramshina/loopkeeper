@@ -80,6 +80,9 @@
   stroke-width: var(--link-width);
   stroke-dasharray: var(--link-dash);
 }
+.board-canvas .react-flow__edge.board-edge-new .react-flow__edge-path {
+  stroke: var(--new-mark);
+}
 .board-canvas .react-flow__edge.board-edge-connected .react-flow__edge-path {
   stroke: var(--link-selected-color);
   stroke-width: 2;
