@@ -1,4 +1,11 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addEdge,
@@ -44,6 +51,11 @@ import { TypeTag } from '../../components/ui/type-tag';
 import { NewMark } from '../../components/ui/new-mark';
 import { AccessBadge } from '../../components/ui/access-badge';
 import { useToast } from '../../components/ui/toast';
+import {
+  mediaQueries,
+  prefersReducedMotion,
+  useMediaQuery,
+} from '../../theme/breakpoints';
 import { ArrowUpRight, Link2, Maximize2, Plus, Search } from 'lucide-react';
 
 type NodeDimensions = {
@@ -272,7 +284,12 @@ function BoardTools({
       )}
       <button
         type="button"
-        onClick={() => void fitView({ duration: 250, padding: 0.15 })}
+        onClick={() =>
+          void fitView({
+            duration: prefersReducedMotion() ? 0 : 250,
+            padding: 0.15,
+          })
+        }
       >
         <Maximize2 aria-hidden="true" size={16} />
         {t('board.fitAll')}
@@ -646,19 +663,45 @@ export function BoardPage() {
   const [now, setNow] = useState(() => Date.now());
   const [linking, setLinking] = useState(false);
   const [linkSourceId, setLinkSourceId] = useState<string>();
-  const [isPhone, setPhone] = useState(
-    () => window.matchMedia?.('(max-width: 700px)').matches ?? false,
+  const isPhone = useMediaQuery(mediaQueries.phone);
+  // React Flow's own labels and hints for assistive technology.
+  const ariaLabelConfig = useMemo(
+    () => ({
+      'controls.ariaLabel': t('board.a11y.controls'),
+      'controls.zoomIn.ariaLabel': t('board.a11y.zoomIn'),
+      'controls.zoomOut.ariaLabel': t('board.a11y.zoomOut'),
+      'controls.fitView.ariaLabel': t('board.a11y.fitView'),
+      'controls.interactive.ariaLabel': t('board.a11y.interactive'),
+      'minimap.ariaLabel': t('board.a11y.minimap'),
+      'handle.ariaLabel': t('board.a11y.handle'),
+      'node.a11yDescription.default': t('board.a11y.nodeSelect'),
+      'node.a11yDescription.keyboardDisabled': t('board.a11y.nodeMove'),
+      'edge.a11yDescription.default': t('board.a11y.edgeSelect'),
+      'node.a11yDescription.ariaLiveMessage': ({
+        direction,
+        x,
+        y,
+      }: {
+        direction: string;
+        x: number;
+        y: number;
+      }) =>
+        t('board.a11y.moved', {
+          direction: t(`board.a11y.directions.${direction}`, {
+            defaultValue: direction,
+          }),
+          x: Math.round(x),
+          y: Math.round(y),
+        }),
+    }),
+    [t],
   );
+  // Below 1024px the search folds into an icon until it is used.
+  const [searchExpanded, setSearchExpanded] = useState(false);
+  const searchInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 60_000);
     return () => window.clearInterval(timer);
-  }, []);
-  useEffect(() => {
-    const media = window.matchMedia?.('(max-width: 700px)');
-    if (!media) return;
-    const update = () => setPhone(media.matches);
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
   }, []);
   const campaign = useQuery({
     queryKey: ['campaign', campaignId],
@@ -968,11 +1011,28 @@ export function BoardPage() {
             </p>
           </div>
           <div className="action-row">
-            <label className="board-search">
+            <button
+              aria-expanded={searchExpanded || Boolean(search)}
+              aria-label={t('board.search')}
+              className="board-search-toggle"
+              type="button"
+              onClick={() => {
+                setSearchExpanded(true);
+                // The field appears in this click; focus it once it is shown.
+                requestAnimationFrame(() => searchInput.current?.focus());
+              }}
+            >
+              <Search aria-hidden="true" size={18} />
+            </button>
+            <label
+              className={`board-search${searchExpanded || search ? ' board-search-expanded' : ''}`}
+            >
               <Search aria-hidden="true" size={16} />
               <span className="sr-only">{t('board.search')}</span>
               <input
+                ref={searchInput}
                 value={search}
+                onBlur={() => setSearchExpanded(false)}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder={t('board.search')}
               />
@@ -1005,6 +1065,7 @@ export function BoardPage() {
             >
               <CampaignBackgroundLayer background={background} />
               <ReactFlow
+                ariaLabelConfig={ariaLabelConfig}
                 edges={visibleEdges}
                 fitView
                 nodes={visibleNodes}

@@ -10,7 +10,7 @@
   margin-left: auto;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 599px) {
   .campaign-workspace-shell-mobile-navigation a {
     position: relative;
   }
@@ -27,4 +27,14 @@
   color: var(--new-mark);
   font-size: 0.8125rem;
   font-weight: 600;
+}
+
+.campaign-menu-button {
+  position: relative;
+}
+
+.campaign-menu-button .campaign-nav-new {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
 }

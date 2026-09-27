@@ -59,12 +59,18 @@ test('P5b: a player sets the avatar of their character, others only see it', asy
   request,
 }) => {
   const { campaignId, owner, player } = await createCampaignWithRoles(request);
-  await createPlayerCharacter(request, player, campaignId, 'Алекс');
+  const characterId = await createPlayerCharacter(
+    request,
+    player,
+    campaignId,
+    'Алекс',
+  );
   const roster = `/campaigns/${campaignId}/characters`;
 
+  // The avatar is changed on the character's own page.
   await signInAs(page, player);
-  await page.goto(roster);
-  const card = page.locator('.character-card', { hasText: 'Алекс' });
+  await page.goto(`${roster}/${characterId}`);
+  const card = page.locator('.character-detail');
   const avatar = card.getByRole('img', { name: 'Алекс' });
   await expect(avatar).toHaveAttribute('src', /^data:image\/svg\+xml/);
   const done = uploaded(page, /\/characters\/[^/]+\/avatar$/);
@@ -80,10 +86,15 @@ test('P5b: a player sets the avatar of their character, others only see it', asy
     'src',
     /^blob:/,
   );
-  await expect(ownerCard.locator('input[type=file]')).toHaveCount(0);
   await expect(
     ownerCard.getByRole('button', { name: 'Редактировать' }),
   ).toHaveCount(0);
+  await ownerPage.goto(`${roster}/${characterId}`);
+  await expect(ownerPage.getByRole('img', { name: 'Алекс' })).toHaveAttribute(
+    'src',
+    /^blob:/,
+  );
+  await expect(ownerPage.locator('input[type=file]')).toHaveCount(0);
 });
 
 test('P5b: the campaign cover reaches every member, including viewers', async ({

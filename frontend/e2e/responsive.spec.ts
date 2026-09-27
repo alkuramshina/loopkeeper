@@ -84,9 +84,20 @@ for (const { width, height, dialogs } of viewports) {
       page,
       request,
     }) => {
+      for (const path of ['/sign-in', '/sign-up']) {
+        await page.goto(path);
+        await expect(page.getByLabel('Пароль')).toBeVisible();
+        await expectNoHorizontalOverflow(page, path);
+      }
+
       const { campaignId, owner, player } =
         await createCampaignWithRoles(request);
-      await createPlayerCharacter(request, player, campaignId, 'Алекс');
+      const characterId = await createPlayerCharacter(
+        request,
+        player,
+        campaignId,
+        'Алекс',
+      );
       await createFreeCard(
         request,
         owner,
@@ -108,9 +119,12 @@ for (const { width, height, dialogs } of viewports) {
       for (const path of [
         '/campaigns',
         `/campaigns/${campaignId}/characters`,
+        `/campaigns/${campaignId}/characters/${characterId}`,
+        `/campaigns/${campaignId}/elements`,
         `/campaigns/${campaignId}/elements/${elementId}`,
         `/campaigns/${campaignId}/members`,
         `/campaigns/${campaignId}/settings`,
+        `/campaigns/${campaignId}/settings/backgrounds`,
         `/campaigns/${campaignId}/board`,
         '/settings/account',
       ]) {

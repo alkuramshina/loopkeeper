@@ -69,13 +69,15 @@ for (const width of [320, 768]) {
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width);
     await page.goto(`/campaigns/${campaignId}/settings`);
+    // A phone has the bottom navigation, a tablet the slide-out menu.
+    const navigation =
+      width < 600
+        ? page.locator('.campaign-workspace-shell-mobile-navigation')
+        : page.locator('.campaign-workspace-shell-sidebar');
+    if (width >= 600) await page.getByRole('button', { name: 'Меню' }).click();
+    await expect(navigation).toBeVisible();
     await expect(
-      page.locator('.campaign-workspace-shell-mobile-navigation'),
-    ).toBeVisible();
-    await expect(
-      page
-        .locator('.campaign-workspace-shell-mobile-navigation')
-        .getByRole('link', { name: 'Настройки кампании' }),
+      navigation.getByRole('link', { name: 'Настройки кампании' }),
     ).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),

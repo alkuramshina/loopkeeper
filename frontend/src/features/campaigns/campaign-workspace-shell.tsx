@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -11,12 +11,14 @@ import {
   Users,
   UserRound,
   ChevronDown,
+  Menu,
   Search,
 } from 'lucide-react';
 import { Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { OfflineNotice } from '../../components/offline-notice';
-import { Logo } from '../../components/brand/logo';
+import { Logo, LogoMark } from '../../components/brand/logo';
+import { mediaQueries, useMediaQuery } from '../../theme/breakpoints';
 import { Avatar } from '../../components/avatar';
 import { useCampaignVisit } from './use-campaign-visit';
 import { CampaignSearch } from './campaign-search';
@@ -35,6 +37,24 @@ export function CampaignWorkspaceShell({
   useCampaignVisit(campaign);
   const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
+  // Between the phone and the laptop the sidebar slides out from a menu.
+  const tablet = useMediaQuery(mediaQueries.tablet);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Leaving the range closes the menu, so it never comes back open.
+  if (menuOpen && !tablet) setMenuOpen(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    sidebar.current?.querySelector<HTMLElement>('a, button')?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setMenuOpen(false);
+      menuButton.current?.focus();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [menuOpen]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
@@ -113,6 +133,7 @@ export function CampaignWorkspaceShell({
     shortLabel?: string;
     icon: typeof LayoutDashboard;
   };
+  const hasNew = !isOwner && (campaign.newVisibleMaterialCount ?? 0) > 0;
   const navLinks = (items: NavItem[], mobile = false) =>
     items.map(({ to, label, shortLabel, icon: Icon }) => (
       <NavLink
@@ -122,27 +143,45 @@ export function CampaignWorkspaceShell({
         className={({ isActive }) => (isActive ? 'active' : undefined)}
       >
         <Icon aria-hidden="true" size={mobile ? 18 : 17} strokeWidth={1.8} />
-        <span>{mobile ? (shortLabel ?? label) : label}</span>
-        {!isOwner &&
-          to.endsWith('/case') &&
-          (campaign.newVisibleMaterialCount ?? 0) > 0 && (
-            <span className="campaign-nav-new" aria-label={t('ui.newMark')} />
-          )}
+        <span className={mobile ? undefined : 'rail-label'}>
+          {mobile ? (shortLabel ?? label) : label}
+        </span>
+        {hasNew && to.endsWith('/case') && (
+          <span
+            className="campaign-nav-new"
+            role="img"
+            aria-label={t('ui.newMark')}
+          />
+        )}
       </NavLink>
     ));
 
   return (
     <div className="campaign-workspace-shell">
-      <aside className="campaign-workspace-shell-sidebar">
+      <aside
+        className={`campaign-workspace-shell-sidebar${menuOpen ? ' campaign-workspace-shell-sidebar-open' : ''}`}
+        id="campaign-sidebar"
+        ref={sidebar}
+        // Any link in the slide-out menu leads away, so the menu closes.
+        onClick={(event) => {
+          if ((event.target as Element).closest('a')) setMenuOpen(false);
+        }}
+      >
         <Link className="brand-lock" to="/campaigns">
-          <Logo label={t('appName')} />
+          <Logo className="brand-lock-full" label={t('appName')} />
+          <LogoMark className="brand-lock-mark" label={t('appName')} />
         </Link>
         <Link
           className="campaign-switcher"
           to="/campaigns"
           aria-label={t('workspace.switchCampaign')}
         >
-          <span className="campaign-switcher-title">{campaign.title}</span>
+          <span className="campaign-switcher-initial" aria-hidden="true">
+            {campaign.title.trim().charAt(0).toUpperCase()}
+          </span>
+          <span className="campaign-switcher-title rail-label">
+            {campaign.title}
+          </span>
           <span className="campaign-switcher-meta">
             {systemName} · {t(`workspace.roles.${campaign.currentUserRole}`)}
           </span>
@@ -154,7 +193,7 @@ export function CampaignWorkspaceShell({
           onClick={() => setSearchOpen(true)}
         >
           <Search aria-hidden="true" size={17} />
-          <span>{t('search.trigger')}</span>
+          <span className="rail-label">{t('search.trigger')}</span>
           <kbd>Ctrl K</kbd>
         </button>
         <nav
@@ -178,7 +217,9 @@ export function CampaignWorkspaceShell({
               seed={profile?.name || profile?.email || ''}
               size="small"
             />
-            <span>{profile?.name || profile?.email}</span>
+            <span className="rail-label">
+              {profile?.name || profile?.email}
+            </span>
             <ChevronDown aria-hidden="true" size={16} />
           </summary>
           <div className="campaign-profile-menu-actions">
@@ -189,7 +230,27 @@ export function CampaignWorkspaceShell({
           </div>
         </details>
       </aside>
+      {menuOpen && (
+        <div
+          aria-hidden="true"
+          className="campaign-menu-backdrop"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
       <header className="campaign-workspace-shell-mobile-header">
+        <button
+          aria-controls="campaign-sidebar"
+          aria-expanded={menuOpen}
+          aria-label={t('workspace.menu')}
+          className="campaign-menu-button"
+          ref={menuButton}
+          type="button"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <Menu aria-hidden="true" size={21} />
+          {/* The case's dot stays in sight while the menu is closed. */}
+          {hasNew && <span className="campaign-nav-new" aria-hidden="true" />}
+        </button>
         <Link className="campaign-mobile-switcher" to="/campaigns">
           <strong>{campaign.title}</strong>
           <span>

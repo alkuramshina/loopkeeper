@@ -578,7 +578,7 @@
 .note-text-input:focus-visible {
   outline: none;
 }
-@media (max-width: 700px) {
+@media (max-width: 599px) {
   .note-editor-bar,
   .note-editor-scroll {
     padding-inline: var(--space-4);

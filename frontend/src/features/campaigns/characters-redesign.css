@@ -103,7 +103,7 @@
   background: var(--color-hover);
   font-size: var(--text-xs);
 }
-@media (max-width: 800px) {
+@container content (max-width: 50rem) {
   .character-detail-form {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -70,11 +70,24 @@ test('B3: a returning player sees newly opened material and other people’s boa
   for (const width of [320, 768]) {
     await page.setViewportSize({ width, height: 700 });
     await page.goto(`/campaigns/${campaignId}/case`);
-    await expect(
-      page.locator(
-        '.campaign-workspace-shell-mobile-navigation .campaign-nav-new',
-      ),
-    ).toBeVisible();
+    if (width < 600) {
+      await expect(
+        page.locator(
+          '.campaign-workspace-shell-mobile-navigation .campaign-nav-new',
+        ),
+      ).toBeVisible();
+    } else {
+      // On a tablet the dot sits on the menu and on the case inside it.
+      const menu = page.getByRole('button', { name: 'Меню' });
+      await expect(menu.locator('.campaign-nav-new')).toBeVisible();
+      await menu.click();
+      await expect(
+        page
+          .getByRole('navigation', { name: 'Разделы кампании' })
+          .locator('.campaign-nav-new'),
+      ).toBeVisible();
+      await page.keyboard.press('Escape');
+    }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width);

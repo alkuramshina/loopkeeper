@@ -1370,12 +1370,12 @@ input[type='file'] {
   grid-template-columns: minmax(0, 1fr);
 }
 /* With the sidebar, two columns leave the material text and forms too narrow. */
-@media (max-width: 960px) {
+@container content (max-width: 44rem) {
   .settings-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-@media (max-width: 700px) {
+@media (max-width: 599px) {
   .auth-layout {
     display: block;
     min-height: 100vh;
@@ -1481,103 +1481,12 @@ input[type='file'] {
   .board-canvas {
     height: 65vh;
   }
-  .board-inspector {
-    position: fixed;
-    top: auto;
-    right: 0.75rem;
-    bottom: 4.75rem;
-    left: 0.75rem;
-    width: auto;
-    max-height: 65vh;
-  }
   .board-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
   .board-toolbar .action-row {
     justify-content: space-between;
-  }
-  .campaign-workspace-shell {
-    padding-bottom: 4.5rem;
-  }
-  .campaign-workspace-shell-topbar,
-  .campaign-workspace-shell-sidebar {
-    display: none;
-  }
-  .campaign-workspace-shell-mobile-header {
-    display: flex;
-    min-height: 3.75rem;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0 1rem;
-    color: var(--color-text);
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-line);
-  }
-  .campaign-workspace-shell-mobile-header .brand-lock,
-  .campaign-workspace-shell-mobile-header .brand-lock .logo {
-    flex: none;
-    width: 7rem;
-  }
-  .campaign-workspace-shell-mobile-context {
-    display: grid;
-    min-width: 0;
-    justify-items: end;
-  }
-  .campaign-workspace-shell-mobile-header p {
-    overflow: hidden;
-    max-width: 12rem;
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: 0.875rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .campaign-workspace-shell-mobile-context a {
-    overflow: hidden;
-    max-width: 12rem;
-    color: var(--color-text);
-    font-size: 0.75rem;
-    text-decoration: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .campaign-workspace-shell-body {
-    display: block;
-    min-height: 0;
-  }
-  .campaign-workspace-shell-content {
-    padding: 1.25rem 1rem;
-  }
-  .campaign-workspace-shell-mobile-navigation {
-    position: fixed;
-    z-index: 10;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: flex;
-    gap: 0.25rem;
-    overflow-x: auto;
-    padding: 0.5rem;
-    background: var(--color-surface);
-    border-top: 1px solid var(--color-line);
-    box-shadow: 0 -2px 8px var(--color-shadow-soft);
-  }
-  .campaign-workspace-shell-mobile-navigation a {
-    flex: 0 0 auto;
-    padding: 0.5rem 0.65rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    text-align: center;
-  }
-  .campaign-workspace-shell-mobile-navigation a.active {
-    color: var(--color-on-accent);
-    background: var(--color-accent);
-    font-weight: 700;
   }
 }
 
@@ -1885,6 +1794,7 @@ summary {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
   color: var(--color-text-secondary);
+  background: var(--color-surface);
   text-align: left;
 }
 .campaign-search-trigger:hover {
@@ -1986,13 +1896,11 @@ summary {
   display: none;
 }
 
-@media (max-width: 799px) {
+/* Below 1024px a header replaces the sidebar: with a slide-out menu on a
+   tablet, with the bottom navigation on a phone. */
+@media (max-width: 1023px) {
   .campaign-workspace-shell {
     display: block;
-    padding-bottom: 4.75rem;
-  }
-  .campaign-workspace-shell-sidebar {
-    display: none;
   }
   .campaign-workspace-shell-mobile-header {
     display: flex;
@@ -2012,6 +1920,7 @@ summary {
     height: 2.5rem;
     margin-left: auto;
     color: var(--color-text);
+    background: transparent;
   }
   .campaign-mobile-switcher {
     display: grid;
@@ -2033,7 +1942,21 @@ summary {
     white-space: nowrap;
   }
   .campaign-workspace-shell-content {
-    padding: 1rem 1rem 5.5rem;
+    padding: 1rem;
+  }
+}
+@media (max-width: 599px) {
+  .campaign-workspace-shell {
+    padding-bottom: 4.75rem;
+  }
+  .campaign-workspace-shell-content {
+    padding-bottom: 5.5rem;
+  }
+  .campaign-menu-button {
+    display: none;
+  }
+  .campaign-workspace-shell-sidebar {
+    display: none;
   }
   .campaign-workspace-shell-mobile-navigation {
     position: fixed;
@@ -2071,7 +1994,7 @@ summary {
     white-space: nowrap;
   }
 }
-@media (max-width: 700px) {
+@media (max-width: 599px) {
   .auth-main {
     min-height: 100dvh;
     padding: 2rem 1.25rem;
@@ -2099,4 +2022,177 @@ summary {
     border-bottom: 0;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
+}
+
+/* F13h: layout ranges of the workspace shell.
+   ≥ 1280 — the sidebar with words; 1024–1279 — icons only, the words become
+   tooltips; 600–1023 — a header with a slide-out menu; < 600 — the bottom
+   navigation. */
+.brand-lock-mark,
+.campaign-switcher-initial,
+.campaign-menu-button {
+  display: none;
+}
+.campaign-workspace-shell-sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .campaign-workspace-shell {
+    grid-template-columns: 4.75rem minmax(0, 1fr);
+  }
+  .campaign-workspace-shell-sidebar {
+    align-items: center;
+    padding-inline: 0.75rem;
+    /* Tooltips reach out of the rail. */
+    overflow: visible;
+  }
+  .campaign-workspace-shell-sidebar > .brand-lock {
+    width: 2.25rem;
+    margin: 0.25rem 0 1.25rem;
+  }
+  .brand-lock-full {
+    display: none;
+  }
+  .brand-lock-mark {
+    display: block;
+    width: 100%;
+  }
+  .campaign-switcher {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+  }
+  .campaign-switcher-initial {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: var(--text-md);
+    font-weight: 700;
+  }
+  .campaign-switcher-meta,
+  .campaign-switcher > svg,
+  .campaign-search-trigger kbd,
+  .campaign-nav-group,
+  .campaign-profile-menu summary > svg {
+    display: none;
+  }
+  .campaign-search-trigger {
+    position: relative;
+    justify-content: center;
+    width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+  }
+  .campaign-workspace-shell-navigation {
+    justify-items: center;
+  }
+  /* The management group is set apart by a line instead of its heading. */
+  .campaign-nav-group + a {
+    margin-top: 0.75rem;
+    box-shadow: 0 -0.4rem 0 -0.35rem var(--color-line);
+  }
+  .campaign-workspace-shell-navigation a {
+    position: relative;
+    justify-content: center;
+    width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0;
+  }
+  .campaign-workspace-shell-navigation .campaign-nav-new {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    margin: 0;
+  }
+  .campaign-profile-menu {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .campaign-profile-menu summary {
+    position: relative;
+    justify-content: center;
+  }
+  .campaign-profile-menu-actions {
+    right: auto;
+    bottom: 0;
+    left: calc(100% + 0.5rem);
+    min-width: 12rem;
+  }
+  /* Words stay the accessible names and appear beside the icon on hover or
+     keyboard focus. */
+  .rail-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .campaign-workspace-shell-sidebar :is(a, button, summary):is(:hover, :focus-visible) > .rail-label {
+    z-index: var(--z-overlay);
+    top: 50%;
+    left: calc(100% + 0.6rem);
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-md);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 1023px) {
+  .campaign-menu-button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    margin-left: -0.5rem;
+    color: var(--color-text);
+    background: transparent;
+  }
+  .campaign-workspace-shell-sidebar {
+    position: fixed;
+    z-index: var(--z-overlay);
+    inset: 0 auto 0 0;
+    display: flex;
+    width: min(18rem, 85vw);
+    height: 100dvh;
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform var(--duration-base) ease,
+      visibility 0s linear var(--duration-base);
+  }
+  .campaign-workspace-shell-sidebar-open {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--duration-base) ease;
+  }
+  .campaign-menu-backdrop {
+    position: fixed;
+    z-index: calc(var(--z-overlay) - 1);
+    inset: 0;
+    background: var(--color-scrim);
+  }
+}
+.campaign-menu-button:hover:not(:disabled),
+.campaign-mobile-search:hover:not(:disabled) {
+  background: var(--color-hover);
 }

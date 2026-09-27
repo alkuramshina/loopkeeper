@@ -322,8 +322,8 @@
 .ui-toast-undo:hover:not(:disabled) {
   background: var(--color-hover);
 }
-/* Matches the breakpoint of the current workspace bottom navigation. */
-@media (max-width: 700px) {
+/* The phone range, where the workspace has a bottom navigation. */
+@media (max-width: 599px) {
   .ui-toasts {
     /* Clear the bottom navigation of the workspace. */
     bottom: calc(5rem + env(safe-area-inset-bottom));

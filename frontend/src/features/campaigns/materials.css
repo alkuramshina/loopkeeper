@@ -485,7 +485,7 @@
 .modal-dialog > form .access-dialog-actions {
   margin: 0 calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
 }
-@media (max-width: 700px) {
+@media (max-width: 599px) {
   .reveal-dialog-body {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -519,8 +519,8 @@
   border-top: 1px solid var(--color-line);
   background: var(--color-bg);
 }
-/* Above the phone's bottom navigation, which is fixed below 800px. */
-@media (max-width: 799px) {
+/* Above the phone's bottom navigation. */
+@media (max-width: 599px) {
   .material-reader-actions {
     bottom: calc(3.35rem + max(0.35rem, env(safe-area-inset-bottom)));
   }

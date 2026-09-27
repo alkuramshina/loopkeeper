@@ -96,7 +96,10 @@
   --board-pattern: radial-gradient(var(--board-dot) 1px, transparent 1.5px);
   --board-pattern-size: 20px;
   --board-unrelated-opacity: 0.45;
-  --link-color: light-dark(#9a97a0, #5e5b66);
+  /* 3:1 against the board colour, which also forms the halo of a link. */
+  --link-color: light-dark(#807d87, #75727d);
+  --link-halo: drop-shadow(0 0 1px var(--board-bg))
+    drop-shadow(0 0 1px var(--board-bg));
   --link-selected-color: var(--color-accent);
   --link-width: 1.5px;
   --link-dash: none;

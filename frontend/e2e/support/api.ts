@@ -192,18 +192,19 @@ export async function createPlayerCharacter(
   player: TestUser,
   campaignId: string,
   name: string,
-): Promise<void> {
+): Promise<string> {
   const [template] = await json<Array<{ templateId: string }>>(
     await request.get('/api/game-systems/TALES_FROM_THE_LOOP/templates', {
       headers: player.headers,
     }),
   );
-  await json(
+  const character = await json<{ characterId: string }>(
     await request.post(`/api/campaigns/${campaignId}/characters`, {
       headers: player.headers,
       data: { name, templateId: template.templateId, data: kidData },
     }),
   );
+  return character.characterId;
 }
 
 export async function createFreeCard(

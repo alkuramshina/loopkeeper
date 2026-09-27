@@ -121,7 +121,14 @@ describe('CampaignWorkspaceShell', () => {
       currentUserRole: 'PLAYER',
       newVisibleMaterialCount: 2,
     });
-    expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(2);
+    // The case in the sidebar and in the bottom navigation, and the menu.
+    expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(3);
+    expect(screen.getAllByRole('img', { name: 'новое' })).toHaveLength(2);
+    expect(
+      screen
+        .getByRole('button', { name: 'Меню' })
+        .querySelector('.campaign-nav-new'),
+    ).not.toBeNull();
 
     rerender(
       <QueryClientProvider client={new QueryClient()}>
@@ -217,5 +224,43 @@ describe('CampaignWorkspaceShell', () => {
       screen.queryByRole('button', { name: 'Быстрая заметка' }),
     ).toBeNull();
     expect(screen.queryByRole('button', { name: 'Скрыто' })).toBeNull();
+  });
+
+  it('slides the sidebar out from a menu on a tablet and closes it again', () => {
+    // Only the tablet range matches.
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('min-width: 600px'),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    try {
+      const { container } = renderShell({
+        ...baseCampaign,
+        currentUserRole: 'OWNER',
+      });
+      const menu = screen.getByRole('button', { name: 'Меню' });
+      const sidebar = container.querySelector('#campaign-sidebar');
+      expect(menu).toHaveAttribute('aria-expanded', 'false');
+
+      fireEvent.click(menu);
+      expect(menu).toHaveAttribute('aria-expanded', 'true');
+      expect(sidebar).toHaveClass('campaign-workspace-shell-sidebar-open');
+      expect(sidebar).toContainElement(document.activeElement as HTMLElement);
+
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(menu).toHaveAttribute('aria-expanded', 'false');
+      expect(menu).toHaveFocus();
+
+      // Following a link closes the menu.
+      fireEvent.click(menu);
+      fireEvent.click(screen.getAllByRole('link', { name: 'Участники' })[0]);
+      expect(menu).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/campaigns/campaign-1/members',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

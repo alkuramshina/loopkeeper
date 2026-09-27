@@ -13,6 +13,7 @@ import {
   signInAs,
   TestUser,
 } from './support/api';
+import { iconButtonContrastIssues } from './support/contrast';
 
 async function expectNoAxeViolations(page: Page, where: string) {
   const results = await new AxeBuilder({ page })
@@ -26,6 +27,10 @@ async function expectNoAxeViolations(page: Page, where: string) {
         .join(', ')}`,
   );
   expect(violations, `${where}: axe violations`).toEqual([]);
+  expect(
+    await iconButtonContrastIssues(page),
+    `${where}: icon buttons below 3:1`,
+  ).toEqual([]);
 }
 
 function focusedInsideDialog(page: Page) {
@@ -245,12 +250,6 @@ test('every dialog is named, keeps focus inside, closes with Escape and returns 
       `/campaigns/${campaignId}/members`,
       'Создать приглашение',
       'Создать приглашение',
-    ],
-    [
-      player,
-      `/campaigns/${campaignId}/characters`,
-      'Редактировать',
-      'Редактирование персонажа',
     ],
     [
       secondPlayer,

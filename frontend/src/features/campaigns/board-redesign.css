@@ -30,7 +30,7 @@
   gap: 0.45rem;
   min-width: 12rem;
   padding-left: 0.7rem;
-  border: 1px solid var(--color-line);
+  border: 1px solid var(--color-line-control);
   border-radius: var(--radius-md);
   background: var(--color-surface);
 }
@@ -79,6 +79,9 @@
   stroke: var(--link-color);
   stroke-width: var(--link-width);
   stroke-dasharray: var(--link-dash);
+  /* A halo in the board colour keeps the line readable over any campaign
+     background. */
+  filter: var(--link-halo);
 }
 .board-canvas .react-flow__edge.board-edge-new .react-flow__edge-path {
   stroke: var(--new-mark);
@@ -292,7 +295,7 @@
   color: var(--color-accent);
   font-size: var(--text-sm);
 }
-@media (max-width: 700px) {
+@media (max-width: 599px) {
   .board-toolbar {
     align-items: stretch;
     flex-direction: column;
@@ -332,6 +335,81 @@
   .board-canvas .react-flow__minimap {
     display: none;
   }
+}
+/* 600–1279: the inspector slides over the canvas, which keeps its size. */
+@media (min-width: 600px) and (max-width: 1279px) {
+  .board-workspace,
+  .board-workspace-inspecting {
+    position: relative;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .board-inspector {
+    position: absolute;
+    z-index: 5;
+    inset: 0 0 0 auto;
+    width: min(21rem, calc(100% - 2rem));
+    max-height: none;
+    border-left: 1px solid var(--color-line);
+    box-shadow: var(--shadow-lg);
+  }
+}
+.board-search-toggle {
+  display: none;
+}
+/* Below 1024px: no minimap, the search folds into an icon. */
+@media (max-width: 1023px) {
+  .board-canvas .react-flow__minimap {
+    display: none;
+  }
+  .board-search {
+    display: none;
+  }
+  .board-search.board-search-expanded {
+    display: flex;
+  }
+  .board-search-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-height);
+    height: var(--control-height);
+    border: 1px solid var(--color-line-control);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    background: var(--color-surface);
+  }
+  .board-search-toggle:hover:not(:disabled) {
+    background: var(--color-hover);
+  }
+  .board-search-toggle[aria-expanded='true'] {
+    display: none;
+  }
+}
+
+/* React Flow's own controls follow the tokens, including the dark variation. */
+.board-canvas .react-flow {
+  --xy-controls-button-background-color: var(--color-surface);
+  --xy-controls-button-background-color-hover: var(--color-hover);
+  --xy-controls-button-color: var(--color-text);
+  --xy-controls-button-color-hover: var(--color-text);
+  --xy-controls-button-border-color: var(--color-line);
+  --xy-controls-box-shadow: var(--shadow-sm);
+  --xy-minimap-background-color: var(--color-surface);
+  --xy-minimap-mask-background-color: color-mix(
+    in srgb,
+    var(--color-bg) 60%,
+    transparent
+  );
+  --xy-minimap-node-background-color: var(--color-line-strong);
+  --xy-edge-label-background-color: var(--color-surface);
+  --xy-edge-label-color: var(--color-text);
+  --xy-connectionline-stroke: var(--link-selected-color);
+  --xy-selection-background-color: var(--color-accent-soft);
+  --xy-resize-background-color: var(--color-accent);
+  --xy-attribution-background-color: var(--color-surface);
+}
+.board-canvas .react-flow__attribution a {
+  color: var(--color-text-muted);
 }
 .board-node-search-target {
   outline: 3px solid var(--color-accent);

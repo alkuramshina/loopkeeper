@@ -78,11 +78,16 @@ test('P5b: character avatars accept PNG, JPEG and WebP and are cropped to a squa
   request,
 }) => {
   const { campaignId, player } = await createCampaignWithRoles(request);
-  await createPlayerCharacter(request, player, campaignId, 'Алекс');
+  const characterId = await createPlayerCharacter(
+    request,
+    player,
+    campaignId,
+    'Алекс',
+  );
   await signInAs(page, player);
-  await page.goto(`/campaigns/${campaignId}/characters`);
+  await page.goto(`/campaigns/${campaignId}/characters/${characterId}`);
 
-  const card = page.locator('.character-card', { hasText: 'Алекс' });
+  const card = page.locator('.character-detail');
   const avatar = card.getByRole('img', { name: 'Алекс' });
   const input = card.getByLabel('Аватар персонажа');
   for (const file of [
