@@ -112,7 +112,7 @@ export function AppRouter() {
           <Route path="/settings/account" element={<AccountSettingsPage />} />
           <Route
             path="/campaigns/:campaignId"
-            element={<Navigate to="characters" replace />}
+            element={<Navigate to="board" replace />}
           />
           <Route path="/campaigns/:campaignId/board" element={<BoardPage />} />
           <Route

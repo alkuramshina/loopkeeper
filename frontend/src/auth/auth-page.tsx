@@ -8,6 +8,7 @@ import lakeNight from '../assets/auth/lake-night.png';
 import substationAutumn from '../assets/auth/substation-autumn.png';
 import bridgeWinter from '../assets/auth/bridge-winter.png';
 import radioField from '../assets/auth/radio-field.png';
+import { invitationToken } from '../features/campaigns/invitation-token';
 
 export const brandVariantKeys = [
   'focus',
@@ -116,21 +117,8 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
   function continueWithInvitation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const value = invitationValue.trim();
-    const pathPrefix = '/invitations/';
-    let token = value;
-
-    try {
-      const url = new URL(value, window.location.origin);
-      if (url.pathname.startsWith(pathPrefix)) {
-        token = url.pathname.slice(pathPrefix.length);
-      }
-    } catch {
-      setInvitationError(t('auth.invitationInvalid'));
-      return;
-    }
-
-    if (!token || token.includes('/')) {
+    const token = invitationToken(invitationValue);
+    if (!token) {
       setInvitationError(t('auth.invitationInvalid'));
       return;
     }

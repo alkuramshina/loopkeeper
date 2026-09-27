@@ -29,8 +29,8 @@ test('M5: a viewer reads the board and catalog without editing controls', async 
   const navigation = page.locator(sidebar);
   await expect(navigation.getByRole('link')).toHaveText([
     'Доска расследования',
+    'Дело',
     'Персонажи',
-    'Каталог',
   ]);
 
   await navigation.getByRole('link', { name: 'Доска расследования' }).click();
@@ -53,7 +53,7 @@ test('M5: a viewer reads the board and catalog without editing controls', async 
     page.getByRole('heading', { name: 'Редактирование карточки' }),
   ).toHaveCount(0);
 
-  await navigation.getByRole('link', { name: 'Каталог' }).click();
+  await navigation.getByRole('link', { name: 'Дело' }).click();
   await expect(page.getByRole('button', { name: 'Новый элемент' })).toHaveCount(
     0,
   );
@@ -93,8 +93,8 @@ test('the owner sees members and campaign settings in the navigation', async ({
 
   await expect(page.locator(sidebar).getByRole('link')).toHaveText([
     'Доска расследования',
+    'Материалы',
     'Персонажи',
-    'Каталог',
     'Участники',
     'Настройки кампании',
   ]);

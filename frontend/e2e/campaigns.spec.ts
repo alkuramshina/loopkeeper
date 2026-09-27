@@ -2,6 +2,7 @@ import { expect, test } from './support/test';
 import {
   addMember,
   createCampaign,
+  createInvitation,
   registerUser,
   signInAs,
 } from './support/api';
@@ -32,8 +33,55 @@ test('creates the first campaign from the empty state', async ({
   const card = page.getByRole('link', { name: /Лето в Мэларёарна/ });
   await expect(card).toContainText('Мастер');
   await card.click();
-  await expect(page).toHaveURL(/\/campaigns\/[^/]+\/characters$/);
+  await expect(page).toHaveURL(/\/campaigns\/[^/]+\/board$/);
 });
+
+test('a player joins from a pasted invitation on the campaign list', async ({
+  page,
+  request,
+}) => {
+  const owner = await registerUser(request, 'Мастер');
+  const player = await registerUser(request, 'Игрок');
+  const campaignId = await createCampaign(request, owner, 'Сигнал');
+  const token = await createInvitation(request, owner, campaignId, 'PLAYER');
+  await signInAs(page, player);
+  await page.goto('/campaigns');
+  await page
+    .getByRole('textbox', { name: 'Ссылка или токен приглашения' })
+    .fill(`http://localhost:5174/invitations/${token}`);
+  await page.getByRole('button', { name: 'Присоединиться' }).click();
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
+  await expect(page.locator('.campaign-switcher')).toContainText('Сигнал');
+});
+
+for (const width of [320, 768]) {
+  test(`F13b navigation and campaign list fit ${width}px`, async ({
+    page,
+    request,
+  }) => {
+    await page.setViewportSize({ width, height: 740 });
+    const owner = await registerUser(request, 'Мастер');
+    const campaignId = await createCampaign(request, owner, 'Сигнал');
+    await signInAs(page, owner);
+    await page.goto('/campaigns');
+    await expect(page.locator('.campaign-card')).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+    await page.goto(`/campaigns/${campaignId}/settings`);
+    await expect(
+      page.locator('.campaign-workspace-shell-mobile-navigation'),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('.campaign-workspace-shell-mobile-navigation')
+        .getByRole('link', { name: 'Настройки кампании' }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+  });
+}
 
 test('M10: the owner edits and deletes a campaign; members lose it', async ({
   page,
@@ -57,9 +105,9 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
   await details.getByRole('button', { name: 'Сохранить' }).click();
   await expect(details.getByText('Сохранено')).toBeVisible();
   await page.reload();
-  await expect(
-    page.getByRole('heading', { name: 'Финальная версия' }),
-  ).toBeVisible();
+  await expect(page.locator('.campaign-switcher')).toContainText(
+    'Финальная версия',
+  );
 
   const playerContext = await browser.newContext();
   const playerPage = await playerContext.newPage();
@@ -106,7 +154,7 @@ test('the whole campaign card opens the campaign', async ({
   const card = page.getByRole('link', { name: /Остров/ });
   await expect(card.getByRole('button')).toHaveCount(0);
   await card.getByText('Кампания для браузерных тестов').click();
-  await expect(page).toHaveURL(`/campaigns/${campaignId}/characters`);
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
 });
 
 for (const viewport of [
@@ -124,11 +172,13 @@ for (const viewport of [
 
     // From the campaign list.
     await page.goto('/campaigns');
-    await page.getByRole('link', { name: 'Мастер', exact: true }).click();
+    await page.locator('.campaign-list-account summary').click();
+    await page.locator('.campaign-list-account').getByRole('link').click();
     await expect(
       page.getByRole('heading', { name: 'Настройки аккаунта' }),
     ).toBeVisible();
     await page.goto('/campaigns');
+    await page.locator('.campaign-list-account summary').click();
     await page.getByRole('button', { name: 'Выйти' }).click();
     await expect(page).toHaveURL(/\/sign-in/);
 
@@ -136,10 +186,18 @@ for (const viewport of [
     // offer sign-out on every screen size.
     await signInAs(page, owner);
     await page.goto(`/campaigns/${campaignId}/characters`);
-    await page
-      .getByRole('link', { name: /^(Мастер|Настройки аккаунта)$/ })
-      .filter({ visible: true })
-      .click();
+    if (viewport.name === 'desktop') {
+      await page.locator('.campaign-profile-menu summary').click();
+      await page
+        .locator('.campaign-profile-menu')
+        .getByRole('link', { name: 'Настройки аккаунта' })
+        .click();
+    } else {
+      await page
+        .locator('.campaign-workspace-shell-mobile-header')
+        .getByRole('link', { name: 'Настройки аккаунта' })
+        .click();
+    }
     await expect(
       page.getByRole('heading', { name: 'Настройки аккаунта' }),
     ).toBeVisible();

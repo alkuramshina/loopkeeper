@@ -136,4 +136,19 @@ describe('CampaignListPage', () => {
       }),
     });
   });
+
+  it('validates an invitation pasted on the campaign list', () => {
+    answer(() => Promise.resolve([]));
+    renderList();
+    const input = screen.getByRole('textbox', {
+      name: 'Ссылка или токен приглашения',
+    });
+    fireEvent.change(input, {
+      target: { value: 'https://example.com/campaigns/123' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Присоединиться' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Вставьте корректную ссылку',
+    );
+  });
 });

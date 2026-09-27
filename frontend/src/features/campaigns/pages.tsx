@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { TFunction } from 'i18next';
 import { ApiError, Campaign, GameSystem } from '../../api/client';
@@ -10,6 +10,9 @@ import { ProtectedImage } from '../../components/protected-image';
 import { errorMessage } from '../../components/page-error';
 import { OfflineNotice } from '../../components/offline-notice';
 import { Logo } from '../../components/brand/logo';
+import { Avatar } from '../../components/avatar';
+import { ImageIcon, Link2, Plus } from 'lucide-react';
+import { invitationToken } from './invitation-token';
 
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
@@ -20,9 +23,12 @@ function apiErrorMessage(cause: unknown, t: TFunction) {
 export function CampaignListPage() {
   const { t } = useTranslation();
   const { api, profile, signOut } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string>();
   const [isCreating, setCreating] = useState(false);
+  const [invitationValue, setInvitationValue] = useState('');
+  const [invitationError, setInvitationError] = useState(false);
   const campaigns = useQuery({
     queryKey: ['campaigns'],
     queryFn: () => api.request<Campaign[]>('/campaigns'),
@@ -60,29 +66,54 @@ export function CampaignListPage() {
     setCreating(true);
   };
 
+  function openInvitation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const token = invitationToken(invitationValue);
+    if (!token) {
+      setInvitationError(true);
+      return;
+    }
+    setInvitationError(false);
+    void navigate(`/invitations/${encodeURIComponent(token)}`);
+  }
+
   return (
     <main className="campaign-page">
       <header className="campaign-topbar">
         <Link className="brand-lock" to="/campaigns">
           <Logo label={t('appName')} />
         </Link>
-        <div className="campaign-account">
-          <Link to="/settings/account">{profile?.name ?? profile?.email}</Link>
-          <button className="button-ghost" onClick={() => void signOut()}>
-            {t('auth.signOut')}
-          </button>
-        </div>
+        <details className="campaign-list-account">
+          <summary>
+            <span>{t('account.title')}</span>
+            <Avatar
+              alt=""
+              seed={profile?.name || profile?.email || ''}
+              size="small"
+            />
+          </summary>
+          <div>
+            <Link to="/settings/account">
+              {profile?.name || profile?.email}
+            </Link>
+            <button type="button" onClick={() => void signOut()}>
+              {t('auth.signOut')}
+            </button>
+          </div>
+        </details>
       </header>
       <section className="campaigns-bg">
         <OfflineNotice />
         <header className="campaigns-top">
           <div>
-            <p className="kicker">{t('campaigns.kicker')}</p>
-            <h1>{t('campaigns.chooseWorkspace')}</h1>
+            <h1>{t('campaigns.title')}</h1>
             <p className="campaigns-intro">{t('campaigns.intro')}</p>
           </div>
           {campaigns.data?.length ? (
-            <button onClick={openCreate}>{t('campaigns.newCampaign')}</button>
+            <button onClick={openCreate}>
+              <Plus aria-hidden="true" size={18} />
+              {t('campaigns.newCampaign')}
+            </button>
           ) : null}
         </header>
         {isCreating ? (
@@ -148,28 +179,37 @@ export function CampaignListPage() {
                 key={campaign.campaignId}
                 to={`/campaigns/${campaign.campaignId}`}
               >
-                {campaign.coverUrl && (
-                  <ProtectedImage
-                    alt=""
-                    className="campaign-cover"
-                    imageUrl={campaign.coverUrl}
-                  />
-                )}
-                <p className="campaign-system">
-                  {campaign.system ?? t('campaigns.systemFallback')}
-                </p>
-                <h2>{campaign.title}</h2>
-                <p>
-                  {campaign.description || t('campaigns.descriptionFallback')}
-                </p>
-                <footer>
-                  <span
-                    className={`campaign-role campaign-role-${campaign.currentUserRole.toLowerCase()}`}
-                  >
-                    {t(`workspace.roles.${campaign.currentUserRole}`)}
-                  </span>
-                  <span>{t('campaigns.open')}</span>
-                </footer>
+                <div className="campaign-card-media">
+                  {campaign.coverUrl ? (
+                    <ProtectedImage
+                      alt=""
+                      className="campaign-cover"
+                      imageUrl={campaign.coverUrl}
+                    />
+                  ) : (
+                    <ImageIcon aria-hidden="true" size={26} strokeWidth={1.5} />
+                  )}
+                </div>
+                <div className="campaign-card-body">
+                  <div className="campaign-card-heading">
+                    <h2>{campaign.title}</h2>
+                    <span
+                      className={`campaign-role campaign-role-${campaign.currentUserRole.toLowerCase()}`}
+                    >
+                      {t(`workspace.roles.${campaign.currentUserRole}`)}
+                    </span>
+                  </div>
+                  <p className="campaign-system">
+                    {gameSystems.data?.find(
+                      (system) => system.slug === campaign.system,
+                    )?.name ||
+                      campaign.system ||
+                      t('campaigns.systemFallback')}
+                  </p>
+                  <p className="campaign-card-description">
+                    {campaign.description || t('campaigns.descriptionFallback')}
+                  </p>
+                </div>
               </Link>
             ))}
           </section>
@@ -183,6 +223,26 @@ export function CampaignListPage() {
             <button onClick={openCreate}>{t('campaigns.firstCampaign')}</button>
           </section>
         )}
+        <form className="campaign-invitation" onSubmit={openInvitation}>
+          <Link2 aria-hidden="true" size={18} />
+          <div>
+            <strong>{t('campaigns.haveInvitation')}</strong>
+            <span>{t('campaigns.pasteInvitation')}</span>
+          </div>
+          <label className="campaign-invitation-input">
+            <span className="sr-only">{t('campaigns.invitationLink')}</span>
+            <input
+              value={invitationValue}
+              onChange={(event) => {
+                setInvitationValue(event.target.value);
+                setInvitationError(false);
+              }}
+              placeholder={t('campaigns.invitationPlaceholder')}
+            />
+          </label>
+          <button type="submit">{t('campaigns.join')}</button>
+          {invitationError && <p role="alert">{t('auth.invitationInvalid')}</p>}
+        </form>
       </section>
     </main>
   );

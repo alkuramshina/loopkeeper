@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
 import { Campaign } from '../../api/client';
@@ -8,7 +9,7 @@ import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 const auth = {
   profile: { userId: 'user-1', email: 'viewer@example.test', name: 'Viewer' },
   loading: false,
-  api: {} as never,
+  api: { request: vi.fn().mockResolvedValue([]) } as never,
   signIn: vi.fn(),
   signUp: vi.fn(),
   signOut: vi.fn(),
@@ -27,11 +28,17 @@ const baseCampaign: Campaign = {
 
 function renderShell(campaign: Campaign) {
   return render(
-    <MemoryRouter>
-      <CampaignWorkspaceShell campaign={campaign}>
-        <p>Page content</p>
-      </CampaignWorkspaceShell>
-    </MemoryRouter>,
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <MemoryRouter>
+        <CampaignWorkspaceShell campaign={campaign}>
+          <p>Page content</p>
+        </CampaignWorkspaceShell>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
@@ -44,8 +51,12 @@ describe('CampaignWorkspaceShell', () => {
     renderShell(baseCampaign);
 
     expect(
-      screen.getAllByRole('navigation', { name: 'Кампании' }),
+      screen.getAllByRole('navigation', { name: 'Разделы кампании' }),
     ).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: 'Дело' })).toHaveLength(2);
+    expect(
+      screen.getByRole('link', { name: 'Выбрать другую кампанию' }),
+    ).toHaveAttribute('href', '/campaigns');
     expect(
       screen.getAllByRole('link', { name: 'Доска расследования' }),
     ).toHaveLength(2);
@@ -66,6 +77,7 @@ describe('CampaignWorkspaceShell', () => {
     expect(
       screen.getAllByRole('link', { name: 'Настройки кампании' }).length,
     ).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Материалы' })).toHaveLength(2);
     expect(
       screen.queryByRole('link', { name: 'Фоны' }),
     ).not.toBeInTheDocument();
