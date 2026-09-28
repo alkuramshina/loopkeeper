@@ -235,12 +235,6 @@ for (const { width, height, dialogs } of viewports) {
 
       const dialogs: [string, string, string, string][] = [
         ['/campaigns', 'Создать кампанию', 'Новая кампания', 'Создать'],
-        [
-          `/campaigns/${campaignId}/characters`,
-          'Создать персонажа',
-          'Новый персонаж',
-          'Создать персонажа',
-        ],
         // Reading a material, the quick note opens as a sheet on a phone.
         [
           `/campaigns/${campaignId}/case/${materialId}`,

@@ -81,7 +81,7 @@ test('P5b: a player sets the avatar of their character, others only see it', asy
   await expect(avatar).toHaveAttribute('src', /^blob:/);
 
   const ownerPage = await openAs(browser, owner, roster);
-  const ownerCard = ownerPage.locator('.character-card', { hasText: 'Алекс' });
+  const ownerCard = ownerPage.locator('.character-row', { hasText: 'Алекс' });
   await expect(ownerCard.getByRole('img', { name: 'Алекс' })).toHaveAttribute(
     'src',
     /^blob:/,
@@ -90,10 +90,9 @@ test('P5b: a player sets the avatar of their character, others only see it', asy
     ownerCard.getByRole('button', { name: 'Редактировать' }),
   ).toHaveCount(0);
   await ownerPage.goto(`${roster}/${characterId}`);
-  await expect(ownerPage.getByRole('img', { name: 'Алекс' })).toHaveAttribute(
-    'src',
-    /^blob:/,
-  );
+  await expect(
+    ownerPage.locator('.character-detail').getByRole('img', { name: 'Алекс' }),
+  ).toHaveAttribute('src', /^blob:/);
   await expect(ownerPage.locator('input[type=file]')).toHaveCount(0);
 });
 

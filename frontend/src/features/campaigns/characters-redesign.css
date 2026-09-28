@@ -1,96 +1,367 @@
-.character-detail {
+/*
+ * Characters: the list / detail layout of the materials. The detail reads
+ * like a sheet: who the kid is on the left, conditions and numbers on the
+ * right.
+ */
+
+/* List */
+.character-list {
   display: grid;
-  gap: 1.5rem;
-  max-width: 72rem;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.character-detail > .button-ghost {
-  justify-self: start;
+.character-row {
+  min-height: 3.5rem;
 }
-.character-detail-heading {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--color-line);
+.character-row .avatar {
+  flex: none;
 }
-.character-detail-heading > div {
-  flex: 1;
+.character-row-text {
+  display: grid;
   min-width: 0;
+  flex: 1;
 }
-.character-detail-heading h2 {
-  margin: 0.2rem 0 0;
+.character-row-name {
+  overflow-wrap: anywhere;
   font-family: var(--font-heading);
+  font-weight: 600;
 }
-.character-detail-heading p {
+.character-row-meta {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}
+.character-row-you {
+  flex: none;
+  color: var(--color-accent);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+/* A player without a character sees the form first; below 1024 the list,
+   if anyone has a character already, follows it. */
+@media (max-width: 1023px) {
+  .characters-layout-create .materials-list-pane {
+    display: flex;
+    order: 2;
+    border-top: 1px solid var(--color-line);
+  }
+  .characters-layout-create .materials-detail-pane {
+    display: block;
+  }
+  .characters-layout-create .materials-list:not(:has(li)) {
+    display: none;
+  }
+}
+
+/* Detail */
+.character-detail {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  container: character / inline-size;
+}
+.character-sheet {
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+  padding: var(--space-6);
+}
+.character-back {
+  padding: var(--space-3) var(--space-6) 0;
+}
+.character-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+}
+.character-heading-text {
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+/* "Add to board" and the save status under it sit on the name's line, on
+   the right. */
+.character-heading-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
+  text-align: right;
+}
+.character-heading-actions .material-save-status {
+  order: 2;
+}
+.character-heading h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-heading);
+  font-size: var(--text-h1);
+  line-height: 1.15;
+}
+.character-meta {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-secondary);
+}
+.character-main {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(15rem, 2fr);
+  align-items: start;
+  gap: var(--space-6) var(--space-8);
+}
+.character-facts {
+  display: grid;
+  gap: var(--space-4);
   margin: 0;
 }
-.character-detail-form {
+.character-facts > div {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 1rem;
+  grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
+  gap: var(--space-4);
 }
-.character-detail-section {
+.character-facts dt {
+  color: var(--color-text-secondary);
+}
+.character-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.character-facts-edit {
+  gap: var(--space-3);
+}
+.character-field {
   display: grid;
-  gap: 0.8rem;
-  min-width: 0;
-  padding: 1.25rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-}
-.character-detail-section h3 {
-  margin: 0 0 0.3rem;
-  font-family: var(--font-heading);
-}
-.character-detail-story {
-  grid-row: span 2;
-}
-.character-detail-section label {
-  display: grid;
-  gap: 0.4rem;
+  gap: var(--space-1);
   min-width: 0;
 }
-.character-detail-section input,
-.character-detail-section textarea,
-.character-detail-section select {
+.character-field > span {
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+.character-field :is(input, select, textarea) {
   width: 100%;
 }
-.character-detail-section :disabled {
-  color: var(--color-text);
-  opacity: 1;
+.character-field textarea {
+  min-height: 0;
+  resize: vertical;
 }
-.character-detail-fields {
+.character-side {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
-  gap: 0.75rem;
+  gap: var(--space-5);
+}
+.character-side section {
+  display: grid;
+  gap: var(--space-2);
+}
+.character-side-title {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-family: var(--font-meta);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: var(--label-tracking);
+  text-transform: var(--label-transform);
 }
 .character-condition-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .character-condition-list button {
-  min-height: 2.5rem;
-  padding: 0.45rem 0.75rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.8rem;
   border: 1px solid var(--color-line-strong);
   border-radius: 999px;
-  color: var(--color-text-secondary);
+  color: var(--color-text);
+  background: var(--color-surface);
+  font-weight: 500;
 }
 .character-condition-list button[aria-pressed='true'] {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-  background: var(--color-hover);
+  border-color: var(--color-text);
+  color: var(--color-surface);
+  background: var(--color-text);
 }
 .character-condition-list button:disabled {
   cursor: default;
+  opacity: 1;
 }
-.character-save-status {
-  align-self: center;
+.character-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.character-tile {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--color-sunken);
+  text-align: center;
+}
+.character-tile strong,
+.character-tile input {
+  font-family: var(--font-heading);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.character-tile input {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: center;
+  appearance: textfield;
+}
+.character-tile input::-webkit-inner-spin-button,
+.character-tile input::-webkit-outer-spin-button {
   margin: 0;
+  appearance: none;
+}
+.character-tile input:hover {
+  border-color: var(--color-line-control);
+}
+.character-tile input:focus-visible {
+  border-color: var(--color-focus);
+  outline: none;
+}
+.character-tile span {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.character-skills {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+.character-skill {
+  white-space: nowrap;
+}
+.character-skill-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-1) var(--space-4);
+}
+.character-skill-inputs label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.character-skill-inputs span {
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
 }
+.character-skill-inputs input {
+  flex: none;
+  width: 3.5rem;
+  min-height: 2.25rem;
+  padding: 0 var(--space-2);
+  text-align: center;
+}
+.character-footer {
+  margin-top: auto;
+  padding: var(--space-3) var(--space-6) var(--space-5);
+}
+
+@container character (max-width: 44rem) {
+  .character-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@container character (max-width: 30rem) {
+  .character-sheet {
+    padding: var(--space-4);
+  }
+  .character-back {
+    padding-inline: var(--space-4);
+  }
+  .character-heading-actions {
+    align-items: flex-start;
+    margin-left: 0;
+    text-align: left;
+  }
+  .character-heading {
+    gap: var(--space-3);
+  }
+  .character-facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+  .character-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Create */
+.character-create {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  max-width: 44rem;
+  padding: var(--space-6);
+}
+.character-create h2 {
+  margin: 0;
+  font-family: var(--font-heading);
+}
+.character-create .muted {
+  margin: var(--space-1) 0 0;
+}
+.character-create-identity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: var(--space-3);
+}
+.character-create-identity .character-field:first-child {
+  grid-column: 1 / -1;
+}
+.character-create-more {
+  display: grid;
+  gap: var(--space-3);
+}
+.character-create-more[open] > summary {
+  margin-bottom: var(--space-3);
+}
+.character-create-more > summary {
+  color: var(--color-accent);
+  font-weight: 500;
+  cursor: pointer;
+}
+.character-create-more > .character-field {
+  margin-bottom: var(--space-3);
+}
+.character-create-numbers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.character-create-numbers legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+/* Board card of a character */
 .flow-card-conditions {
   display: flex;
   flex-wrap: wrap;
@@ -102,23 +373,4 @@
   color: var(--color-text-secondary);
   background: var(--color-hover);
   font-size: var(--text-xs);
-}
-@container content (max-width: 50rem) {
-  .character-detail-form {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .character-detail-story {
-    grid-row: auto;
-  }
-}
-@media (max-width: 599px) {
-  .character-detail-heading {
-    flex-wrap: wrap;
-  }
-  .character-detail-heading > button {
-    width: 100%;
-  }
-  .character-detail-section {
-    padding: 1rem;
-  }
 }

@@ -37,8 +37,11 @@ function renderPage(path = '/campaigns/c/characters') {
   );
 }
 
+let board: { cards: unknown[]; links: unknown[] };
+
 describe('CharactersPage', () => {
   beforeEach(() => {
+    board = { cards: [], links: [] };
     HTMLDialogElement.prototype.showModal = function () {
       this.open = true;
     };
@@ -71,29 +74,28 @@ describe('CharactersPage', () => {
         });
       if (path === '/campaigns/c/visit')
         return Promise.resolve({ newSinceAt: null });
+      if (path === '/campaigns/c/investigation-board')
+        return Promise.resolve(board);
       throw new Error(`Unexpected request: ${path}`);
     });
   });
 
-  it('creates a player character without the removed NPC discriminator', async () => {
+  it('shows a player without a character the form right away', async () => {
     renderPage();
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Создать персонажа' }),
-    );
-    expect(
-      await screen.findByRole('option', { name: 'PC template' }),
-    ).toBeInTheDocument();
+    const form = await screen.findByRole('form', { name: 'Новый персонаж' });
+    // One template: nothing to choose.
+    expect(screen.queryByLabelText('Шаблон')).toBeNull();
     fireEvent.change(screen.getByLabelText('Имя'), {
       target: { value: 'Alex' },
     });
-    fireEvent.submit(screen.getByRole('dialog').querySelector('form')!);
+    fireEvent.submit(form);
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith('/campaigns/c/characters', {
         method: 'POST',
         body: JSON.stringify({
           name: 'Alex',
-          data: {},
           templateId: 'pc-template',
+          data: {},
         }),
       }),
     );
@@ -156,6 +158,8 @@ describe('CharactersPage', () => {
         });
       if (path === '/campaigns/c/visit')
         return Promise.resolve({ newSinceAt: null });
+      if (path === '/campaigns/c/investigation-board')
+        return Promise.resolve(board);
       throw new Error(`Unexpected request: ${path}`);
     });
     renderPage('/campaigns/c/characters/pc');
@@ -181,6 +185,68 @@ describe('CharactersPage', () => {
           }),
         ),
       { timeout: 2000 },
+    );
+  });
+
+  it('offers the template choice only when there is more than one', async () => {
+    const base = request.getMockImplementation()!;
+    request.mockImplementation((path: string, init?: RequestInit) =>
+      path === '/game-systems/system/templates'
+        ? Promise.resolve([
+            { templateId: 'a', name: 'Kid', schema: { fields: [] } },
+            { templateId: 'b', name: 'Teen', schema: { fields: [] } },
+          ])
+        : base(path, init),
+    );
+    renderPage();
+    expect(await screen.findByLabelText('Шаблон')).toBeInTheDocument();
+  });
+
+  it('hides "Add to board" once the character is on the board', async () => {
+    const character = {
+      characterId: 'pc',
+      campaignId: 'c',
+      ownerId: 'someone',
+      owner: { userId: 'someone', name: 'Liza' },
+      templateId: 'pc-template',
+      name: 'Maja',
+      isActive: true,
+      data: { age: 12, type: 'BOOKWORM' },
+    };
+    const base = request.getMockImplementation()!;
+    request.mockImplementation((path: string, init?: RequestInit) =>
+      path === '/campaigns/c/characters'
+        ? Promise.resolve([character])
+        : base(path, init),
+    );
+    board = {
+      cards: [
+        {
+          cardId: 'card',
+          cardKind: 'CHARACTER_REFERENCE',
+          reference: { kind: 'CHARACTER', characterId: 'pc' },
+        },
+      ],
+      links: [],
+    };
+    renderPage('/campaigns/c/characters/pc');
+    expect(
+      await screen.findByRole('heading', { name: 'Maja' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('Книголюб · 12 лет · играет Liza').length,
+    ).toBeGreaterThan(0);
+    await waitFor(() =>
+      expect(
+        request.mock.calls.some(
+          ([path]) => path === '/campaigns/c/investigation-board',
+        ),
+      ).toBe(true),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Добавить на доску' }),
+      ).toBeNull(),
     );
   });
 });

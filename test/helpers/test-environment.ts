@@ -6,7 +6,7 @@ export function configureTestEnvironment(): void {
     process.env.FRONTEND_URL ?? 'http://localhost:3000';
   process.env.DATABASE_URL =
     process.env.DATABASE_URL ??
-    'postgresql://loopkeeper:loopkeeper@localhost:5433/loopkeeper_test';
+    'postgresql://loopkeeper:loopkeeper@localhost:5434/loopkeeper_test';
   process.env.JWT_SECRET =
     process.env.JWT_SECRET ?? 'test-access-secret-that-is-long-enough';
   process.env.REFRESH_JWT_SECRET =

@@ -67,7 +67,10 @@ test('M13: a failed load says so and recovers with a retry', async ({
   await expect(page.getByRole('alert')).toHaveText(/^Нет связи с сервером/);
   await page.unroute('**/api/campaigns/*/characters');
   await page.getByRole('button', { name: 'Повторить' }).click();
-  await expect(page.getByText('В кампании пока нет персонажей.')).toBeVisible();
+  // The player has no character yet, so the page offers to create one.
+  await expect(
+    page.getByRole('form', { name: 'Новый персонаж' }),
+  ).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 

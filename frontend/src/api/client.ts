@@ -235,6 +235,8 @@ export type Character = {
   characterId: string;
   campaignId: string;
   ownerId: string;
+  /** The player of the character. */
+  owner?: { userId: string; name: string | null };
   templateId: string;
   name: string;
   description?: string | null;

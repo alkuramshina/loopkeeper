@@ -63,35 +63,21 @@ test('a player creates a character through the form; the NPC form has its own fi
 
   await signInAs(page, player);
   await page.goto(`/campaigns/${campaignId}/characters`);
-  await page.getByRole('button', { name: 'Создать персонажа' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Новый персонаж' });
-  await dialog.getByLabel('Имя').fill('Ольга');
-  const numbers: Record<string, string> = {
-    age: '12',
-    body: '3',
-    tech: '3',
-    heart: '2',
-    mind: '2',
-    force: '1',
-    move: '1',
-    sneak: '1',
-    tinker: '1',
-    program: '1',
-    calculate: '1',
-    contact: '1',
-    charm: '1',
-    lead: '1',
-    investigate: '1',
-    comprehend: '1',
-    empathize: '1',
-  };
-  for (const [name, value] of Object.entries(numbers))
-    await dialog.locator(`[name="${name}"]`).fill(value);
-  for (const name of ['drive', 'pride', 'problem', 'anchor', 'iconicItem'])
-    await dialog.locator(`[name="${name}"]`).fill('Текст');
-  await dialog.getByRole('button', { name: 'Создать персонажа' }).click();
-  await expect(dialog).toHaveCount(0);
+  // Without a character the form is already open; only the name, age and
+  // type are required, and a single template is not offered as a choice.
+  const form = page.getByRole('form', { name: 'Новый персонаж' });
+  await expect(form.getByLabel('Шаблон')).toHaveCount(0);
+  await form.getByLabel('Имя').fill('Ольга');
+  await form.getByRole('button', { name: 'Создать персонажа' }).click();
+  await expect(form.getByLabel('Возраст')).toBeFocused();
+  await form.getByLabel('Возраст').fill('12');
+  await form.getByLabel('Тип').selectOption({ label: 'Книголюб' });
+  await form.getByRole('button', { name: 'Создать персонажа' }).click();
+  await expect(form).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Ольга' })).toBeVisible();
+  await expect(
+    page.getByText('Книголюб · 12 лет · играет Игрок').first(),
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Создать персонажа' }),
   ).toHaveCount(0);

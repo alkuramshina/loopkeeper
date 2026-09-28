@@ -28,7 +28,8 @@ test('M8: only a player without an active character is offered to create one', a
     const page = await context.newPage();
     await signInAs(page, user);
     await page.goto(`/campaigns/${campaignId}/characters`);
-    await expect(page.getByRole('heading', { name: 'Алекс' })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Алекс/ })).toBeVisible();
+    // A player without a character gets the form straight away.
     await expect(page.getByRole('button', { name: createButton })).toHaveCount(
       offered ? 1 : 0,
     );

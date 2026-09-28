@@ -5,6 +5,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 const talesFromTheLoopTemplateId = '00000000-0000-4000-8000-000000000001';
 
+// Only the name (a column, not in this schema), age and type are required:
+// a player starts with who the kid is and fills in the numbers and the story
+// later.
 const talesFromTheLoopSchema = {
   title: 'Tales from the Loop — Kid',
   sections: [
@@ -45,7 +48,6 @@ const talesFromTheLoopSchema = {
       label: 'Body',
       section: 'attributes',
       type: 'number',
-      required: true,
       min: 1,
       max: 5,
     },
@@ -54,7 +56,6 @@ const talesFromTheLoopSchema = {
       label: 'Tech',
       section: 'attributes',
       type: 'number',
-      required: true,
       min: 1,
       max: 5,
     },
@@ -63,7 +64,6 @@ const talesFromTheLoopSchema = {
       label: 'Heart',
       section: 'attributes',
       type: 'number',
-      required: true,
       min: 1,
       max: 5,
     },
@@ -72,7 +72,6 @@ const talesFromTheLoopSchema = {
       label: 'Mind',
       section: 'attributes',
       type: 'number',
-      required: true,
       min: 1,
       max: 5,
     },
@@ -81,7 +80,6 @@ const talesFromTheLoopSchema = {
       label: 'Force',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -90,7 +88,6 @@ const talesFromTheLoopSchema = {
       label: 'Move',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -99,7 +96,6 @@ const talesFromTheLoopSchema = {
       label: 'Sneak',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -108,7 +104,6 @@ const talesFromTheLoopSchema = {
       label: 'Tinker',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -117,7 +112,6 @@ const talesFromTheLoopSchema = {
       label: 'Program',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -126,7 +120,6 @@ const talesFromTheLoopSchema = {
       label: 'Calculate',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -135,7 +128,6 @@ const talesFromTheLoopSchema = {
       label: 'Contact',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -144,7 +136,6 @@ const talesFromTheLoopSchema = {
       label: 'Charm',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -153,7 +144,6 @@ const talesFromTheLoopSchema = {
       label: 'Lead',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -162,7 +152,6 @@ const talesFromTheLoopSchema = {
       label: 'Investigate',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -171,7 +160,6 @@ const talesFromTheLoopSchema = {
       label: 'Comprehend',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -180,7 +168,6 @@ const talesFromTheLoopSchema = {
       label: 'Empathize',
       section: 'skills',
       type: 'number',
-      required: true,
       min: 0,
       max: 5,
     },
@@ -189,7 +176,6 @@ const talesFromTheLoopSchema = {
       label: 'Drive',
       section: 'story',
       type: 'string',
-      required: true,
       maxLength: 500,
     },
     {
@@ -197,7 +183,6 @@ const talesFromTheLoopSchema = {
       label: 'Pride',
       section: 'story',
       type: 'string',
-      required: true,
       maxLength: 500,
     },
     {
@@ -205,7 +190,6 @@ const talesFromTheLoopSchema = {
       label: 'Problem',
       section: 'story',
       type: 'string',
-      required: true,
       maxLength: 500,
     },
     {
@@ -213,7 +197,6 @@ const talesFromTheLoopSchema = {
       label: 'Anchor',
       section: 'story',
       type: 'string',
-      required: true,
       maxLength: 500,
     },
     {
@@ -221,7 +204,6 @@ const talesFromTheLoopSchema = {
       label: 'Iconic item',
       section: 'story',
       type: 'string',
-      required: true,
       maxLength: 100,
     },
     {
@@ -304,11 +286,11 @@ async function seedReferenceData(prisma: PrismaClient) {
       systemSlug: System.TALES_FROM_THE_LOOP,
       name: 'Kid',
       schema: talesFromTheLoopSchema,
-      version: 3,
+      version: 4,
     },
     update: {
       schema: talesFromTheLoopSchema,
-      version: 3,
+      version: 4,
       isActive: true,
     },
   });

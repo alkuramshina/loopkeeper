@@ -663,22 +663,6 @@ textarea {
 .section-heading h2 {
   margin: 0;
 }
-.character-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-}
-.character-card {
-  display: flex;
-  min-height: 13rem;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-line);
-  border-radius: 10px;
-}
 .campaign-cover,
 .campaign-cover-preview {
   display: block;
@@ -715,42 +699,10 @@ textarea {
   width: 5rem;
   height: 5rem;
 }
-.character-card-identity,
 .member-identity {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-}
-.character-card h3,
-.character-card p {
-  margin: 0.25rem 0;
-}
-.character-card .action-row {
-  align-self: stretch;
-  flex-wrap: wrap;
-  justify-content: start;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-line);
-}
-.character-editor {
-  margin-bottom: 1.5rem;
-}
-.character-editor form {
-  display: grid;
-  gap: 1rem;
-}
-.character-fieldset {
-  display: grid;
-  gap: 0.75rem;
-  margin: 0;
-  padding: 1rem;
-  border: 1px solid var(--color-line);
-  border-radius: 7px;
-}
-.character-fieldset legend {
-  padding: 0 0.25rem;
-  color: var(--color-text-secondary);
-  font-weight: 700;
 }
 .checkbox-field {
   display: flex;
@@ -1298,12 +1250,7 @@ input[type='file'] {
   .workspace-nav {
     overflow-x: auto;
   }
-  .character-card {
-    align-items: stretch;
-    flex-direction: column;
-  }
   .settings-grid,
-  .character-list,
   .members-layout,
   .locations-layout {
     grid-template-columns: 1fr;
@@ -1311,9 +1258,6 @@ input[type='file'] {
   .member-row {
     align-items: stretch;
     flex-direction: column;
-  }
-  .character-card .action-row {
-    justify-content: start;
   }
   .location-viewer-header {
     align-items: stretch;

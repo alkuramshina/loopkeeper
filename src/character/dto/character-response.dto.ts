@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+export class CharacterOwnerDto {
+  @ApiProperty({ format: 'uuid' })
+  userId!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  name!: string | null;
+}
+
 export class CharacterResponseDto {
   @ApiProperty({ format: 'uuid' })
   characterId!: string;
@@ -30,6 +38,9 @@ export class CharacterResponseDto {
 
   @ApiProperty({ format: 'uuid' })
   ownerId!: string;
+
+  @ApiProperty({ type: CharacterOwnerDto })
+  owner!: CharacterOwnerDto;
 
   @ApiProperty({ format: 'uuid' })
   templateId!: string;

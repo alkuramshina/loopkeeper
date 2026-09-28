@@ -23,6 +23,11 @@ type FieldDefinition = {
 
 type CharacterSchema = { fields: FieldDefinition[] };
 
+/** Who plays the character, so every member can see it next to the name. */
+const withOwner = {
+  owner: { select: { userId: true, name: true } },
+} satisfies Prisma.CharacterInclude;
+
 @Injectable()
 export class CharacterService {
   constructor(
@@ -69,6 +74,7 @@ export class CharacterService {
         avatarUrl: createDto.avatarUrl,
         data: createDto.data as Prisma.InputJsonValue,
       },
+      include: withOwner,
     });
   }
 
@@ -78,6 +84,7 @@ export class CharacterService {
     return this.prisma.character.findMany({
       where: { campaignId },
       orderBy: { name: 'asc' },
+      include: withOwner,
     });
   }
 
@@ -87,6 +94,7 @@ export class CharacterService {
         characterId,
         campaign: memberCampaignWhere(userId),
       },
+      include: withOwner,
     });
 
     if (!character) {
@@ -141,6 +149,7 @@ export class CharacterService {
             data: updateDto.data as Prisma.InputJsonValue | undefined,
             isActive: updateDto.isActive,
           },
+          include: withOwner,
         });
         if (current?.avatarAssetId) {
           await tx.mediaAsset.delete({

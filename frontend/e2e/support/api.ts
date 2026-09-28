@@ -140,7 +140,7 @@ export async function beginReturnVisit(
   expect((await first.json()).newSinceAt).toBeNull();
   const url =
     process.env.LOOPKEEPER_TEST_DATABASE_URL ??
-    'postgresql://loopkeeper:loopkeeper@localhost:5433/loopkeeper_test';
+    'postgresql://loopkeeper:loopkeeper@localhost:5434/loopkeeper_test';
   if (new URL(url).pathname !== '/loopkeeper_test')
     throw new Error('Test database required');
   const db = new Client({ connectionString: url });

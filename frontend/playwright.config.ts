@@ -52,7 +52,7 @@ export default defineConfig({
         FRONTEND_URL: webUrl,
         DATABASE_URL:
           process.env.LOOPKEEPER_TEST_DATABASE_URL ??
-          'postgresql://loopkeeper:loopkeeper@localhost:5433/loopkeeper_test',
+          'postgresql://loopkeeper:loopkeeper@localhost:5434/loopkeeper_test',
         JWT_SECRET: 'browser-test-access-secret-long-enough',
         REFRESH_JWT_SECRET: 'browser-test-refresh-secret-long-enough',
         REFRESH_COOKIE_SECURE: 'false',

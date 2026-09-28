@@ -10,7 +10,9 @@
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-xl);
-  background: var(--color-surface);
+  /* The list's tint runs the full height even when the sticky list is
+     shorter than the detail beside it; the detail brings its own surface. */
+  background: var(--color-bg);
 }
 .materials-list-pane {
   display: flex;
@@ -21,6 +23,7 @@
 .materials-detail-pane {
   display: none;
   min-width: 0;
+  background: var(--color-surface);
 }
 .materials-layout-detail .materials-list-pane {
   display: none;
@@ -38,10 +41,10 @@
     position: sticky;
     top: 0;
     max-height: 100dvh;
-    border-right: 1px solid var(--color-line);
   }
   .materials-detail-pane {
     display: block;
+    border-left: 1px solid var(--color-line);
   }
   /* The list stays beside the detail, so there is nothing to go back to. */
   .materials-layout .material-back {

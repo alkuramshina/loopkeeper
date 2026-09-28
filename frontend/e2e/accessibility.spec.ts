@@ -1,7 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, Page, test } from './support/test';
 import {
-  addMember,
   createCampaign,
   createCampaignWithRoles,
   createElement,
@@ -230,8 +229,6 @@ test('every dialog is named, keeps focus inside, closes with Escape and returns 
   request,
 }) => {
   const { campaignId, owner, player } = await createCampaignWithRoles(request);
-  const secondPlayer = await registerUser(request, 'Второй игрок');
-  await addMember(request, owner, campaignId, secondPlayer, 'PLAYER');
   await createPlayerCharacter(request, player, campaignId, 'Ольга');
   const elementId = await createElement(request, owner, campaignId, {
     type: 'NOTE',
@@ -251,12 +248,6 @@ test('every dialog is named, keeps focus inside, closes with Escape and returns 
       `/campaigns/${campaignId}/members`,
       'Создать приглашение',
       'Создать приглашение',
-    ],
-    [
-      secondPlayer,
-      `/campaigns/${campaignId}/characters`,
-      'Создать персонажа',
-      'Новый персонаж',
     ],
   ];
   for (const [user, path, openerName, title] of dialogs) {

@@ -27,6 +27,11 @@ test('F13g: player conditions autosave and appear in the case and on the board',
   expect(card.ok()).toBeTruthy();
   await signInAs(page, player);
   await page.goto(`/campaigns/${campaignId}/characters/${characterId}`);
+  // It is on the board already, so there is nothing to add.
+  await expect(page.getByRole('heading', { name: 'Алекс' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Добавить на доску' }),
+  ).toHaveCount(0);
   await page.getByRole('button', { name: 'Сломлен(а)' }).click();
   await expect(
     page.getByRole('button', { name: 'Сломлен(а)' }),

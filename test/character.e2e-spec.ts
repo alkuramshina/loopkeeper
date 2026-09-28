@@ -322,6 +322,22 @@ describe('Characters (e2e)', () => {
       })
       .expect(400);
 
+    // Age and type are the only required fields; the rest comes later.
+    await request(app.getHttpServer())
+      .post(`/campaigns/${campaign.campaignId}/characters`)
+      .set(authenticate(player))
+      .send({ name: 'No type', templateId, data: { age: 12 } })
+      .expect(400);
+    const minimal = await request(app.getHttpServer())
+      .post(`/campaigns/${campaign.campaignId}/characters`)
+      .set(authenticate(player))
+      .send({ name: 'Maja', templateId, data: { age: 12, type: 'BOOKWORM' } })
+      .expect(201);
+    expect(minimal.body.owner).toEqual({
+      userId: minimal.body.ownerId,
+      name: 'Player',
+    });
+
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
