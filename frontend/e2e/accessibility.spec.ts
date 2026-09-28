@@ -149,6 +149,11 @@ test('main screens have no automatically detectable accessibility violations in 
     ],
     ['board', `/campaigns/${campaignId}/board`, 'Радиосигнал'],
     ['members', `/campaigns/${campaignId}/members`, 'Мастер'],
+    [
+      'invitations',
+      `/campaigns/${campaignId}/invitations`,
+      'Создать приглашение',
+    ],
     ['campaign settings', `/campaigns/${campaignId}/settings`, 'Настройки'],
     ['account', '/settings/account', 'Профиль'],
     ['password', '/settings/password', 'Текущий пароль'],
@@ -245,7 +250,7 @@ test('every dialog is named, keeps focus inside, closes with Escape and returns 
     ],
     [
       owner,
-      `/campaigns/${campaignId}/members`,
+      `/campaigns/${campaignId}/invitations`,
       'Создать приглашение',
       'Создать приглашение',
     ],
@@ -301,6 +306,7 @@ test('every screen and dialog has a visible focus in document order', async ({
     `/campaigns/${campaignId}/elements/${elementId}`,
     `/campaigns/${campaignId}/board`,
     `/campaigns/${campaignId}/members`,
+    `/campaigns/${campaignId}/invitations`,
     `/campaigns/${campaignId}/settings`,
     `/campaigns/${campaignId}/settings/backgrounds`,
     '/settings/account',
@@ -368,7 +374,7 @@ test('the main forms work with the keyboard alone and announce errors', async ({
   expect(await listCampaignTitles(request, owner)).toContain('Вторая');
 
   // Invitation.
-  await page.goto(`/campaigns/${campaignId}/members`);
+  await page.goto(`/campaigns/${campaignId}/invitations`);
   await page.getByRole('button', { name: 'Создать приглашение' }).focus();
   await page.keyboard.press('Enter');
   const invitationDialog = page.getByRole('dialog', {

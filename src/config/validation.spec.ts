@@ -4,6 +4,7 @@ const validEnvironment = {
   DATABASE_URL: 'postgresql://user:password@localhost:5432/loopkeeper',
   JWT_SECRET: 'access-token-secret-with-enough-length',
   REFRESH_JWT_SECRET: 'refresh-token-secret-with-enough-length',
+  INVITATION_SECRET: 'invitation-link-secret-with-enough-length',
 };
 
 describe('validationSchema', () => {

@@ -55,6 +55,7 @@ export default defineConfig({
           'postgresql://loopkeeper:loopkeeper@localhost:5434/loopkeeper_test',
         JWT_SECRET: 'browser-test-access-secret-long-enough',
         REFRESH_JWT_SECRET: 'browser-test-refresh-secret-long-enough',
+        INVITATION_SECRET: 'browser-test-invitation-secret-long-enough',
         REFRESH_COOKIE_SECURE: 'false',
         REFRESH_COOKIE_SAMESITE: 'lax',
         MEDIA_STORAGE_PATH: 'data/browser-test-media',

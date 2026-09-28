@@ -96,12 +96,26 @@ test('the owner sees members and campaign settings in the navigation', async ({
   await page.goto(`/campaigns/${campaignId}`);
 
   await expect(page.locator(sidebar).getByRole('link')).toHaveText([
-    'Доска расследования',
+    'Доска',
     'Материалы',
     'Персонажи',
-    'Участники',
-    'Настройки кампании',
+    'Настройки',
+    'Фоны',
   ]);
+  // Members and invitations are two screens in a «Участники» submenu that
+  // opens on a click.
+  const people = page
+    .locator(sidebar)
+    .getByRole('button', { name: 'Участники' });
+  await expect(people).toHaveAttribute('aria-expanded', 'false');
+  await people.click();
+  await expect(people).toHaveAttribute('aria-expanded', 'true');
+  await expect(
+    page
+      .locator(sidebar)
+      .getByRole('group', { name: 'Участники' })
+      .getByRole('link'),
+  ).toHaveText(['Состав', 'Приглашения']);
 });
 
 test('a viewer sees the board with its background and links but cannot change anything', async ({

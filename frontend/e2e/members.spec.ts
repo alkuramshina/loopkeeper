@@ -40,6 +40,11 @@ test('the master invites a player, changes the role and removes the member', asy
   await expect(
     page.getByText('Кроме мастера в кампании пока никого нет.'),
   ).toBeVisible();
+  await page
+    .getByRole('group', { name: 'Участники' })
+    .getByRole('link', { name: 'Приглашения' })
+    .click();
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/invitations`);
   const invitationPath = await createInvitationLink(page, 'PLAYER');
   await expect(page.getByText('Активно')).toBeVisible();
 
@@ -56,8 +61,13 @@ test('the master invites a player, changes the role and removes the member', asy
     memberPage.getByRole('button', { name: 'Заметка', exact: true }),
   ).toBeVisible();
 
+  // The accepted invitation names who used it.
   await page.reload();
-  await expect(page.getByText('Принято')).toBeVisible();
+  const accepted = page.locator('.member-row').filter({ hasText: 'Принято' });
+  await expect(accepted).toContainText('Кто принял');
+  await expect(accepted).toContainText('Ким');
+
+  await page.goto(membersPage);
   const role = page.getByLabel('Роль для Ким');
   await expect(role).toHaveValue('PLAYER');
 
@@ -108,7 +118,7 @@ test('a revoked invitation link no longer works', async ({
   const campaignId = await createCampaign(request, owner);
 
   await signInAs(page, owner);
-  await page.goto(`/campaigns/${campaignId}/members`);
+  await page.goto(`/campaigns/${campaignId}/invitations`);
   const invitationPath = await createInvitationLink(page, 'VIEWER');
 
   page.once('dialog', (confirm) => void confirm.accept());
@@ -126,7 +136,7 @@ test('a revoked invitation link no longer works', async ({
   expect(await listCampaignTitles(request, latecomer)).toEqual([]);
 });
 
-test('members and invitations are separate; the master row cannot be managed', async ({
+test('members and invitations are separate screens; the master row cannot be managed', async ({
   page,
   request,
 }) => {
@@ -135,29 +145,36 @@ test('members and invitations are separate; the master row cannot be managed', a
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/members`);
 
-  const membersSection = page
-    .locator('.member-section')
-    .filter({ has: page.getByRole('heading', { name: 'Участники кампании' }) });
-  const invitationsSection = page
-    .locator('.member-section')
-    .filter({ has: page.getByRole('heading', { name: 'Приглашения' }) });
-  await expect(membersSection).toHaveCount(1);
-  await expect(invitationsSection).toHaveCount(1);
-
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Участники' }),
+  ).toBeVisible();
+  // Invitations are not on the members screen.
+  await expect(
+    page.getByRole('button', { name: 'Создать приглашение' }),
+  ).toHaveCount(0);
   // Joining is invitation-only: there is no email lookup or direct add.
   await expect(page.locator('input[type=email]')).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Добавить участника' }),
   ).toHaveCount(0);
 
-  const rows = membersSection.locator('.member-row');
+  const rows = page.locator('.member-row');
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText('Мастер');
   await expect(rows.first().locator('.role-badge')).toHaveText('Мастер');
   await expect(rows.first().locator('select, button')).toHaveCount(0);
   await expect(
-    membersSection.getByText('Кроме мастера в кампании пока никого нет.'),
+    page.getByText('Кроме мастера в кампании пока никого нет.'),
   ).toBeVisible();
+
+  await page.goto(`/campaigns/${campaignId}/invitations`);
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Приглашения' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Активных и завершённых приглашений пока нет.'),
+  ).toBeVisible();
+  await expect(page.locator('.member-row')).toHaveCount(0);
 });
 
 test('the copied invitation link lets a second account join only this campaign', async ({
@@ -173,13 +190,25 @@ test('the copied invitation link lets a second account join only this campaign',
   await createCampaign(request, owner, 'Другая кампания');
 
   await signInAs(page, owner);
-  await page.goto(`/campaigns/${campaignId}/members`);
+  await page.goto(`/campaigns/${campaignId}/invitations`);
   await createInvitationLink(page, 'PLAYER');
-  await page.getByRole('button', { name: 'Скопировать ссылку' }).click();
+  await page
+    .locator('.created-invitation')
+    .getByRole('button', { name: 'Скопировать ссылку' })
+    .click();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toMatch(/\/invitations\/[^/]+$/);
   expect(copied).toBe(
     await page.locator('.created-invitation code').textContent(),
+  );
+
+  // Coming back later, the master can still copy the same active link.
+  await page.reload();
+  await page.evaluate(() => navigator.clipboard.writeText(''));
+  await page.getByRole('button', { name: 'Скопировать ссылку' }).click();
+  await expect(page.getByRole('button', { name: 'Скопировано' })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    copied,
   );
 
   const playerContext = await browser.newContext();

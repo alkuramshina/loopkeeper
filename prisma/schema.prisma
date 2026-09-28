@@ -8,21 +8,22 @@ datasource db {
 }
 
 model User {
-  userId                     String               @id @default(uuid())
-  createdAt                  DateTime             @default(now())
-  updatedAt                  DateTime             @updatedAt
-  email                      String               @unique
-  passwordHash               String
-  name                       String?
-  avatarUrl                  String?
-  avatarAsset                MediaAsset?          @relation("UserAvatar", fields: [avatarAssetId], references: [assetId], onDelete: SetNull)
-  avatarAssetId              String?              @unique
-  applicationRole            ApplicationRole      @default(USER)
-  isDeleted                  Boolean              @default(false)
-  campaignMemberships        CampaignMember[]     @relation("CampaignMemberships")
-  characters                 Character[]
-  authSessions               AuthSession[]
-  createdCampaignInvitations CampaignInvitation[] @relation("CampaignInvitationCreator")
+  userId                      String               @id @default(uuid())
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
+  email                       String               @unique
+  passwordHash                String
+  name                        String?
+  avatarUrl                   String?
+  avatarAsset                 MediaAsset?          @relation("UserAvatar", fields: [avatarAssetId], references: [assetId], onDelete: SetNull)
+  avatarAssetId               String?              @unique
+  applicationRole             ApplicationRole      @default(USER)
+  isDeleted                   Boolean              @default(false)
+  campaignMemberships         CampaignMember[]     @relation("CampaignMemberships")
+  characters                  Character[]
+  authSessions                AuthSession[]
+  createdCampaignInvitations  CampaignInvitation[] @relation("CampaignInvitationCreator")
+  acceptedCampaignInvitations CampaignInvitation[] @relation("CampaignInvitationAcceptor")
 
   createdElements CampaignElement[]
 
@@ -119,12 +120,12 @@ model CampaignMember {
 // Personal per-campaign state of one participant (theme, last seen, ...).
 // Created on first write; a missing row means defaults.
 model CampaignParticipantState {
-  member    CampaignMember @relation(fields: [memberId], references: [memberId], onDelete: Cascade)
-  memberId  String         @id
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  member      CampaignMember @relation(fields: [memberId], references: [memberId], onDelete: Cascade)
+  memberId    String         @id
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   lastVisitAt DateTime?
-  newSinceAt DateTime?
+  newSinceAt  DateTime?
 
   @@map("campaign_participant_states")
 }
@@ -133,7 +134,6 @@ model CampaignInvitation {
   invitationId String       @id @default(uuid())
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
-  tokenHash    String
   role         CampaignRole
   expiresAt    DateTime
   acceptedAt   DateTime?
@@ -142,6 +142,9 @@ model CampaignInvitation {
   campaignId   String
   createdBy    User         @relation("CampaignInvitationCreator", fields: [createdById], references: [userId])
   createdById  String
+  // Who used the invitation; set exactly when acceptedAt is (CHECK in SQL).
+  acceptedBy   User?        @relation("CampaignInvitationAcceptor", fields: [acceptedById], references: [userId], onDelete: Restrict)
+  acceptedById String?
 
   @@index([campaignId])
   @@index([expiresAt])

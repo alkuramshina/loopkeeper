@@ -102,7 +102,10 @@ describe('CampaignWorkspaceShell', () => {
       screen.getAllByRole('link', { name: 'Доска расследования' }),
     ).toHaveLength(1);
     expect(
-      screen.queryByRole('link', { name: 'Участники' }),
+      screen.queryByRole('group', { name: 'Участники' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Приглашения' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Настройки кампании' }),
@@ -306,7 +309,22 @@ describe('CampaignWorkspaceShell', () => {
 
       // Following a link closes the menu.
       fireEvent.click(menu);
-      fireEvent.click(screen.getAllByRole('link', { name: 'Участники' })[0]);
+      // Members and invitations are two pages in a submenu that opens on
+      // a click on «Участники».
+      const people = screen.getByRole('group', { name: 'Участники' });
+      const toggle = screen.getByRole('button', { name: 'Участники' });
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(
+        within(people).queryByRole('link', { name: 'Состав' }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      // Opening the submenu does not close the slide-out menu.
+      expect(menu).toHaveAttribute('aria-expanded', 'true');
+      expect(
+        within(people).getByRole('link', { name: 'Приглашения' }),
+      ).toHaveAttribute('href', '/campaigns/campaign-1/invitations');
+      fireEvent.click(within(people).getByRole('link', { name: 'Состав' }));
       expect(menu).toHaveAttribute('aria-expanded', 'false');
       expect(screen.getByTestId('location')).toHaveTextContent(
         '/campaigns/campaign-1/members',

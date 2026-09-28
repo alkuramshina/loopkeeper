@@ -23,7 +23,7 @@ Loopkeeper — веб-приложение для совместного вед�
 
 Нужны Node.js 22+ и Docker.
 
-1. Скопируйте `.env.example` в `.env` и задайте `JWT_SECRET` и `REFRESH_JWT_SECRET` — две разные случайные строки не короче 20 символов:
+1. Скопируйте `.env.example` в `.env` и задайте `JWT_SECRET`, `REFRESH_JWT_SECRET` и `INVITATION_SECRET` — три разные случайные строки не короче 20 символов:
 
    ```sh
    node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"

@@ -1,5 +1,6 @@
 import { CampaignRole } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CampaignMemberUserResponseDto } from './campaign-member-response.dto';
 
 export class CampaignInvitationResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -25,14 +26,26 @@ export class CampaignInvitationResponseDto {
 
   @ApiProperty({ format: 'uuid' })
   createdById!: string;
+
+  @ApiPropertyOptional({
+    type: CampaignMemberUserResponseDto,
+    nullable: true,
+    description: 'Who accepted the invitation. Null while it is not accepted.',
+  })
+  acceptedBy!: CampaignMemberUserResponseDto | null;
+
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    description:
+      'Invitation link token, only while the invitation can still be accepted. Null for used, revoked or expired invitations.',
+  })
+  token!: string | null;
 }
 
 export class CreatedCampaignInvitationResponseDto extends CampaignInvitationResponseDto {
-  @ApiProperty({
-    description:
-      'Secret invitation token. Store it securely; it cannot be retrieved later.',
-  })
-  token!: string;
+  @ApiProperty({ description: 'Invitation link token.' })
+  declare token: string;
 }
 
 export class CampaignInvitationPreviewResponseDto {

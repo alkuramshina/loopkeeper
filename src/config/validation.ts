@@ -39,6 +39,9 @@ export const validationSchema = Joi.object({
   REFRESH_JWT_SECRET: Joi.string().min(20).required(),
   REFRESH_JWT_EXPIRES_IN: Joi.string().default('7d'),
 
+  // Signs invitation links so the master can copy an active link again.
+  INVITATION_SECRET: Joi.string().min(20).required(),
+
   REFRESH_COOKIE_NAME: Joi.string().trim().min(1).default('refresh_token'),
   REFRESH_COOKIE_SECURE: Joi.boolean()
     .default(false)

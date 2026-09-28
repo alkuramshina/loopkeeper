@@ -53,7 +53,7 @@ test('an existing member sees the localized already-member message', async ({
   await expect(page.getByRole('alert')).toHaveText(
     'Вы уже состоите в этой кампании.',
   );
-  await page.getByRole('link', { name: 'Кампании' }).click();
+  await page.getByRole('link', { name: 'К моим кампаниям' }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
 });
 

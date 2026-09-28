@@ -9,8 +9,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
-import { ApiError } from '../../api/client';
-import { MembersPage } from './members-page';
+import { InvitationsPage } from './invitations-page';
 
 const request = vi.fn();
 let role: 'OWNER' | 'PLAYER' | 'VIEWER' = 'OWNER';
@@ -44,12 +43,15 @@ const activeInvitation = {
   revokedAt: null,
   createdAt: '',
   createdById: 'master',
+  token: 'i1.secret',
 };
 const acceptedInvitation = {
   ...activeInvitation,
   invitationId: 'i2',
   role: 'PLAYER',
+  token: null,
   acceptedAt: future,
+  acceptedBy: member.user,
 };
 
 function renderPage() {
@@ -59,11 +61,11 @@ function renderPage() {
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <MemoryRouter initialEntries={['/campaigns/c/members']}>
+      <MemoryRouter initialEntries={['/campaigns/c/invitations']}>
         <Routes>
           <Route
-            path="/campaigns/:campaignId/members"
-            element={<MembersPage />}
+            path="/campaigns/:campaignId/invitations"
+            element={<InvitationsPage />}
           />
         </Routes>
       </MemoryRouter>
@@ -71,7 +73,7 @@ function renderPage() {
   );
 }
 
-describe('MembersPage', () => {
+describe('InvitationsPage', () => {
   beforeEach(() => {
     HTMLDialogElement.prototype.showModal = function () {
       this.open = true;
@@ -107,76 +109,81 @@ describe('MembersPage', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('lists members; the master cannot be managed', async () => {
+  it('lists invitations with their status and who accepted them', async () => {
     renderPage();
 
-    expect(await screen.findByText('Kim')).toBeInTheDocument();
-    expect(screen.getByText('kim@example.test')).toBeInTheDocument();
-    expect(screen.getByLabelText('Роль для Kim')).toHaveValue('PLAYER');
-    // The master is listed as «Мастер» without management controls.
-    const masterRow = screen.getByText('Mira').closest('article')!;
-    expect(within(masterRow).getByText('Мастер')).toBeInTheDocument();
-    expect(within(masterRow).queryByRole('combobox')).not.toBeInTheDocument();
-    expect(within(masterRow).queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Удалить' })).toHaveLength(1);
-    // Invitations live on their own screen.
-    expect(request).not.toHaveBeenCalledWith('/campaigns/c/invitations');
+    expect(await screen.findByText('Активно')).toBeInTheDocument();
+    expect(screen.getByText('Принято')).toBeInTheDocument();
+    const acceptedRow = screen.getByText('Kim').closest('article')!;
+    expect(within(acceptedRow).getByText('Кто принял')).toBeInTheDocument();
+    // Only an active invitation can be revoked or copied.
+    expect(screen.getAllByRole('button', { name: 'Отозвать' })).toHaveLength(1);
     expect(
-      screen.queryByRole('button', { name: 'Создать приглашение' }),
-    ).not.toBeInTheDocument();
+      screen.getAllByRole('button', { name: 'Скопировать ссылку' }),
+    ).toHaveLength(1);
+    expect(request).not.toHaveBeenCalledWith('/campaigns/c/members');
   });
 
-  it('changes a role and removes a member only after confirmation', async () => {
-    const confirm = vi.spyOn(window, 'confirm');
+  it('creates an invitation and shows the one-time link', async () => {
     renderPage();
-    await screen.findByText('Kim');
+    await screen.findAllByText('Активно');
 
-    fireEvent.change(screen.getByLabelText('Роль для Kim'), {
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Создать приглашение' }),
+    );
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Роль'), {
       target: { value: 'VIEWER' },
     });
-    await waitFor(() =>
-      expect(request).toHaveBeenCalledWith('/campaigns/c/members/u1', {
-        method: 'PATCH',
-        body: JSON.stringify({ role: 'VIEWER' }),
-      }),
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'Создать приглашение' }),
     );
 
-    const removeButton = screen.getByRole('button', { name: 'Удалить' });
-    confirm.mockReturnValueOnce(false);
-    fireEvent.click(removeButton);
-    expect(request).not.toHaveBeenCalledWith('/campaigns/c/members/u1', {
-      method: 'DELETE',
+    const status = await screen.findByRole('status');
+    expect(status).toHaveTextContent(
+      `${window.location.origin}/invitations/i3.secret`,
+    );
+    expect(request).toHaveBeenCalledWith('/campaigns/c/invitations', {
+      method: 'POST',
+      body: JSON.stringify({ role: 'VIEWER' }),
     });
+  });
 
-    confirm.mockReturnValueOnce(true);
-    fireEvent.click(removeButton);
+  it('copies the link of an active invitation again later', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    renderPage();
+    await screen.findAllByText('Активно');
+
+    const copy = screen.getByRole('button', { name: 'Скопировать ссылку' });
+    fireEvent.click(copy);
+
     await waitFor(() =>
-      expect(request).toHaveBeenCalledWith('/campaigns/c/members/u1', {
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/invitations/i1.secret`,
+      ),
+    );
+    expect(
+      await screen.findByRole('button', { name: 'Скопировано' }),
+    ).toBeInTheDocument();
+  });
+
+  it('revokes an active invitation after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderPage();
+    await screen.findAllByText('Активно');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Отозвать' }));
+
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('/campaigns/c/invitations/i1', {
         method: 'DELETE',
       }),
     );
   });
 
-  it('shows a failed role change by its error code', async () => {
-    renderPage();
-    await screen.findByText('Kim');
-    request.mockImplementationOnce(() =>
-      Promise.reject(
-        new ApiError(404, 'resource.not_found', 'Not found', undefined),
-      ),
-    );
-
-    fireEvent.change(screen.getByLabelText('Роль для Kim'), {
-      target: { value: 'VIEWER' },
-    });
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Ресурс недоступен.',
-    );
-  });
-
   it.each(['PLAYER', 'VIEWER'] as const)(
-    'shows the neutral unavailable state to a %s without loading members',
+    'shows the neutral unavailable state to a %s without loading invitations',
     async (currentRole) => {
       role = currentRole;
       renderPage();
@@ -184,7 +191,6 @@ describe('MembersPage', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Ресурс недоступен.',
       );
-      expect(request).not.toHaveBeenCalledWith('/campaigns/c/members');
       expect(request).not.toHaveBeenCalledWith('/campaigns/c/invitations');
     },
   );

@@ -11,6 +11,9 @@ export function configureTestEnvironment(): void {
     process.env.JWT_SECRET ?? 'test-access-secret-that-is-long-enough';
   process.env.REFRESH_JWT_SECRET =
     process.env.REFRESH_JWT_SECRET ?? 'test-refresh-secret-that-is-long-enough';
+  process.env.INVITATION_SECRET =
+    process.env.INVITATION_SECRET ??
+    'test-invitation-secret-that-is-long-enough';
   process.env.REFRESH_COOKIE_NAME =
     process.env.REFRESH_COOKIE_NAME ?? 'refresh_token';
   process.env.REFRESH_COOKIE_SECURE =

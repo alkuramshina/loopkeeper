@@ -1,7 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CampaignRole } from '@prisma/client';
-import { randomBytes } from 'node:crypto';
-import * as argon2 from 'argon2';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { DomainException } from '../common/exceptions/domain.exception';
 import { CampaignAccessService } from './access/campaign-access.service';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
@@ -16,6 +16,9 @@ const invitationSelect = {
   revokedAt: true,
   createdAt: true,
   createdById: true,
+  acceptedBy: {
+    select: { userId: true, email: true, name: true, avatarUrl: true },
+  },
 } as const;
 
 @Injectable()
@@ -23,6 +26,7 @@ export class CampaignInvitationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly campaignAccess: CampaignAccessService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(
@@ -32,29 +36,28 @@ export class CampaignInvitationService {
   ) {
     await this.campaignAccess.requireOwner(ownerId, campaignId);
 
-    const secret = randomBytes(32).toString('base64url');
     const invitation = await this.prisma.campaignInvitation.create({
       data: {
         campaignId,
         createdById: ownerId,
         role: createDto.role,
-        tokenHash: await argon2.hash(secret),
         expiresAt: this.getExpiryDate(),
       },
       select: invitationSelect,
     });
 
-    return { ...invitation, token: `${invitation.invitationId}.${secret}` };
+    return this.withToken(invitation);
   }
 
   async findAll(ownerId: string, campaignId: string) {
     await this.campaignAccess.requireOwner(ownerId, campaignId);
 
-    return this.prisma.campaignInvitation.findMany({
+    const invitations = await this.prisma.campaignInvitation.findMany({
       where: { campaignId },
       select: invitationSelect,
       orderBy: { createdAt: 'desc' },
     });
+    return invitations.map((invitation) => this.withToken(invitation));
   }
 
   async revoke(ownerId: string, campaignId: string, invitationId: string) {
@@ -115,7 +118,7 @@ export class CampaignInvitationService {
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
-        data: { acceptedAt: new Date() },
+        data: { acceptedAt: new Date(), acceptedById: userId },
       });
       if (claimed.count === 0) {
         throw this.invitationNotFound();
@@ -153,12 +156,52 @@ export class CampaignInvitationService {
       invitation.acceptedAt ||
       invitation.revokedAt ||
       invitation.expiresAt <= new Date() ||
-      !(await argon2.verify(invitation.tokenHash, secret))
+      !this.secretMatches(invitation.invitationId, secret)
     ) {
       throw this.invitationNotFound();
     }
 
     return invitation;
+  }
+
+  /**
+   * The link secret is an HMAC of the invitation id under a server key, so
+   * the master can copy an active link again while the database alone does
+   * not reveal it. Only a usable invitation gets its link back.
+   */
+  private withToken<
+    T extends {
+      invitationId: string;
+      acceptedAt: Date | null;
+      revokedAt: Date | null;
+      expiresAt: Date;
+    },
+  >(invitation: T) {
+    const usable =
+      !invitation.acceptedAt &&
+      !invitation.revokedAt &&
+      invitation.expiresAt > new Date();
+    return {
+      ...invitation,
+      token: usable
+        ? `${invitation.invitationId}.${this.linkSecret(invitation.invitationId)}`
+        : null,
+    };
+  }
+
+  private linkSecret(invitationId: string): string {
+    return createHmac(
+      'sha256',
+      this.config.getOrThrow<string>('INVITATION_SECRET'),
+    )
+      .update(invitationId)
+      .digest('base64url');
+  }
+
+  private secretMatches(invitationId: string, secret: string): boolean {
+    const expected = Buffer.from(this.linkSecret(invitationId));
+    const given = Buffer.from(secret);
+    return expected.length === given.length && timingSafeEqual(expected, given);
   }
 
   private invitationNotFound(): DomainException {

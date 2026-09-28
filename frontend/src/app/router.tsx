@@ -32,6 +32,10 @@ const CasePage = lazy(async () => ({
 const NotesPage = lazy(async () => ({
   default: (await import('../features/campaigns/notes-page')).NotesPage,
 }));
+const InvitationsPage = lazy(async () => ({
+  default: (await import('../features/campaigns/invitations-page'))
+    .InvitationsPage,
+}));
 const MembersPage = lazy(async () => ({
   default: (await import('../features/campaigns/members-page')).MembersPage,
 }));
@@ -165,6 +169,10 @@ export function AppRouter() {
           <Route
             path="/campaigns/:campaignId/members"
             element={<MembersPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/invitations"
+            element={<InvitationsPage />}
           />
         </Route>
         <Route path="/invitations/:token" element={<InvitationEntry />} />

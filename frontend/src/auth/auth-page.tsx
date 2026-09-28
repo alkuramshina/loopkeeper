@@ -3,40 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ApiError, InvitationPreview } from '../api/client';
 import { useAuth } from './auth-context';
-import { Logo } from '../components/brand/logo';
 import { useTranslation } from 'react-i18next';
-import lakeNight from '../assets/auth/lake-night.png';
-import substationAutumn from '../assets/auth/substation-autumn.png';
-import bridgeWinter from '../assets/auth/bridge-winter.png';
-import radioField from '../assets/auth/radio-field.png';
-
-export const brandVariantKeys = [
-  'focus',
-  'threads',
-  'table',
-  'signals',
-] as const;
-export const brandImageKeys = [
-  'lake',
-  'substation',
-  'bridge',
-  'radio',
-] as const;
-
-type BrandImageKey = (typeof brandImageKeys)[number];
-
-const brandImages: Record<BrandImageKey, string> = {
-  lake: lakeNight,
-  substation: substationAutumn,
-  bridge: bridgeWinter,
-  radio: radioField,
-};
-
-// A fresh pick on every page load. The brand panel stays the same when
-// switching between the forms because the page component stays mounted.
-function pickRandom<T>(keys: readonly T[]): T {
-  return keys[Math.floor(Math.random() * keys.length)];
-}
+import { AuthLayout } from './auth-layout';
 
 export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const { t } = useTranslation();
@@ -48,8 +16,6 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
-  const [brandVariant] = useState(() => pickRandom(brandVariantKeys));
-  const [brandImage] = useState(() => pickRandom(brandImageKeys));
   const invitationPreview = useQuery({
     queryKey: ['invitation-preview', invitation],
     queryFn: () =>
@@ -60,7 +26,6 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     retry: false,
   });
   const isSignUp = mode === 'sign-up';
-  const brandCopyPath = `auth.brandVariants.${brandVariant}`;
 
   useEffect(() => {
     setError(undefined);
@@ -100,104 +65,84 @@ export function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const errorId = 'auth-form-error';
 
   return (
-    <main className="auth-page">
-      <div className="auth-layout">
-        <section className="auth-main" aria-labelledby="auth-page-title">
-          <Logo className="auth-logo" label={t('appName')} />
-          <div className="auth-card">
-            <h1 id="auth-page-title">
-              {t(isSignUp ? 'auth.signUpTitle' : 'auth.signInTitle')}
-            </h1>
-            {invitation ? (
-              <InvitationBanner
-                failed={invitationPreview.isError}
-                preview={invitationPreview.data}
-              />
-            ) : (
-              <p className="auth-intro">
-                {t(isSignUp ? 'auth.signUpIntro' : 'auth.signInIntro')}
-              </p>
-            )}
-            <form
-              className="auth-form"
-              key={mode}
-              onSubmit={(event) => void submit(event)}
-            >
-              {isSignUp && (
-                <label className="auth-field">
-                  {t('auth.name')}
-                  <input
-                    autoComplete="name"
-                    name="name"
-                    onChange={(event) => setName(event.target.value)}
-                    required
-                    value={name}
-                  />
-                </label>
-              )}
-              <label className="auth-field">
-                {t('auth.email')}
-                <input
-                  aria-describedby={error ? errorId : undefined}
-                  autoComplete="email"
-                  name="email"
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  type="email"
-                  value={email}
-                />
-              </label>
-              <label className="auth-field">
-                {t('auth.password')}
-                <input
-                  aria-describedby={error ? errorId : undefined}
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                  minLength={8}
-                  name="password"
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  type="password"
-                  value={password}
-                />
-                {isSignUp && (
-                  <span className="field-helper">{t('auth.passwordHint')}</span>
-                )}
-              </label>
-              {error && (
-                <p className="auth-error" id={errorId} role="alert">
-                  {error}
-                </p>
-              )}
-              <button className="auth-submit" disabled={submitting}>
-                {t(isSignUp ? 'auth.signUp' : 'auth.signIn')}
-              </button>
-            </form>
-            <p className="auth-switch">
-              {t(isSignUp ? 'auth.haveAccount' : 'auth.newHere')}{' '}
-              <Link
-                onClick={() => {
-                  setError(undefined);
-                  setPassword('');
-                }}
-                to={switchPath}
-              >
-                {t(isSignUp ? 'auth.signIn' : 'auth.signUp')}
-              </Link>
-            </p>
-          </div>
-        </section>
-        <aside className="auth-brand" aria-label={t('appName')}>
-          <img
-            alt=""
-            className="auth-brand-image"
-            data-variant={brandImage}
-            src={brandImages[brandImage]}
+    <AuthLayout title={t(isSignUp ? 'auth.signUpTitle' : 'auth.signInTitle')}>
+      {invitation ? (
+        <InvitationBanner
+          failed={invitationPreview.isError}
+          preview={invitationPreview.data}
+        />
+      ) : (
+        <p className="auth-intro">
+          {t(isSignUp ? 'auth.signUpIntro' : 'auth.signInIntro')}
+        </p>
+      )}
+      <form
+        className="auth-form"
+        key={mode}
+        onSubmit={(event) => void submit(event)}
+      >
+        {isSignUp && (
+          <label className="auth-field">
+            {t('auth.name')}
+            <input
+              autoComplete="name"
+              name="name"
+              onChange={(event) => setName(event.target.value)}
+              required
+              value={name}
+            />
+          </label>
+        )}
+        <label className="auth-field">
+          {t('auth.email')}
+          <input
+            aria-describedby={error ? errorId : undefined}
+            autoComplete="email"
+            name="email"
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            type="email"
+            value={email}
           />
-          <p className="auth-brand-title">{t(`${brandCopyPath}.title`)}</p>
-          <p className="auth-brand-body">{t(`${brandCopyPath}.body`)}</p>
-        </aside>
-      </div>
-    </main>
+        </label>
+        <label className="auth-field">
+          {t('auth.password')}
+          <input
+            aria-describedby={error ? errorId : undefined}
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
+            minLength={8}
+            name="password"
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            type="password"
+            value={password}
+          />
+          {isSignUp && (
+            <span className="field-helper">{t('auth.passwordHint')}</span>
+          )}
+        </label>
+        {error && (
+          <p className="auth-error" id={errorId} role="alert">
+            {error}
+          </p>
+        )}
+        <button className="auth-submit" disabled={submitting}>
+          {t(isSignUp ? 'auth.signUp' : 'auth.signIn')}
+        </button>
+      </form>
+      <p className="auth-switch">
+        {t(isSignUp ? 'auth.haveAccount' : 'auth.newHere')}{' '}
+        <Link
+          onClick={() => {
+            setError(undefined);
+            setPassword('');
+          }}
+          to={switchPath}
+        >
+          {t(isSignUp ? 'auth.signIn' : 'auth.signUp')}
+        </Link>
+      </p>
+    </AuthLayout>
   );
 }
 

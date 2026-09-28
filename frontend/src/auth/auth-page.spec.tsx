@@ -4,7 +4,8 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n';
 import { ApiError } from '../api/client';
-import { AuthPage, brandImageKeys, brandVariantKeys } from './auth-page';
+import { AuthPage } from './auth-page';
+import { brandImageKeys, brandVariantKeys } from './auth-layout';
 
 const signIn = vi.fn();
 const signUp = vi.fn();

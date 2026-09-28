@@ -237,6 +237,16 @@ textarea {
 .auth-submit:hover:not(:disabled) {
   background: var(--color-accent-hover);
 }
+/* Joining by invitation: the answer sits where the sign-in intro does, the
+   way on is one full-width button. */
+.auth-invitation-error {
+  margin: 0.65rem 0 1.5rem;
+  font-size: var(--text-sm);
+}
+.auth-action {
+  width: 100%;
+  text-decoration: none;
+}
 .auth-switch {
   margin: 1.5rem 0 0;
   color: var(--color-text-secondary);
@@ -1818,7 +1828,21 @@ summary {
     width: 100%;
     justify-items: center;
   }
+  /* In the icon rail the submenu flattens: its pages keep their own icons. */
+  .campaign-workspace-shell-navigation .campaign-nav-parent {
+    display: none;
+  }
+  /* The rail has no parent to open, so its pages are always shown. */
+  .campaign-workspace-shell-navigation .campaign-nav-children[hidden] {
+    display: grid;
+  }
+  .campaign-workspace-shell-navigation .campaign-nav-children {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
   /* The management group is set apart by a line instead of its heading. */
+  .campaign-nav-group + .campaign-nav-branch,
   .campaign-nav-group + a {
     margin-top: 0.75rem;
     box-shadow: 0 -0.4rem 0 -0.35rem var(--color-line);
@@ -1962,6 +1986,55 @@ summary {
 .campaign-workspace-shell-navigation a:hover,
 .campaign-workspace-shell-navigation a.active {
   font-weight: 500;
+}
+/* A menu item with a submenu: the parent reads like any other item and
+   opens or closes its pages, nested under it along a guide line that starts
+   below the parent's icon. */
+.campaign-nav-branch {
+  display: grid;
+  gap: 0.2rem;
+}
+.campaign-nav-parent {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 500;
+  text-align: left;
+}
+.campaign-nav-parent:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-muted-bg);
+}
+.campaign-nav-chevron {
+  margin-left: auto;
+  transition: transform var(--duration-fast) var(--ease-standard);
+}
+.campaign-nav-parent[aria-expanded='false'] .campaign-nav-chevron {
+  transform: rotate(-90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .campaign-nav-chevron {
+    transition: none;
+  }
+}
+.campaign-nav-children {
+  display: grid;
+  gap: 0.2rem;
+  margin-left: calc(var(--space-3) + 8px);
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--color-line);
+}
+.campaign-nav-children[hidden] {
+  display: none;
 }
 .campaign-workspace-shell-content {
   grid-row: 1;

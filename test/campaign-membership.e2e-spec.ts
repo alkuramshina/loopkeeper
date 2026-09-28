@@ -112,10 +112,18 @@ describe('Campaign membership lifecycle (e2e)', () => {
       .expect(200)
       .expect((response) => {
         expect(response.body).toHaveLength(2);
+        // Newest first: the viewer accepted the second invitation.
+        expect(
+          response.body.map(
+            (invitation: { acceptedBy: { userId: string } }) =>
+              invitation.acceptedBy.userId,
+          ),
+        ).toEqual([viewer.userId, player.userId]);
+        expect(response.body[0].acceptedBy).not.toHaveProperty('passwordHash');
         for (const invitation of response.body) {
           expect(invitation.acceptedAt).not.toBeNull();
-          expect(invitation).not.toHaveProperty('token');
-          expect(invitation).not.toHaveProperty('tokenHash');
+          // A used invitation no longer offers its link.
+          expect(invitation.token).toBeNull();
         }
       });
 
@@ -215,6 +223,39 @@ describe('Campaign membership lifecycle (e2e)', () => {
       .expect((response) =>
         expect(response.body.code).toBe('invitation.not_found'),
       );
+  });
+
+  it('shows the master the link of an active invitation again', async () => {
+    const { owner, outsider, campaignId } = await setup();
+    const created = await invite(owner, campaignId, 'PLAYER');
+    const revoked = await invite(owner, campaignId, 'VIEWER');
+    await http()
+      .delete(`/campaigns/${campaignId}/invitations/${revoked.invitationId}`)
+      .set(owner.headers)
+      .expect(200);
+
+    const listed = await http()
+      .get(`/campaigns/${campaignId}/invitations`)
+      .set(owner.headers)
+      .expect(200);
+    const byId = (id: string) =>
+      listed.body.find(
+        (invitation: { invitationId: string }) =>
+          invitation.invitationId === id,
+      );
+    expect(byId(created.invitationId).token).toBe(created.token);
+    expect(byId(revoked.invitationId).token).toBeNull();
+
+    // The secret is bound to its invitation: another id with it is rejected.
+    const [, secret] = created.token.split('.');
+    await http()
+      .get(`/invitations/${revoked.invitationId}.${secret}`)
+      .expect(404);
+
+    await http()
+      .post(`/invitations/${created.token}/accept`)
+      .set(outsider.headers)
+      .expect(201);
   });
 
   it('previews a usable invitation without authentication', async () => {

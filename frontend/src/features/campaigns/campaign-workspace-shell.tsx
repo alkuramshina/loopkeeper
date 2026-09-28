@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -10,8 +10,11 @@ import {
   Settings2,
   Users,
   UserRound,
+  UsersRound,
+  MailPlus,
   Menu,
   Search,
+  ChevronDown,
   Image,
 } from 'lucide-react';
 import { Campaign, GameSystem } from '../../api/client';
@@ -44,6 +47,15 @@ export function CampaignWorkspaceShell({
   const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { pathname } = useLocation();
+  // The members submenu starts open on its own pages and opens on arrival.
+  const inPeople = /\/campaigns\/[^/]+\/(members|invitations)(\/|$)/.test(
+    pathname,
+  );
+  const [peopleOpen, setPeopleOpen] = useState(inPeople);
+  useEffect(() => {
+    if (inPeople) setPeopleOpen(true);
+  }, [inPeople]);
   const menuButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -146,13 +158,23 @@ export function CampaignWorkspaceShell({
       icon: UserRound,
     },
   ];
-  const management = isOwner
+  // The members section opens into its own submenu.
+  const people = isOwner
     ? [
         {
           to: `${basePath}/members`,
-          label: t('workspace.members'),
-          icon: Users,
+          label: t('workspace.membersList'),
+          icon: UsersRound,
         },
+        {
+          to: `${basePath}/invitations`,
+          label: t('workspace.invitations'),
+          icon: MailPlus,
+        },
+      ]
+    : [];
+  const management = isOwner
+    ? [
         {
           to: `${basePath}/settings`,
           label: t('workspace.campaignSettings'),
@@ -248,6 +270,36 @@ export function CampaignWorkspaceShell({
                 <span className="campaign-nav-group">
                   {t('workspace.campaignGroup')}
                 </span>
+                <div
+                  className="campaign-nav-branch"
+                  role="group"
+                  aria-labelledby="campaign-nav-members"
+                >
+                  <button
+                    aria-controls="campaign-nav-members-list"
+                    aria-expanded={peopleOpen}
+                    className="campaign-nav-parent"
+                    id="campaign-nav-members"
+                    onClick={() => setPeopleOpen((open) => !open)}
+                    type="button"
+                  >
+                    <Users aria-hidden="true" size={17} strokeWidth={1.8} />
+                    <span>{t('workspace.members')}</span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className="campaign-nav-chevron"
+                      size={16}
+                      strokeWidth={1.8}
+                    />
+                  </button>
+                  <div
+                    className="campaign-nav-children"
+                    hidden={!peopleOpen}
+                    id="campaign-nav-members-list"
+                  >
+                    {navLinks(people)}
+                  </div>
+                </div>
                 {navLinks(management)}
                 <NavLink
                   className={({ isActive }) =>

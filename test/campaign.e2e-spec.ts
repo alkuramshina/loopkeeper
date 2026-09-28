@@ -151,7 +151,6 @@ describe('Campaign tenant access (e2e)', () => {
       .expect(201);
 
     expect(invitationResponse.body).toHaveProperty('token');
-    expect(invitationResponse.body).not.toHaveProperty('tokenHash');
 
     await request(app.getHttpServer())
       .post(`/invitations/${invitationResponse.body.token}/accept`)

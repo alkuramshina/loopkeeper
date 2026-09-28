@@ -267,6 +267,10 @@ export type CampaignInvitation = {
   revokedAt?: string | null;
   createdAt: string;
   createdById: string;
+  /** Null until accepted. */
+  acceptedBy?: CampaignMember['user'] | null;
+  /** The link token while the invitation can still be accepted. */
+  token?: string | null;
 };
 
 export type InvitationPreview = {

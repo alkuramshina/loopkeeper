@@ -1,18 +1,45 @@
+/* Members and invitations read like the characters and materials lists:
+   a thin frame in the page's own tint, plain rows inside, no white card. */
 .member-section {
   min-width: 0;
-  padding: 1.25rem;
+  max-width: 48rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  background: var(--color-bg);
 }
-.member-section .section-heading {
-  margin-bottom: 1rem;
+.member-section > .muted {
+  margin: var(--space-2);
 }
 .member-section .member-list {
-  border-radius: var(--radius-md);
+  overflow: visible;
+  gap: 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
-.member-row {
-  min-height: 4.75rem;
+.member-section .member-row {
+  min-height: 3.5rem;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+}
+.member-section .member-row strong {
+  overflow-wrap: anywhere;
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+.member-section .member-row p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+}
+.member-section .member-identity {
+  align-items: center;
+}
+.member-section .created-invitation {
+  margin: 0 0 var(--space-4);
 }
 .member-row .action-row {
   flex-wrap: wrap;
@@ -94,9 +121,6 @@
   font-family: var(--font-heading);
 }
 @media (max-width: 599px) {
-  .member-section {
-    padding: 1rem;
-  }
   .member-row {
     align-items: stretch;
   }
@@ -106,4 +130,7 @@
   .member-row select {
     max-width: none;
   }
+}
+.invitation-acceptor > div {
+  display: grid;
 }

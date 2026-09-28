@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
+import { AuthLayout } from '../../auth/auth-layout';
 
 export function InvitationPage() {
   const { token } = useParams();
@@ -35,22 +36,26 @@ export function InvitationPage() {
       );
   }, [api, navigate, t, token]);
 
+  // The same frame as sign-in: the invitation flow starts there.
   return (
-    <main className="auth-page">
-      <section className="auth-card">
-        <p className="kicker">{t('appName')}</p>
-        <h1>{t('invitations.title')}</h1>
-        {error ? (
-          <>
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-            <Link to="/campaigns">{t('campaigns.title')}</Link>
-          </>
-        ) : (
-          <p>{t('invitations.accepting')}</p>
-        )}
-      </section>
-    </main>
+    <AuthLayout title={t('invitations.title')}>
+      {error ? (
+        <>
+          <p className="auth-error auth-invitation-error" role="alert">
+            {error}
+          </p>
+          <Link
+            className="ui-button ui-button-primary ui-button-lg auth-action"
+            to="/campaigns"
+          >
+            {t('invitations.toCampaigns')}
+          </Link>
+        </>
+      ) : (
+        <p className="auth-intro" role="status">
+          {t('invitations.accepting')}
+        </p>
+      )}
+    </AuthLayout>
   );
 }
