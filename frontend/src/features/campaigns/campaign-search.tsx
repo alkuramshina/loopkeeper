@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, PencilLine, Search } from 'lucide-react';
-import { Board, Campaign, CampaignElement } from '../../api/client';
+import { PencilLine, Search } from 'lucide-react';
+import { Campaign, CampaignElement } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ModalDialog } from '../../components/modal-dialog';
 import './campaign-search.css';
@@ -49,11 +49,6 @@ export function CampaignSearch({
     queryFn: () => api.request<CampaignElement[]>(`${base}/elements`),
     retry: false,
   });
-  const board = useQuery({
-    queryKey: ['board', campaign.campaignId],
-    queryFn: () => api.request<Board>(`${base}/investigation-board`),
-    retry: false,
-  });
   const normalized = term.trim().toLocaleLowerCase('ru');
   const results = useMemo(() => {
     const items: SearchResult[] = [];
@@ -76,17 +71,6 @@ export function CampaignSearch({
         excerpt: element.content ?? '',
       });
     }
-    if (filter === 'all')
-      for (const card of board.data?.cards ?? []) {
-        items.push({
-          id: `card-${card.cardId}`,
-          title: card.title,
-          detail: t('search.boardCard'),
-          href: `${base}/board?card=${encodeURIComponent(card.cardId)}`,
-          text: `${card.title} ${card.content ?? ''} ${card.tags.join(' ')}`,
-          excerpt: `${card.content ?? ''} ${card.tags.join(' ')}`,
-        });
-      }
     return items
       .filter(
         (item) =>
@@ -95,7 +79,6 @@ export function CampaignSearch({
       .slice(0, 50);
   }, [
     elements.data,
-    board.data,
     owner,
     filter,
     normalized,
@@ -157,13 +140,9 @@ export function CampaignSearch({
           </div>
         )}
         <div className="campaign-search-results" aria-live="polite">
-          {(elements.isPending || board.isPending) && (
-            <p>{t('common.loading')}</p>
-          )}
-          {(elements.isError || board.isError) && (
-            <p role="alert">{t('search.loadError')}</p>
-          )}
-          {!elements.isPending && !board.isPending && results.length === 0 && (
+          {elements.isPending && <p>{t('common.loading')}</p>}
+          {elements.isError && <p role="alert">{t('search.loadError')}</p>}
+          {!elements.isPending && results.length === 0 && (
             <p>{t('search.empty')}</p>
           )}
           {results.map((item, index) => (
@@ -203,10 +182,7 @@ export function CampaignSearch({
             {t('search.quickNote')}
           </button>
         )}
-        <p className="campaign-search-hint">
-          <LayoutDashboard size={14} aria-hidden="true" />
-          {t('search.hint')}
-        </p>
+        <p className="campaign-search-hint">{t('search.hint')}</p>
       </div>
     </ModalDialog>
   );

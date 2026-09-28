@@ -71,9 +71,7 @@ test('signs in through the form and reports wrong credentials by code', async ({
   await page.getByLabel('Пароль').fill(user.password);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
-  await expect(
-    page.locator('.sidebar-profile'),
-  ).toBeVisible();
+  await expect(page.locator('.sidebar-profile')).toBeVisible();
 });
 
 test('M2: a lost refresh session redirects to sign-in without a refresh loop', async ({
@@ -83,9 +81,7 @@ test('M2: a lost refresh session redirects to sign-in without a refresh loop', a
   const user = await registerUser(request, 'Потерянный');
   await signInAs(page, user);
   await page.goto('/campaigns');
-  await expect(
-    page.locator('.sidebar-profile'),
-  ).toBeVisible();
+  await expect(page.locator('.sidebar-profile')).toBeVisible();
 
   await page.context().clearCookies();
   const refreshes = countRefreshRequests(page);
@@ -116,10 +112,10 @@ test('keeps the invitation through sign-in and joins the campaign', async ({
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
 
   await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
-  await expect(page.locator('.campaign-switcher')).toContainText(
+  await expect(page.locator('.campaign-identity')).toContainText(
     'Кампания по ссылке',
   );
-  await expect(page.locator('.campaign-switcher')).toContainText('Игрок');
+  await expect(page.locator('.campaign-identity')).toContainText('Игрок');
 });
 
 test('a new user signs up from an invitation link and joins the campaign', async ({
@@ -146,8 +142,8 @@ test('a new user signs up from an invitation link and joins the campaign', async
     .click();
 
   await expect(page).toHaveURL(`/campaigns/${campaignId}/board`);
-  await expect(page.locator('.campaign-switcher')).toContainText(
+  await expect(page.locator('.campaign-identity')).toContainText(
     'Кампания для новичка',
   );
-  await expect(page.locator('.campaign-switcher')).toContainText('Наблюдатель');
+  await expect(page.locator('.campaign-identity')).toContainText('Наблюдатель');
 });

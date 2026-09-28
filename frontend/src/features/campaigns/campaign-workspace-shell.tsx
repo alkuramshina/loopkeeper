@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -10,7 +10,6 @@ import {
   Settings2,
   Users,
   UserRound,
-  ChevronDown,
   Menu,
   Search,
   Image,
@@ -18,7 +17,12 @@ import {
 import { Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { OfflineNotice } from '../../components/offline-notice';
-import { ContentWidth, PageFrame, SidebarLogo, SidebarProfileLink } from '../../components/app-shell';
+import {
+  ContentWidth,
+  PageFrame,
+  SidebarLogo,
+  SidebarProfileLink,
+} from '../../components/app-shell';
 import { useCampaignVisit } from './use-campaign-visit';
 import { CampaignSearch } from './campaign-search';
 import './new-since-visit.css';
@@ -62,10 +66,25 @@ export function CampaignWorkspaceShell({
   }, []);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        setSearchOpen(true);
-      }
+      // `code` is the physical key: with a Russian layout `key` is "л", the
+      // handler missed it and the browser ran its own Ctrl+K web search.
+      const ctrlK =
+        (event.ctrlKey || event.metaKey) &&
+        !event.altKey &&
+        (event.code === 'KeyK' || event.key.toLowerCase() === 'k');
+      const target = event.target as HTMLElement | null;
+      const typing =
+        !!target?.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '');
+      const slash =
+        event.key === '/' &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !typing;
+      if (!ctrlK && !slash) return;
+      event.preventDefault();
+      setSearchOpen(true);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -198,22 +217,17 @@ export function CampaignWorkspaceShell({
         }}
       >
         <SidebarLogo />
-        <Link
-          className="campaign-switcher"
-          to="/campaigns"
-          aria-label={t('workspace.switchCampaign')}
-        >
-          <span className="campaign-switcher-initial" aria-hidden="true">
+        {/* Where you are and as whom: plain text, not a control. The logo
+            above leads back to the campaign list. */}
+        <div className="campaign-identity" title={campaign.title}>
+          <span className="campaign-identity-initial" aria-hidden="true">
             {campaign.title.trim().charAt(0).toUpperCase()}
           </span>
-          <span className="campaign-switcher-title rail-label">
-            {campaign.title}
-          </span>
-          <span className="campaign-switcher-meta">
+          <p className="campaign-identity-title">{campaign.title}</p>
+          <p className="campaign-identity-meta">
             {systemName} · {t(`workspace.roles.${campaign.currentUserRole}`)}
-          </span>
-          <ChevronDown aria-hidden="true" size={16} />
-        </Link>
+          </p>
+        </div>
         <button
           className="campaign-search-trigger"
           type="button"
@@ -236,11 +250,15 @@ export function CampaignWorkspaceShell({
                 </span>
                 {navLinks(management)}
                 <NavLink
-                  className={({ isActive }) => (isActive ? 'active' : undefined)}
+                  className={({ isActive }) =>
+                    isActive ? 'active' : undefined
+                  }
                   to={`${basePath}/settings/backgrounds`}
                 >
                   <Image aria-hidden="true" size={17} strokeWidth={1.8} />
-                  <span className="rail-label">{t('workspace.backgroundSettings')}</span>
+                  <span className="rail-label">
+                    {t('workspace.backgroundSettings')}
+                  </span>
                 </NavLink>
               </>
             )}

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -80,13 +86,18 @@ describe('CampaignWorkspaceShell', () => {
     ).toHaveLength(1);
     expect(screen.getAllByRole('link', { name: 'Дело' })).toHaveLength(1);
     expect(screen.queryByRole('link', { name: 'Мои заметки' })).toBeNull();
-    expect(
-      screen.getByRole('link', { name: 'Выбрать другую кампанию' }),
-    ).toHaveAttribute('href', '/campaigns');
+    // The campaign name is plain text, not a second way back to the list.
+    const identity = document.querySelector('.campaign-identity')!;
+    expect(identity.closest('a, button')).toBeNull();
+    expect(identity.querySelector('a, button')).toBeNull();
     const logo = screen.getByRole('link', { name: 'Все кампании' });
     expect(logo).toHaveAttribute('href', '/campaigns');
     expect(logo.querySelector('.logo')).not.toBeNull();
-    expect(within(screen.getByRole('navigation', { name: 'Разделы кампании' })).queryByRole('link', { name: 'Все кампании' })).toBeNull();
+    expect(
+      within(
+        screen.getByRole('navigation', { name: 'Разделы кампании' }),
+      ).queryByRole('link', { name: 'Все кампании' }),
+    ).toBeNull();
     expect(
       screen.getAllByRole('link', { name: 'Доска расследования' }),
     ).toHaveLength(1);
@@ -108,7 +119,10 @@ describe('CampaignWorkspaceShell', () => {
       screen.getAllByRole('link', { name: 'Настройки кампании' }).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Материалы' })).toHaveLength(1);
-    expect(screen.getByRole('link', { name: 'Фоны' })).toHaveAttribute('href', '/campaigns/campaign-1/settings/backgrounds');
+    expect(screen.getByRole('link', { name: 'Фоны' })).toHaveAttribute(
+      'href',
+      '/campaigns/campaign-1/settings/backgrounds',
+    );
   });
 
   it.each(['Мастер', 'Игрок', 'Наблюдатель'])(
@@ -173,7 +187,7 @@ describe('CampaignWorkspaceShell', () => {
     expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(0);
   });
 
-  it('searches visible materials and board cards with keyboard navigation', async () => {
+  it('searches only visible materials with keyboard navigation', async () => {
     vi.mocked(auth.api.request).mockImplementation((path: string) => {
       if (path.endsWith('/elements'))
         return Promise.resolve([
@@ -194,19 +208,13 @@ describe('CampaignWorkspaceShell', () => {
             createdById: 'owner',
           },
         ]) as never;
-      if (path.endsWith('/investigation-board'))
-        return Promise.resolve({
-          cards: [
-            { cardId: 'card-1', title: 'Board clue', content: 'Map', tags: [] },
-          ],
-          links: [],
-        }) as never;
       return Promise.resolve([]) as never;
     });
     renderShell({ ...baseCampaign, currentUserRole: 'OWNER' });
-    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    // A Russian layout reports "л" for the K key.
+    fireEvent.keyDown(window, { key: 'л', code: 'KeyK', ctrlKey: true });
     const input = screen.getByRole('searchbox', {
-      name: 'Материалы и карточки доски',
+      name: 'Название или текст материала',
     });
     await screen.findByRole('button', { name: /Hidden clue/ });
     fireEvent.change(input, { target: { value: 'clue' } });
@@ -216,6 +224,13 @@ describe('CampaignWorkspaceShell', () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Open clue/ })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Всё' }));
+    expect(
+      vi
+        .mocked(auth.api.request)
+        .mock.calls.some(([path]) =>
+          String(path).endsWith('/investigation-board'),
+        ),
+    ).toBe(false);
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() =>
@@ -238,8 +253,6 @@ describe('CampaignWorkspaceShell', () => {
             createdById: 'owner',
           },
         ]) as never;
-      if (path.endsWith('/investigation-board'))
-        return Promise.resolve({ cards: [], links: [] }) as never;
       return Promise.resolve([]) as never;
     });
     renderShell(baseCampaign);
@@ -249,6 +262,20 @@ describe('CampaignWorkspaceShell', () => {
       screen.queryByRole('button', { name: 'Быстрая заметка' }),
     ).toBeNull();
     expect(screen.queryByRole('button', { name: 'Скрыто' })).toBeNull();
+  });
+
+  it('opens search with a slash, but not while typing', () => {
+    vi.mocked(auth.api.request).mockResolvedValue([] as never);
+    renderShell(baseCampaign);
+    const field = document.createElement('input');
+    document.body.append(field);
+    fireEvent.keyDown(field, { key: '/' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    field.remove();
+    fireEvent.keyDown(window, { key: '/' });
+    expect(
+      screen.getByRole('dialog', { name: 'Поиск материалов' }),
+    ).toBeInTheDocument();
   });
 
   it('slides the sidebar out from a menu on a tablet and closes it again', () => {

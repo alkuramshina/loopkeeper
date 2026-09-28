@@ -16,6 +16,7 @@ import { useAuth } from '../../auth/auth-context';
 import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
 import { PageError } from '../../components/page-error';
+import { PageHeader } from '../../components/page-header';
 import { ProtectedImage } from '../../components/protected-image';
 import { Button } from '../../components/ui/button';
 import { Chip } from '../../components/ui/chip';
@@ -274,13 +275,16 @@ function CaseOverview({
       .join(' · ');
 
   return (
-    <div className={player ? 'case-layout' : 'case-layout case-layout-single'}>
-      <section aria-labelledby="case-title" className="case-main">
-        <header className="case-head">
-          <div>
-            <h1 id="case-title">{t('elements.caseTitle')}</h1>
-            <p className="case-lead">{t('case.lead')}</p>
-          </div>
+    <>
+      <PageHeader
+        title={t('elements.caseTitle')}
+        titleId="case-title"
+        lead={t('case.lead')}
+      />
+      <div
+        className={player ? 'case-layout' : 'case-layout case-layout-single'}
+      >
+        <section aria-labelledby="case-title" className="case-main">
           {total > 0 && (
             <div className="case-filter">
               <SegmentedControl
@@ -297,115 +301,118 @@ function CaseOverview({
               />
             </div>
           )}
-        </header>
-        {loading ? (
-          <div aria-busy="true" className="case-recent-grid">
-            <span className="visually-hidden">{t('common.loading')}</span>
-            <Skeleton height="12rem" />
-            <Skeleton height="12rem" />
-          </div>
-        ) : total === 0 ? (
-          <EmptyState title={t('case.empty')}>
-            <p>{t('case.emptyText')}</p>
-          </EmptyState>
-        ) : entries.all.length === 0 ? (
-          <p className="case-note">{t('case.nothingOfType')}</p>
-        ) : (
-          <>
-            {entries.recent.length > 0 && (
-              <section aria-labelledby="case-recent" className="case-section">
-                <h2 className="case-section-title" id="case-recent">
-                  <NewMark>
-                    {t('case.recent', {
-                      date: dayFormat.format(new Date(campaign.newSinceAt!)),
+          {loading ? (
+            <div aria-busy="true" className="case-recent-grid">
+              <span className="visually-hidden">{t('common.loading')}</span>
+              <Skeleton height="12rem" />
+              <Skeleton height="12rem" />
+            </div>
+          ) : total === 0 ? (
+            <EmptyState title={t('case.empty')}>
+              <p>{t('case.emptyText')}</p>
+            </EmptyState>
+          ) : entries.all.length === 0 ? (
+            <p className="case-note">{t('case.nothingOfType')}</p>
+          ) : (
+            <>
+              {entries.recent.length > 0 && (
+                <section aria-labelledby="case-recent" className="case-section">
+                  <h2 className="case-section-title" id="case-recent">
+                    <NewMark>
+                      {t('case.recent', {
+                        date: dayFormat.format(new Date(campaign.newSinceAt!)),
+                      })}
+                    </NewMark>
+                  </h2>
+                  <ul className="case-recent-grid">
+                    {entries.recent.map((item) => (
+                      <li key={item.elementId}>
+                        <RecentCard
+                          element={item}
+                          onBoard={onBoard.has(item.elementId)}
+                          to={path(item)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+              {entries.earlier.length > 0 && (
+                <section
+                  aria-labelledby="case-earlier"
+                  className="case-section"
+                >
+                  <h2 className="case-section-title" id="case-earlier">
+                    {t('case.earlier')}
+                  </h2>
+                  <div className="case-earlier">
+                    {entries.earlier.map((group) => {
+                      const date = new Date(
+                        group.items[0].sharedAt ?? group.items[0].updatedAt,
+                      );
+                      return (
+                        <section
+                          aria-label={dayFormat.format(date)}
+                          className="case-day"
+                          key={group.day}
+                        >
+                          <p aria-hidden="true" className="case-day-date">
+                            {dayFormat.format(date)}
+                          </p>
+                          <ul>
+                            {group.items.map((item) => {
+                              const Icon = typeIcons[item.type];
+                              return (
+                                <li key={item.elementId}>
+                                  <Link className="case-row" to={path(item)}>
+                                    <Icon
+                                      {...iconProps}
+                                      className="case-row-icon"
+                                    />
+                                    <span className="case-row-title">
+                                      {item.title}
+                                    </span>
+                                    <span className="case-row-meta">
+                                      {rowMeta(item)}
+                                    </span>
+                                    <span className="case-row-date">
+                                      {shortDayFormat.format(date)}
+                                    </span>
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </section>
+                      );
                     })}
-                  </NewMark>
-                </h2>
-                <ul className="case-recent-grid">
-                  {entries.recent.map((item) => (
-                    <li key={item.elementId}>
-                      <RecentCard
-                        element={item}
-                        onBoard={onBoard.has(item.elementId)}
-                        to={path(item)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {entries.earlier.length > 0 && (
-              <section aria-labelledby="case-earlier" className="case-section">
-                <h2 className="case-section-title" id="case-earlier">
-                  {t('case.earlier')}
-                </h2>
-                <div className="case-earlier">
-                  {entries.earlier.map((group) => {
-                    const date = new Date(
-                      group.items[0].sharedAt ?? group.items[0].updatedAt,
-                    );
-                    return (
-                      <section
-                        aria-label={dayFormat.format(date)}
-                        className="case-day"
-                        key={group.day}
-                      >
-                        <p aria-hidden="true" className="case-day-date">
-                          {dayFormat.format(date)}
-                        </p>
-                        <ul>
-                          {group.items.map((item) => {
-                            const Icon = typeIcons[item.type];
-                            return (
-                              <li key={item.elementId}>
-                                <Link className="case-row" to={path(item)}>
-                                  <Icon
-                                    {...iconProps}
-                                    className="case-row-icon"
-                                  />
-                                  <span className="case-row-title">
-                                    {item.title}
-                                  </span>
-                                  <span className="case-row-meta">
-                                    {rowMeta(item)}
-                                  </span>
-                                  <span className="case-row-date">
-                                    {shortDayFormat.format(date)}
-                                  </span>
-                                </Link>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </section>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+        </section>
+        {quickNote && (
+          <>
+            <div className="case-quick-note">
+              <QuickNoteForm
+                draft={quickNote.draft}
+                onDraft={quickNote.onDraft}
+              />
+            </div>
+            <MyCharacter campaign={campaign} />
+            <Button
+              aria-label={t('case.quickNote.title')}
+              className="case-quick-note-fab"
+              icon={PencilLine}
+              onClick={quickNote.onOpenSheet}
+              size="lg"
+              variant="primary"
+            />
           </>
         )}
-      </section>
-      {quickNote && (
-        <>
-          <div className="case-quick-note">
-            <QuickNoteForm
-              draft={quickNote.draft}
-              onDraft={quickNote.onDraft}
-            />
-          </div>
-          <MyCharacter campaign={campaign} />
-          <Button
-            aria-label={t('case.quickNote.title')}
-            className="case-quick-note-fab"
-            icon={PencilLine}
-            onClick={quickNote.onOpenSheet}
-            size="lg"
-            variant="primary"
-          />
-        </>
-      )}
-    </div>
+      </div>
+    </>
   );
 }
 

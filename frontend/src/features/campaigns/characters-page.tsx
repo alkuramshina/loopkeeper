@@ -12,6 +12,7 @@ import {
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { PageHeader } from '../../components/page-header';
 import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
 import { MediaUpload } from '../../components/media-upload';
@@ -622,21 +623,18 @@ export function CharactersPage() {
 
   return (
     <CampaignWorkspaceShell campaign={data}>
-      <section className="page-header character-page-header">
-        <div>
-          <p className="kicker">{t('workspace.characters')}</p>
-          <h2>{t('characters.title')}</h2>
-        </div>
-        <div className="action-row">
-          {data?.currentUserRole === 'PLAYER' &&
+      <PageHeader
+        title={t('characters.title')}
+        actions={
+          data?.currentUserRole === 'PLAYER' &&
           templates.data?.length &&
           !hasActivePlayerCharacter ? (
             <button onClick={() => setEditor({})}>
               {t('characters.newPlayerCharacter')}
             </button>
-          ) : null}
-        </div>
-      </section>
+          ) : null
+        }
+      />
       {editor ? (
         <CharacterEditor
           target={editor}

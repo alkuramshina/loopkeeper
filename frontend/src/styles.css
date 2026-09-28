@@ -293,8 +293,8 @@ textarea {
   align-items: center;
   gap: var(--space-2);
 }
-/* Full-height pages such as the board: a smaller title with its status on
-   the same line leaves the room to the content. */
+/* Full-height pages such as the board: the status on the title's line
+   leaves the room to the content. The title itself matches every page. */
 .page-header-compact {
   align-items: center;
   margin-bottom: var(--space-4);
@@ -304,9 +304,6 @@ textarea {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-1) var(--space-4);
-}
-.page-header-compact h1 {
-  font-size: var(--text-h2);
 }
 .page-header-meta {
   margin: 0;
@@ -346,9 +343,6 @@ textarea {
   font-size: var(--text-h1);
   font-weight: 600;
   line-height: 1.15;
-}
-.page-header.page-header-compact h1 {
-  font-size: var(--text-h2);
 }
 /* The content column always starts at the sidebar; only its width differs. */
 .page-frame {
@@ -656,7 +650,6 @@ textarea {
   padding: 0.9rem;
   border-left: 5px solid var(--color-line-strong);
 }
-.character-page-header,
 .section-heading,
 .action-row {
   display: flex;
@@ -664,11 +657,9 @@ textarea {
   align-items: center;
   gap: 0.75rem;
 }
-.character-page-header,
 .section-heading {
   justify-content: space-between;
 }
-.character-page-header h2,
 .section-heading h2 {
   margin: 0;
 }
@@ -1307,7 +1298,6 @@ input[type='file'] {
   .workspace-nav {
     overflow-x: auto;
   }
-  .character-page-header,
   .character-card {
     align-items: stretch;
     flex-direction: column;
@@ -1557,38 +1547,32 @@ summary {
   gap: 0;
   padding: 1rem 0.875rem;
 }
-.campaign-switcher {
-  position: relative;
+/* The campaign the member is in and their role. Plain text, not a control:
+   the name wraps instead of being cut, the system and role sit under it. */
+.campaign-identity {
   display: grid;
-  gap: 0.15rem;
-  min-height: 4.75rem;
-  margin-bottom: 1.25rem;
-  padding: 0.75rem 1.8rem 0.75rem 0.75rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
+  gap: var(--space-1);
+  margin: 0 0 var(--space-4);
+  padding: 0 var(--space-3);
   color: var(--color-text);
-  background: var(--color-surface);
-  text-decoration: none;
 }
-.campaign-switcher:hover {
-  border-color: var(--color-line-strong);
-}
-.campaign-switcher-title {
+.campaign-identity-title {
+  display: -webkit-box;
+  margin: 0;
   overflow: hidden;
   font-family: var(--font-heading);
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
-.campaign-switcher-meta {
+.campaign-identity-meta {
+  margin: 0;
   color: var(--color-text-secondary);
   font-size: var(--text-xs);
   line-height: 1.35;
-}
-.campaign-switcher > svg {
-  position: absolute;
-  right: 0.6rem;
-  top: 1.75rem;
 }
 .campaign-search-trigger {
   display: flex;
@@ -1827,7 +1811,7 @@ summary {
    ≥ 1280 — the sidebar with words; 1024–1279 — icons only, the words become
    tooltips; 600–1023 — a header with a slide-out menu; < 600 — the bottom
    navigation. */
-.campaign-switcher-initial,
+.campaign-identity-initial,
 .campaign-menu-button {
   display: none;
 }
@@ -1846,21 +1830,29 @@ summary {
     /* Tooltips reach out of the rail. */
     overflow: visible;
   }
-  .campaign-switcher {
+  /* Only the initial fits the rail; the name stays for screen readers and
+     shows as the native tooltip. */
+  .campaign-identity {
     display: grid;
     place-items: center;
     width: 2.75rem;
     min-height: 2.75rem;
     padding: 0;
   }
-  .campaign-switcher-initial {
+  .campaign-identity-initial {
     display: block;
     font-family: var(--font-heading);
     font-size: var(--text-md);
     font-weight: 700;
   }
-  .campaign-switcher-meta,
-  .campaign-switcher > svg,
+  .campaign-identity-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .campaign-identity-meta,
   .campaign-search-trigger kbd,
   .campaign-nav-group {
     display: none;
@@ -1910,7 +1902,9 @@ summary {
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  .campaign-workspace-shell-sidebar :is(a, button, summary):is(:hover, :focus-visible) > .rail-label {
+  .campaign-workspace-shell-sidebar
+    :is(a, button, summary):is(:hover, :focus-visible)
+    > .rail-label {
     z-index: var(--z-overlay);
     top: 50%;
     left: calc(100% + 0.6rem);
@@ -2001,7 +1995,6 @@ summary {
   font-weight: 400;
   margin-bottom: 0.875rem;
 }
-.campaign-switcher { margin-bottom: var(--space-4); }
 .campaign-search-trigger:hover {
   background: var(--color-hover);
 }
@@ -2026,10 +2019,6 @@ summary {
 .campaign-workspace-shell-navigation a.active {
   font-weight: 500;
 }
-.campaign-switcher-title {
-  font-size: var(--text-md);
-  font-weight: 600;
-}
 .campaign-workspace-shell-content {
   grid-row: 1;
 }
@@ -2050,7 +2039,9 @@ summary {
   width: 9.25rem;
   height: auto;
 }
-.sidebar-logo-link .sidebar-logo-compact { display: none; }
+.sidebar-logo-link .sidebar-logo-compact {
+  display: none;
+}
 .sidebar-logo-link:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 3px;
@@ -2094,25 +2085,51 @@ summary {
   color: var(--color-text-secondary);
   background: transparent;
 }
-.sidebar-signout:hover { background: var(--color-hover); }
+.sidebar-signout:hover {
+  background: var(--color-hover);
+}
 .campaign-submenu {
   display: grid;
   gap: 0.2rem;
 }
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .sidebar-logo-link { justify-content: center; margin: 0 0 1.25rem; }
-  .sidebar-logo-link .sidebar-logo-full { display: none; }
-  .sidebar-logo-link .sidebar-logo-compact { display: block; width: 2rem; }
-  .campaign-submenu { padding: 0; border: 0; }
-  .sidebar-bottom { flex-direction: column; }
-  .sidebar-profile { justify-content: center; width: var(--touch-target); padding: 0; }
-  .sidebar-signout { width: var(--touch-target); }
+  .sidebar-logo-link {
+    justify-content: center;
+    margin: 0 0 1.25rem;
+  }
+  .sidebar-logo-link .sidebar-logo-full {
+    display: none;
+  }
+  .sidebar-logo-link .sidebar-logo-compact {
+    display: block;
+    width: 2rem;
+  }
+  .campaign-submenu {
+    padding: 0;
+    border: 0;
+  }
+  .sidebar-bottom {
+    flex-direction: column;
+  }
+  .sidebar-profile {
+    justify-content: center;
+    width: var(--touch-target);
+    padding: 0;
+  }
+  .sidebar-signout {
+    width: var(--touch-target);
+  }
 }
-.sidebar-menu-button { display: none; }
+.sidebar-menu-button {
+  display: none;
+}
 
 @media (max-width: 1023px) {
   .campaign-workspace-shell,
-  .app-shell { display: block; padding-bottom: 0; }
+  .app-shell {
+    display: block;
+    padding-bottom: 0;
+  }
   .campaign-workspace-shell-content,
   .app-shell .campaign-workspace-shell-content {
     padding: var(--space-8) var(--page-gutter);
@@ -2130,7 +2147,9 @@ summary {
     box-shadow: var(--shadow-lg);
     transform: translateX(-100%);
     visibility: hidden;
-    transition: transform var(--duration-base) ease, visibility 0s linear var(--duration-base);
+    transition:
+      transform var(--duration-base) ease,
+      visibility 0s linear var(--duration-base);
   }
   .campaign-workspace-shell-sidebar-open,
   .app-shell .campaign-workspace-shell-sidebar-open {
@@ -2159,11 +2178,19 @@ summary {
     right: 0.4rem;
   }
   .campaign-workspace-shell-content > .page-frame > .page-header:first-child,
-  .account-page > .page-header:first-child { padding-left: 3rem; }
-  .app-shell .campaign-workspace-shell-navigation { display: flex; }
+  .account-page > .page-header:first-child {
+    padding-left: 3rem;
+  }
+  .app-shell .campaign-workspace-shell-navigation {
+    display: flex;
+  }
 }
 @media (max-width: 599px) {
   .campaign-workspace-shell-content,
-  .app-shell .campaign-workspace-shell-content { padding: var(--space-4); }
-  .campaign-workspace-shell-mobile-navigation { display: none; }
+  .app-shell .campaign-workspace-shell-content {
+    padding: var(--space-4);
+  }
+  .campaign-workspace-shell-mobile-navigation {
+    display: none;
+  }
 }

@@ -84,7 +84,7 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
   await details.getByRole('button', { name: 'Сохранить' }).click();
   await expect(details.getByText('Сохранено')).toBeVisible();
   await page.reload();
-  await expect(page.locator('.campaign-switcher')).toContainText(
+  await expect(page.locator('.campaign-identity')).toContainText(
     'Финальная версия',
   );
 
@@ -99,12 +99,18 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
   await expect(playerPage.getByRole('alert')).toHaveText('Ресурс недоступен.');
 
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Отмена' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Отмена' })
+    .click();
   await expect(page).toHaveURL(`/campaigns/${campaignId}/settings`);
 
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
   await expect(page.getByRole('dialog')).toContainText('Финальная версия');
-  await page.getByRole('dialog').getByRole('button', { name: 'Удалить кампанию' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Удалить кампанию' })
+    .click();
   await expect(page).toHaveURL(/\/campaigns$/);
   await expect(
     page.getByRole('heading', { name: 'Здесь пока нет кампаний' }),
@@ -146,7 +152,8 @@ for (const viewport of [
     const campaignId = await createCampaign(request, owner);
     await signInAs(page, owner);
     const openMenu = async () => {
-      if (viewport.width < 1024) await page.getByRole('button', { name: 'Меню' }).click();
+      if (viewport.width < 1024)
+        await page.getByRole('button', { name: 'Меню' }).click();
     };
 
     // From the campaign list.
@@ -184,24 +191,43 @@ test('backgrounds open directly from the campaign submenu', async ({
 
   const navigation = page.locator('.campaign-workspace-shell-navigation');
   await expect(navigation).toBeVisible();
-  await expect(page.locator('.sidebar-logo-link')).toHaveAttribute('href', '/campaigns');
-  await expect(navigation.getByRole('link', { name: 'Все кампании' })).toHaveCount(0);
-  const sidebarStyle = await page.locator('.campaign-workspace-shell-sidebar').evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { width: element.getBoundingClientRect().width, left: style.borderLeftWidth, right: style.borderRightWidth };
-  });
+  await expect(page.locator('.sidebar-logo-link')).toHaveAttribute(
+    'href',
+    '/campaigns',
+  );
+  await expect(
+    navigation.getByRole('link', { name: 'Все кампании' }),
+  ).toHaveCount(0);
+  const sidebarStyle = await page
+    .locator('.campaign-workspace-shell-sidebar')
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        width: element.getBoundingClientRect().width,
+        left: style.borderLeftWidth,
+        right: style.borderRightWidth,
+      };
+    });
   expect(sidebarStyle).toEqual({ width: 248, left: '0px', right: '1px' });
-  const searchStyle = await page.locator('.campaign-search-trigger').evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { height: element.getBoundingClientRect().height, border: style.borderTopWidth, font: style.fontFamily };
-  });
+  const searchStyle = await page
+    .locator('.campaign-search-trigger')
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        height: element.getBoundingClientRect().height,
+        border: style.borderTopWidth,
+        font: style.fontFamily,
+      };
+    });
   expect(searchStyle.height).toBe(40);
   expect(searchStyle.border).toBe('0px');
   expect(searchStyle.font).toContain('Golos Text');
-  const navFont = await navigation.getByRole('link', { name: 'Фоны' }).evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { family: style.fontFamily, weight: style.fontWeight };
-  });
+  const navFont = await navigation
+    .getByRole('link', { name: 'Фоны' })
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { family: style.fontFamily, weight: style.fontWeight };
+    });
   expect(navFont.family).toContain('Golos Text');
   expect(navFont.weight).toBe('500');
   await expect(page.locator('.sidebar-profile')).toContainText('Профиль');

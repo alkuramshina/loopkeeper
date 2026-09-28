@@ -6,7 +6,7 @@ import {
   signInAs,
 } from './support/api';
 
-test('F13f: owner filters materials and opens a board card from search', async ({
+test('F13f: owner filters materials; board cards stay out of search', async ({
   page,
   request,
 }) => {
@@ -21,20 +21,17 @@ test('F13f: owner filters materials and opens a board card from search', async (
     title: 'Открытая карта',
     access: 'SHARED',
   });
-  const cardId = await createFreeCard(
-    request,
-    owner,
-    campaignId,
-    'Следы у моста',
-    { x: 100, y: 100 },
-  );
+  await createFreeCard(request, owner, campaignId, 'Следы у моста', {
+    x: 100,
+    y: 100,
+  });
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements`);
   await expect(
     page.getByRole('button', { name: /Найти Ctrl K/ }),
   ).toBeVisible();
   await page.keyboard.press('Control+k');
-  const dialog = page.getByRole('dialog', { name: 'Поиск по кампании' });
+  const dialog = page.getByRole('dialog', { name: 'Поиск материалов' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Скрыто' }).click();
   await expect(
@@ -44,15 +41,34 @@ test('F13f: owner filters materials and opens a board card from search', async (
     dialog.getByRole('button', { name: /Открытая карта/ }),
   ).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Всё' }).click();
+  // The board has its own search; the campaign search finds materials only.
   await dialog.getByRole('searchbox').fill('Следы');
+  await expect(dialog.getByText('Ничего не найдено')).toBeVisible();
+  await dialog.getByRole('searchbox').fill('карта');
   await dialog.getByRole('searchbox').press('Enter');
-  await expect(page).toHaveURL(new RegExp(`/board\\?card=${cardId}`));
-  await expect(page.getByText('Следы у моста').first()).toBeVisible();
+  await expect(page).toHaveURL(/\/elements\/[^/]+$/);
+  // A Russian layout reports "л" for the K key; the shortcut still works.
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'л',
+        code: 'KeyK',
+        ctrlKey: true,
+        cancelable: true,
+      }),
+    ),
+  );
+  await expect(
+    page.getByRole('dialog', { name: 'Поиск материалов' }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
   for (const width of [320, 768]) {
     await page.setViewportSize({ width, height: 700 });
-    await page.getByRole('button', { name: 'Найти', exact: true }).click();
+    // Below 1024 the search trigger lives in the slide-out menu.
+    await page.getByRole('button', { name: 'Меню' }).click();
+    await page.getByRole('button', { name: /^Найти/ }).click();
     await expect(
-      page.getByRole('dialog', { name: 'Поиск по кампании' }),
+      page.getByRole('dialog', { name: 'Поиск материалов' }),
     ).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
@@ -83,7 +99,7 @@ test('F13f: player can write from search; viewer sees only shared material', asy
     page.getByRole('button', { name: /Найти Ctrl K/ }),
   ).toBeVisible();
   await page.keyboard.press('Control+k');
-  let dialog = page.getByRole('dialog', { name: 'Поиск по кампании' });
+  let dialog = page.getByRole('dialog', { name: 'Поиск материалов' });
   await expect(
     dialog.getByRole('button', { name: /Общий план/ }),
   ).toBeVisible();
@@ -100,7 +116,7 @@ test('F13f: player can write from search; viewer sees only shared material', asy
     page.getByRole('button', { name: /Найти Ctrl K/ }),
   ).toBeVisible();
   await page.keyboard.press('Control+k');
-  dialog = page.getByRole('dialog', { name: 'Поиск по кампании' });
+  dialog = page.getByRole('dialog', { name: 'Поиск материалов' });
   await expect(
     dialog.getByRole('button', { name: /Общий план/ }),
   ).toBeVisible();

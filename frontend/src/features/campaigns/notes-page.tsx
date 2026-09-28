@@ -20,6 +20,7 @@ import { ApiError, Campaign, CampaignElement } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { MediaUpload } from '../../components/media-upload';
 import { PageError } from '../../components/page-error';
+import { PageHeader } from '../../components/page-header';
 import { ProtectedImage } from '../../components/protected-image';
 import { AutosaveStatus, useAutosave } from '../../components/use-autosave';
 import { AccessBadge } from '../../components/ui/access-badge';
@@ -461,6 +462,11 @@ export function NotesPage() {
 
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
+      <PageHeader
+        title={t('notes.title')}
+        titleId="notes-title"
+        actions={!loading && notes.length > 0 && newNote}
+      />
       <div
         className={`materials-layout notes-layout ${elementId ? 'materials-layout-detail' : ''}`}
       >
@@ -468,10 +474,6 @@ export function NotesPage() {
           aria-labelledby="notes-title"
           className="materials-list-pane notes-list-pane"
         >
-          <div className="materials-heading notes-heading">
-            <h1 id="notes-title">{t('notes.title')}</h1>
-            {!loading && notes.length > 0 && newNote}
-          </div>
           <nav
             aria-busy={loading}
             aria-label={t('notes.listLabel')}

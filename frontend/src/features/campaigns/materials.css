@@ -5,7 +5,8 @@
 .materials-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  min-height: calc(100dvh - 2 * clamp(1.5rem, 4vw, 3rem));
+  /* Fills the screen below the page header. */
+  min-height: calc(100dvh - 2 * clamp(1.5rem, 4vw, 3rem) - 5.5rem);
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-xl);
@@ -52,18 +53,7 @@
 .materials-list-head {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-5) var(--space-4) var(--space-3);
-}
-.materials-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.materials-heading h1 {
-  margin: 0;
-  font-size: var(--text-h2);
+  padding: var(--space-4) var(--space-4) var(--space-3);
 }
 .materials-list-head .ui-segmented {
   display: flex;

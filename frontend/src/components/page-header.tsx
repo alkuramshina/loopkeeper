@@ -9,7 +9,7 @@ type PageHeaderProps = {
   meta?: ReactNode;
   /** Page actions on the right: create, search, save. */
   actions?: ReactNode;
-  /** A smaller title with the meta on its line, for full-height pages. */
+  /** The meta on the title's line and less space below, for full-height pages. */
   compact?: boolean;
 };
 

@@ -12,6 +12,7 @@ import {
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
+import { PageHeader } from '../../components/page-header';
 import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
 import { PageError } from '../../components/page-error';
@@ -161,9 +162,7 @@ export function MembersPage() {
 
   return (
     <CampaignWorkspaceShell campaign={data}>
-      <section className="page-header">
-        <h2>{t('members.title')}</h2>
-      </section>
+      <PageHeader title={t('members.title')} />
       {error && (
         <p className="form-error" role="alert">
           {error}

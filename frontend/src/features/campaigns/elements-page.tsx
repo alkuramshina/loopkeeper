@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../auth/auth-context';
 import { ModalDialog } from '../../components/modal-dialog';
 import { PageError } from '../../components/page-error';
+import { PageHeader } from '../../components/page-header';
 import { ProtectedImage } from '../../components/protected-image';
 import { AccessBadge } from '../../components/ui/access-badge';
 import { Button } from '../../components/ui/button';
@@ -302,6 +303,18 @@ export function ElementsPage() {
 
   return (
     <CampaignWorkspaceShell campaign={campaign.data}>
+      <PageHeader
+        title={t('elements.title')}
+        actions={
+          <Button
+            icon={Plus}
+            onClick={() => setCreating(true)}
+            variant="primary"
+          >
+            {t('elements.new')}
+          </Button>
+        }
+      />
       <div
         className={`materials-layout ${elementId ? 'materials-layout-detail' : ''}`}
       >
@@ -310,16 +323,6 @@ export function ElementsPage() {
           className="materials-list-pane"
         >
           <div className="materials-list-head">
-            <div className="materials-heading">
-              <h1>{t('elements.title')}</h1>
-              <Button
-                icon={Plus}
-                onClick={() => setCreating(true)}
-                variant="primary"
-              >
-                {t('elements.new')}
-              </Button>
-            </div>
             {owner && (
               <SegmentedControl
                 label={t('elements.accessFilter')}
