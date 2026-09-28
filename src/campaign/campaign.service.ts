@@ -1,6 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CampaignElementAccess, CampaignRole, Prisma } from '@prisma/client';
-import { CampaignBackgroundDto } from './dto/campaign-background-settings.dto';
 import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
@@ -19,9 +18,6 @@ const campaignForCurrentUser = (userId: string) =>
     system: true,
     description: true,
     coverUrl: true,
-    backgroundSelectionMode: true,
-    fixedBackgroundId: true,
-    backgrounds: true,
     members: {
       where: { userId },
       select: {
@@ -177,7 +173,6 @@ export class CampaignService {
       const assets = await tx.mediaAsset.findMany({
         where: {
           OR: [
-            { backgroundCampaignId: campaignId },
             { campaignCover: { campaignId } },
             { characterAvatar: { campaignId } },
             { elementCover: { campaignId } },
@@ -205,26 +200,13 @@ export class CampaignService {
     }>,
     newVisibleMaterialCount: number,
   ) {
-    const {
-      members,
-      backgroundSelectionMode,
-      fixedBackgroundId,
-      backgrounds,
-      ...campaignData
-    } = campaign;
+    const { members, ...campaignData } = campaign;
     return {
       ...campaignData,
       currentUserRole: members[0].campaignRole,
       newSinceAt: members[0].participantState?.newSinceAt ?? null,
       lastVisitAt: members[0].participantState?.lastVisitAt ?? null,
       newVisibleMaterialCount,
-      backgroundConfig: {
-        selectionMode: backgroundSelectionMode,
-        fixedBackgroundId,
-        backgrounds: (backgrounds as unknown as CampaignBackgroundDto[]).filter(
-          (background) => background.isEnabled,
-        ),
-      },
     };
   }
 

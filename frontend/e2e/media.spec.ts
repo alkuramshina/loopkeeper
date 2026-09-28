@@ -13,7 +13,6 @@ import {
   listCampaignTitles,
   openAs,
   registerUser,
-  setFixedBackground,
   signInAs,
   TestUser,
   uploadMedia,
@@ -573,7 +572,6 @@ test('P5d: deleting a campaign with members, media and a board removes it for ev
     `/campaigns/${campaignId}/cover`,
     await png(1200, 700),
   );
-  await setFixedBackground(request, owner, campaignId, await png(1600, 900));
   await createElementCard(request, player, campaignId, location, {
     x: 0,
     y: 0,
@@ -586,7 +584,10 @@ test('P5d: deleting a campaign with members, media and a board removes it for ev
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/settings`);
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Удалить кампанию' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Удалить кампанию' })
+    .click();
   await expect(page).toHaveURL(/\/campaigns$/);
 
   expect(await listCampaignTitles(request, owner)).toEqual([]);

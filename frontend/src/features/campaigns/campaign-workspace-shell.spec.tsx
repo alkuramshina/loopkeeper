@@ -122,10 +122,6 @@ describe('CampaignWorkspaceShell', () => {
       screen.getAllByRole('link', { name: 'Настройки кампании' }).length,
     ).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Материалы' })).toHaveLength(1);
-    expect(screen.getByRole('link', { name: 'Фоны' })).toHaveAttribute(
-      'href',
-      '/campaigns/campaign-1/settings/backgrounds',
-    );
   });
 
   it.each(['Мастер', 'Игрок', 'Наблюдатель'])(

@@ -1,18 +1,16 @@
 import AxeBuilder from '@axe-core/playwright';
-import sharp from 'sharp';
 import { expect, Page, test } from './support/test';
 import {
   createCampaignWithRoles,
   createElement,
   createFreeCard,
   createPlayerCharacter,
-  setFixedBackground,
   signInAs,
 } from './support/api';
 import { iconButtonContrastIssues } from './support/contrast';
 
 // F13h acceptance: the layout ranges of the redesign plan, state that survives
-// a change of range, reduced motion and contrast over campaign backgrounds.
+// a change of range, reduced motion and contrast.
 
 const navigationName = 'Разделы кампании';
 
@@ -89,7 +87,9 @@ test('the workspace shell follows every layout range', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(menu).toBeVisible();
   await menu.click();
-  await expect(side.getByRole('link', { name: 'Доска расследования' })).toBeVisible();
+  await expect(
+    side.getByRole('link', { name: 'Доска расследования' }),
+  ).toBeVisible();
   await page.keyboard.press('Escape');
 
   // An open menu does not survive into the sidebar ranges and back.
@@ -302,128 +302,6 @@ test('reduced motion turns animations and the board’s fit into instant changes
   expect(await viewport.getAttribute('style')).toBe(first);
 });
 
-/** WCAG relative luminance of a computed `rgb()` colour. */
-function luminance(color: string) {
-  const [r, g, b] = (color.match(/[\d.]+/g) ?? []).slice(0, 3).map((part) => {
-    const value = Number(part) / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function contrast(a: string, b: string) {
-  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (light + 0.05) / (dark + 0.05);
-}
-
-for (const [shade, fill] of [
-  ['black', '#000000'],
-  ['white', '#ffffff'],
-] as const) {
-  test(`board text and links stay readable over a ${shade} campaign background`, async ({
-    page,
-    request,
-  }) => {
-    const { campaignId, owner } = await createCampaignWithRoles(request);
-    const image = await sharp({
-      create: { width: 1600, height: 900, channels: 3, background: fill },
-    })
-      .png()
-      .toBuffer();
-    await setFixedBackground(request, owner, campaignId, image);
-    const first = await createFreeCard(request, owner, campaignId, 'Сигнал', {
-      x: 0,
-      y: 0,
-    });
-    const second = await createFreeCard(request, owner, campaignId, 'Башня', {
-      x: 420,
-      y: 160,
-    });
-    const link = await request.post(
-      `/api/campaigns/${campaignId}/investigation-links`,
-      {
-        headers: owner.headers,
-        data: { cardAId: first, cardBId: second, label: 'в ту же ночь' },
-      },
-    );
-    expect(link.ok()).toBe(true);
-    await signInAs(page, owner);
-
-    for (const colorScheme of ['light', 'dark'] as const) {
-      await page.emulateMedia({ colorScheme });
-      await page.goto(`/campaigns/${campaignId}/board`);
-      await expect(
-        page.locator('.campaign-background-layer img'),
-      ).toBeVisible();
-      await expect(page.locator('.react-flow__edge')).toHaveCount(1);
-
-      // Text never lies on the picture: every text inside the canvas has an
-      // opaque surface of its own.
-      const bare = await page.evaluate(() => {
-        const canvas = document.querySelector('.board-canvas')!;
-        const walker = document.createTreeWalker(canvas, NodeFilter.SHOW_TEXT);
-        const found: string[] = [];
-        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-          const text = node.textContent?.trim();
-          const element = node.parentElement;
-          if (!text || !element || !element.getClientRects().length) continue;
-          // SVG link labels sit on their own filled pill.
-          if (element.closest('.react-flow__edge-textwrapper')) continue;
-          let backed = false;
-          for (
-            let parent: Element | null = element;
-            parent && parent !== canvas;
-            parent = parent.parentElement
-          ) {
-            const alpha =
-              getComputedStyle(parent).backgroundColor.match(/[\d.]+/g);
-            if (alpha && (alpha.length < 4 || Number(alpha[3]) >= 0.9)) {
-              backed = true;
-              break;
-            }
-          }
-          if (!backed) found.push(text.slice(0, 30));
-        }
-        return found;
-      });
-      expect(bare, `${colorScheme}: text without a surface`).toEqual([]);
-
-      // A link keeps 3:1 against its halo, whatever the picture is.
-      const link = await page
-        .locator('.react-flow__edge-path')
-        .evaluate((path) => {
-          const style = getComputedStyle(path);
-          const canvas = getComputedStyle(
-            document.querySelector('.board-canvas')!,
-          );
-          return {
-            stroke: style.stroke,
-            filter: style.filter,
-            halo: canvas.getPropertyValue('--board-bg'),
-          };
-        });
-      expect(link.filter, `${colorScheme}: link halo`).toContain('drop-shadow');
-      const halo = await page.evaluate((color) => {
-        const probe = document.createElement('span');
-        probe.style.color = color;
-        document.body.append(probe);
-        const value = getComputedStyle(probe).color;
-        probe.remove();
-        return value;
-      }, link.halo);
-      expect(
-        contrast(link.stroke, halo),
-        `${colorScheme}: link contrast`,
-      ).toBeGreaterThanOrEqual(3);
-
-      expect(
-        await axeViolations(page, '.board-page'),
-        `${colorScheme}: axe`,
-      ).toEqual([]);
-    }
-  });
-}
-
 test('screens outside the main set pass axe in both variations', async ({
   page,
   request,
@@ -470,7 +348,6 @@ test('screens outside the main set pass axe in both variations', async ({
         `/campaigns/${campaignId}/elements`,
         'Смотритель Берг',
       ],
-      ['backgrounds', `/campaigns/${campaignId}/settings/backgrounds`, 'Фоны'],
       [
         'character detail',
         `/campaigns/${campaignId}/characters/${characterId}`,

@@ -42,10 +42,6 @@ const MembersPage = lazy(async () => ({
 const BoardPage = lazy(async () => ({
   default: (await import('../features/campaigns/board-page')).BoardPage,
 }));
-const BackgroundSettingsPage = lazy(async () => ({
-  default: (await import('../features/campaigns/background-settings-page'))
-    .BackgroundSettingsPage,
-}));
 
 // Development only: `import.meta.env.DEV` is false in a production build, so
 // the gallery and its styles are dropped from the bundle.
@@ -152,10 +148,6 @@ export function AppRouter() {
           <Route
             path="/campaigns/:campaignId/settings"
             element={<CampaignSettingsPage />}
-          />
-          <Route
-            path="/campaigns/:campaignId/settings/backgrounds"
-            element={<BackgroundSettingsPage />}
           />
           <Route
             path="/campaigns/:campaignId/characters"

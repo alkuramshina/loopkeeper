@@ -594,30 +594,6 @@ textarea {
   position: relative;
   z-index: 1;
 }
-.campaign-background-layer {
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  pointer-events: none;
-  background: var(--color-muted-bg);
-}
-.campaign-background-layer img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.campaign-background-fallback {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    135deg,
-    var(--color-muted-bg),
-    var(--color-sunken)
-  );
-}
 .workspace-overview-content {
   max-width: 42rem;
   padding: clamp(1.5rem, 4vw, 3rem);
@@ -713,10 +689,6 @@ textarea {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-}
-.checkbox-field {
-  display: flex;
-  align-items: center;
 }
 .button-danger {
   color: var(--color-on-danger);
@@ -828,76 +800,6 @@ textarea {
 /* Edges still need handles to anchor, so read-only boards only hide them. */
 .board-canvas-readonly .react-flow__handle {
   visibility: hidden;
-}
-.background-settings {
-  max-width: 46rem;
-}
-.background-settings h3 {
-  margin: 0;
-}
-.background-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: 0.75rem;
-}
-.background-gallery a {
-  display: grid;
-  gap: 0.35rem;
-  color: inherit;
-  overflow-wrap: anywhere;
-}
-.background-gallery-thumb {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 7px;
-  background: var(--color-muted-bg);
-}
-.background-gallery-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.background-entry {
-  display: grid;
-  gap: 0.75rem;
-  margin: 0;
-  padding: 1rem;
-  border: 1px solid var(--color-line);
-  border-radius: 7px;
-}
-.background-entry legend {
-  padding: 0 0.25rem;
-  color: var(--color-text-secondary);
-  font-weight: 700;
-}
-.background-preview {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--color-muted-bg);
-}
-.background-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-.background-preview-safe-area {
-  position: absolute;
-  inset: 20%;
-  border: 2px dashed var(--color-on-image);
-  box-shadow:
-    0 0 0 1px var(--color-media-backdrop),
-    inset 0 0 0 1px var(--color-media-backdrop);
-  pointer-events: none;
-}
-.background-entry .muted {
-  margin: 0;
 }
 .locations-layout {
   display: grid;

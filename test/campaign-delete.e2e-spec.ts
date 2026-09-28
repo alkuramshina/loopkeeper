@@ -159,11 +159,6 @@ describe('Campaign deletion (e2e)', () => {
     );
     await attach(
       owner,
-      `/campaigns/${campaignId}/backgrounds`,
-      await createImage(1600, 900),
-    );
-    await attach(
-      owner,
       `/campaigns/${otherCampaignId}/cover`,
       await createImage(1200, 700),
     );
@@ -194,7 +189,7 @@ describe('Campaign deletion (e2e)', () => {
         cardBId: elementCard.body.cardId,
       })
       .expect(201);
-    expect(await readdir(mediaStoragePath)).toHaveLength(6);
+    expect(await readdir(mediaStoragePath)).toHaveLength(5);
 
     await request(app.getHttpServer())
       .delete(`/campaigns/${campaignId}`)

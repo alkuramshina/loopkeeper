@@ -40,10 +40,6 @@ import {
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ProtectedImage } from '../../components/protected-image';
-import {
-  CampaignBackgroundLayer,
-  useCampaignBackground,
-} from './use-campaign-background';
 import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { PageHeader } from '../../components/page-header';
 import { Button } from '../../components/ui/button';
@@ -970,7 +966,6 @@ export function BoardPage() {
       .filter(Boolean)
       .join(' '),
   }));
-  const background = useCampaignBackground(campaignId, data?.backgroundConfig);
   // A failed refresh keeps the last snapshot on screen; only a board that
   // never loaded is replaced by the page state.
   if (campaign.isError || (board.isError && !board.data))
@@ -1063,7 +1058,6 @@ export function BoardPage() {
             <div
               className={`board-canvas ${canManage ? '' : 'board-canvas-readonly'}`}
             >
-              <CampaignBackgroundLayer background={background} />
               {board.data && !board.data.cards.length && !editor && (
                 // In the middle of the empty board, with its one action.
                 <div className="board-empty">

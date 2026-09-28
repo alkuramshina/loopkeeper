@@ -7,9 +7,7 @@ import {
   createElement,
   getBoard,
   openAs,
-  setFixedBackground,
 } from './support/api';
-import { png } from './support/images';
 
 const sidebar = '.campaign-workspace-shell-navigation';
 
@@ -100,7 +98,6 @@ test('the owner sees members and campaign settings in the navigation', async ({
     'Материалы',
     'Персонажи',
     'Настройки',
-    'Фоны',
   ]);
   // Members and invitations are two screens in a «Участники» submenu that
   // opens on a click.
@@ -118,7 +115,7 @@ test('the owner sees members and campaign settings in the navigation', async ({
   ).toHaveText(['Состав', 'Приглашения']);
 });
 
-test('a viewer sees the board with its background and links but cannot change anything', async ({
+test('a viewer sees the board with its links but cannot change anything', async ({
   page,
   request,
 }) => {
@@ -135,7 +132,6 @@ test('a viewer sees the board with its background and links but cannot change an
     headers: owner.headers,
     data: { cardAId: first, cardBId: second, label: 'след' },
   });
-  await setFixedBackground(request, owner, campaignId, await png(1600, 900));
 
   const mutations: string[] = [];
   page.on('request', (outgoing) => {
@@ -152,9 +148,6 @@ test('a viewer sees the board with its background and links but cannot change an
   mutations.length = 0;
 
   await expect(page.getByText(/^Режим просмотра/)).toBeVisible();
-  await expect(
-    page.locator('.board-canvas .campaign-background-layer img'),
-  ).toHaveAttribute('src', /^blob:/);
   await expect(page.locator('.react-flow__edge')).toHaveCount(1);
   await expect(page.locator('.react-flow__edge')).toContainText('след');
 

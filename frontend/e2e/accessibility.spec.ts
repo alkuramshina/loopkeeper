@@ -308,7 +308,6 @@ test('every screen and dialog has a visible focus in document order', async ({
     `/campaigns/${campaignId}/members`,
     `/campaigns/${campaignId}/invitations`,
     `/campaigns/${campaignId}/settings`,
-    `/campaigns/${campaignId}/settings/backgrounds`,
     '/settings/account',
   ]) {
     await page.goto(path);

@@ -25,9 +25,6 @@ describe('CampaignService', () => {
       campaignId: 'campaign-id',
       title: 'The Loop',
       members: [{ campaignRole: 'OWNER' }],
-      backgroundSelectionMode: 'FIXED',
-      fixedBackgroundId: null,
-      backgrounds: [],
     };
     (prisma.campaign.findFirst as jest.Mock).mockResolvedValue(campaign);
 
@@ -37,11 +34,6 @@ describe('CampaignService', () => {
       campaignId: campaign.campaignId,
       title: campaign.title,
       currentUserRole: 'OWNER',
-      backgroundConfig: {
-        selectionMode: 'FIXED',
-        fixedBackgroundId: null,
-        backgrounds: [],
-      },
     });
   });
 

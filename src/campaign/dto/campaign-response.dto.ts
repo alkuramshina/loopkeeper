@@ -1,6 +1,5 @@
 import { CampaignRole, System } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CampaignBackgroundRenderConfigDto } from './campaign-background-settings.dto';
 
 export class CampaignResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -39,9 +38,6 @@ export class CampaignResponseDto {
 
   @ApiProperty({ minimum: 0 })
   newVisibleMaterialCount!: number;
-
-  @ApiProperty({ type: CampaignBackgroundRenderConfigDto })
-  backgroundConfig!: CampaignBackgroundRenderConfigDto;
 }
 
 export class CampaignVisitResponseDto {

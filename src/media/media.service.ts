@@ -19,7 +19,6 @@ import {
 import type { ConfigType } from '@nestjs/config';
 import sharp from 'sharp';
 import { CampaignElementType, CampaignRole, Prisma } from '@prisma/client';
-import { CampaignBackgroundDto } from '../campaign/dto/campaign-background-settings.dto';
 import {
   memberCampaignWhere,
   ownerCampaignWhere,
@@ -46,7 +45,6 @@ const MIN_COVER_HEIGHT = 360;
 const MAX_COVER_DIMENSION = 2048;
 const MAX_COVER_WIDTH = 1280;
 const MAX_COVER_HEIGHT = 720;
-const BACKGROUND_DIMENSIONS = new Set(['1600x900', '1920x1080', '2560x1440']);
 const MIN_ELEMENT_COVER_DIMENSION = 256;
 const MAX_ELEMENT_COVER_DIMENSION = 4096;
 const NORMALIZED_ELEMENT_COVER_DIMENSION = 1024;
@@ -385,116 +383,6 @@ export class MediaService {
     await this.removeStorageFile(asset.storageKey);
   }
 
-  async addCampaignBackground(
-    userId: string,
-    campaignId: string,
-    file: UploadedFile,
-  ) {
-    await this.requireCampaignOwner(userId, campaignId);
-    const image = await this.normalizeBackground(file);
-    const storageKey = `${randomUUID()}.webp`;
-    await this.writeAtomically(storageKey, image.content);
-
-    let background: CampaignBackgroundDto;
-    try {
-      background = await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT "campaignId" FROM "campaigns" WHERE "campaignId" = ${campaignId} FOR UPDATE`;
-        const campaign = await tx.campaign.findUniqueOrThrow({
-          where: { campaignId, ...ownerCampaignWhere(userId) },
-          select: { backgrounds: true },
-        });
-        const backgrounds =
-          campaign.backgrounds as unknown as CampaignBackgroundDto[];
-        if (backgrounds.length >= 10) {
-          throw this.invalidMedia(
-            'media.background_limit',
-            'A campaign can have at most 10 backgrounds',
-          );
-        }
-        const asset = await tx.mediaAsset.create({
-          data: {
-            storageKey,
-            purpose: 'CAMPAIGN_BACKGROUND',
-            backgroundCampaignId: campaignId,
-            byteSize: image.content.length,
-            width: image.width,
-            height: image.height,
-          },
-        });
-        const background: CampaignBackgroundDto = {
-          backgroundId: asset.assetId,
-          name: `Background ${backgrounds.length + 1}`,
-          imageUrl: `/media/${asset.assetId}`,
-          isEnabled: true,
-          sortOrder: backgrounds.length,
-        };
-        await tx.campaign.update({
-          where: { campaignId },
-          data: {
-            backgrounds: [
-              ...backgrounds,
-              background,
-            ] as unknown as Prisma.InputJsonValue,
-          },
-        });
-        return background;
-      });
-    } catch (error) {
-      await this.removeStorageFile(storageKey);
-      throw error;
-    }
-    return background;
-  }
-
-  async deleteCampaignBackground(
-    userId: string,
-    campaignId: string,
-    backgroundId: string,
-  ): Promise<void> {
-    await this.requireCampaignOwner(userId, campaignId);
-    const storageKey = await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "campaignId" FROM "campaigns" WHERE "campaignId" = ${campaignId} FOR UPDATE`;
-      const campaign = await tx.campaign.findUniqueOrThrow({
-        where: { campaignId, ...ownerCampaignWhere(userId) },
-        select: { backgrounds: true, fixedBackgroundId: true },
-      });
-      const backgrounds =
-        campaign.backgrounds as unknown as CampaignBackgroundDto[];
-      if (
-        !backgrounds.some(
-          (background) =>
-            background.backgroundId === backgroundId &&
-            background.imageUrl === `/media/${backgroundId}`,
-        )
-      ) {
-        throw new NotFoundException();
-      }
-      const asset = await tx.mediaAsset.findFirst({
-        where: {
-          assetId: backgroundId,
-          purpose: 'CAMPAIGN_BACKGROUND',
-          backgroundCampaignId: campaignId,
-        },
-        select: { storageKey: true },
-      });
-      if (!asset) throw new NotFoundException();
-      await tx.campaign.update({
-        where: { campaignId },
-        data: {
-          backgrounds: backgrounds.filter(
-            (background) => background.backgroundId !== backgroundId,
-          ) as unknown as Prisma.InputJsonValue,
-          ...(campaign.fixedBackgroundId === backgroundId
-            ? { fixedBackgroundId: null }
-            : {}),
-        },
-      });
-      await tx.mediaAsset.delete({ where: { assetId: backgroundId } });
-      return asset.storageKey;
-    });
-    await this.removeStorageFile(storageKey);
-  }
-
   async replaceElementCover(
     userId: string,
     elementId: string,
@@ -663,7 +551,6 @@ export class MediaService {
         { purpose: 'AVATAR', avatarOwner: { is: null } },
         { purpose: 'CHARACTER_AVATAR', characterAvatar: { is: null } },
         { purpose: 'CAMPAIGN_COVER', campaignCover: { is: null } },
-        { purpose: 'CAMPAIGN_BACKGROUND', backgroundCampaignId: null },
         { purpose: 'ELEMENT_COVER', elementCover: { is: null } },
         { purpose: 'LOCATION_MAP', elementMap: { is: null } },
       ],
@@ -729,17 +616,6 @@ export class MediaService {
             characterAvatar: {
               avatarUrl: `/media/${assetId}`,
               campaign: memberCampaignWhere(userId),
-            },
-          },
-          {
-            purpose: 'CAMPAIGN_BACKGROUND',
-            backgroundCampaign: {
-              backgrounds: {
-                array_contains: [
-                  { backgroundId: assetId, imageUrl: `/media/${assetId}` },
-                ],
-              },
-              ...memberCampaignWhere(userId),
             },
           },
           {
@@ -939,36 +815,6 @@ export class MediaService {
       if (error instanceof DomainException) {
         throw error;
       }
-      throw this.invalidMedia(
-        'media.invalid_file',
-        'The image file is invalid',
-      );
-    }
-  }
-
-  private async normalizeBackground(
-    file: UploadedFile,
-  ): Promise<NormalizedAvatar> {
-    this.validateUpload(file);
-    try {
-      const image = sharp(file.buffer, {
-        limitInputPixels: 2560 * 1440,
-      }).rotate();
-      const { width, height, orientation } = await image.metadata();
-      const rotatedWidth =
-        orientation && orientation >= 5 && orientation <= 8 ? height : width;
-      const rotatedHeight =
-        orientation && orientation >= 5 && orientation <= 8 ? width : height;
-      if (!BACKGROUND_DIMENSIONS.has(`${rotatedWidth}x${rotatedHeight}`)) {
-        throw this.invalidMedia(
-          'media.invalid_background_dimensions',
-          'Background images must be 1600×900, 1920×1080 or 2560×1440 pixels',
-        );
-      }
-      const content = await image.webp().toBuffer();
-      return { content, width: rotatedWidth, height: rotatedHeight };
-    } catch (error) {
-      if (error instanceof DomainException) throw error;
       throw this.invalidMedia(
         'media.invalid_file',
         'The image file is invalid',

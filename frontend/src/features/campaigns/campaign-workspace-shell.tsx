@@ -15,7 +15,6 @@ import {
   Menu,
   Search,
   ChevronDown,
-  Image,
 } from 'lucide-react';
 import { Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
@@ -301,17 +300,6 @@ export function CampaignWorkspaceShell({
                   </div>
                 </div>
                 {navLinks(management)}
-                <NavLink
-                  className={({ isActive }) =>
-                    isActive ? 'active' : undefined
-                  }
-                  to={`${basePath}/settings/backgrounds`}
-                >
-                  <Image aria-hidden="true" size={17} strokeWidth={1.8} />
-                  <span className="rail-label">
-                    {t('workspace.backgroundSettings')}
-                  </span>
-                </NavLink>
               </>
             )}
           </div>

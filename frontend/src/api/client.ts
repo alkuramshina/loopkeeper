@@ -114,20 +114,6 @@ export type Profile = {
   avatarUrl?: string | null;
 };
 export type AuthResponse = { accessToken: string };
-export type CampaignBackground = {
-  backgroundId: string;
-  name: string;
-  imageUrl: string;
-  isEnabled: boolean;
-  sortOrder: number;
-};
-
-export type CampaignBackgroundConfig = {
-  selectionMode: 'FIXED' | 'RANDOM';
-  fixedBackgroundId: string | null;
-  backgrounds: CampaignBackground[];
-};
-
 export type GameSystem = {
   slug: string;
   name: string;
@@ -143,7 +129,6 @@ export type Campaign = {
   newSinceAt?: string | null;
   lastVisitAt?: string | null;
   newVisibleMaterialCount?: number;
-  backgroundConfig?: CampaignBackgroundConfig;
   coverUrl?: string | null;
 };
 

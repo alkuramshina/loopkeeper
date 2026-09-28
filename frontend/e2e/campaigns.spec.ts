@@ -180,7 +180,7 @@ for (const viewport of [
   });
 }
 
-test('backgrounds open directly from the campaign submenu', async ({
+test('the campaign sidebar keeps its layout and typography', async ({
   page,
   request,
 }) => {
@@ -223,7 +223,7 @@ test('backgrounds open directly from the campaign submenu', async ({
   expect(searchStyle.border).toBe('0px');
   expect(searchStyle.font).toContain('Golos Text');
   const navFont = await navigation
-    .getByRole('link', { name: 'Фоны' })
+    .getByRole('link', { name: 'Доска расследования' })
     .evaluate((element) => {
       const style = getComputedStyle(element);
       return { family: style.fontFamily, weight: style.fontWeight };
@@ -232,9 +232,4 @@ test('backgrounds open directly from the campaign submenu', async ({
   expect(navFont.weight).toBe('500');
   await expect(page.locator('.sidebar-profile')).toContainText('Профиль');
   await expect(page.locator('.sidebar-profile')).not.toContainText('Мастер');
-  await navigation.getByRole('link', { name: 'Фоны' }).click();
-  await expect(page).toHaveURL(`/campaigns/${campaignId}/settings/backgrounds`);
-  await expect(
-    page.getByRole('heading', { name: 'Фоны кампании' }),
-  ).toBeVisible();
 });

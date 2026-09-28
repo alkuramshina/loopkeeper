@@ -56,43 +56,6 @@
 .created-invitation code {
   display: block;
 }
-.background-settings {
-  max-width: 64rem;
-  min-height: 0;
-  gap: var(--space-5);
-  padding: var(--space-8);
-}
-.background-settings > label {
-  display: grid;
-  gap: var(--space-2);
-  color: var(--color-text);
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-.background-settings > label :is(input, select),
-.background-entry > label :is(input, select) {
-  min-height: var(--touch-target);
-  border-color: var(--color-line-strong);
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  font-weight: 400;
-}
-.background-gallery a {
-  padding: 0.5rem;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-}
-.background-gallery a:hover,
-.background-gallery a:focus-visible {
-  border-color: var(--color-accent);
-}
-.background-entry {
-  border-radius: var(--radius-lg);
-}
-.background-preview {
-  border: 1px solid var(--color-line);
-}
 .settings-grid {
   align-items: start;
 }

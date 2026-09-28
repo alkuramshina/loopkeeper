@@ -46,12 +46,9 @@ model MediaAsset {
   avatarOwner          User?                 @relation("UserAvatar")
   characterAvatar      Character?            @relation("CharacterAvatar")
   campaignCover        Campaign?             @relation("CampaignCover")
-  backgroundCampaign   Campaign?             @relation("CampaignBackgroundAssets", fields: [backgroundCampaignId], references: [campaignId], onDelete: Cascade)
-  backgroundCampaignId String?
   elementCover         CampaignElement?      @relation("ElementCover")
   elementMap           CampaignElement?      @relation("ElementMap")
 
-  @@index([backgroundCampaignId])
   @@index([purpose])
   @@map("media_assets")
 }
@@ -86,11 +83,7 @@ model Campaign {
   members      CampaignMember[]     @relation("CampaignMembers")
   invitations  CampaignInvitation[]
 
-  elements                CampaignElement[]
-  backgrounds             Json                            @default("[]")
-  backgroundAssets        MediaAsset[]                    @relation("CampaignBackgroundAssets")
-  backgroundSelectionMode CampaignBackgroundSelectionMode @default(FIXED)
-  fixedBackgroundId       String?
+  elements CampaignElement[]
 
   investigationBoard InvestigationBoard?
   investigationCards InvestigationCard[]
@@ -322,14 +315,8 @@ enum MediaAssetPurpose {
   AVATAR
   CHARACTER_AVATAR
   CAMPAIGN_COVER
-  CAMPAIGN_BACKGROUND
   ELEMENT_COVER
   LOCATION_MAP
-}
-
-enum CampaignBackgroundSelectionMode {
-  FIXED
-  RANDOM
 }
 
 enum InvestigationCardKind {

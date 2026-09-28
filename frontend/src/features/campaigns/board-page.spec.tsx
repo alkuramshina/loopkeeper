@@ -58,11 +58,6 @@ describe('BoardPage', () => {
           campaignId: 'c',
           title: 'Campaign',
           currentUserRole: role,
-          backgroundConfig: {
-            selectionMode: 'FIXED',
-            fixedBackgroundId: null,
-            backgrounds: [],
-          },
         });
       if (path === '/campaigns/c/investigation-board')
         return Promise.resolve({
@@ -84,8 +79,9 @@ describe('BoardPage', () => {
     expect(
       screen.queryByRole('button', { name: 'Новая карточка' }),
     ).not.toBeInTheDocument();
-    expect(document.querySelector('.board-canvas-readonly')).not.toBeNull();
-    expect(document.querySelector('.campaign-background-layer')).not.toBeNull();
+    await waitFor(() =>
+      expect(document.querySelector('.board-canvas-readonly')).not.toBeNull(),
+    );
   });
 
   it('shows the element cover on its reference card through protected media', async () => {
