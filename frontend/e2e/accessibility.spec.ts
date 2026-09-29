@@ -398,7 +398,10 @@ test('the main forms work with the keyboard alone and announce errors', async ({
   // Board card: the inspector takes focus, Enter in the title saves, focus
   // returns to the button that opened it.
   await page.goto(`/campaigns/${campaignId}/board`);
-  await page.getByRole('button', { name: 'Новая карточка' }).focus();
+  await page
+    .locator('.board-tools')
+    .getByRole('button', { name: 'Новая карточка' })
+    .focus();
   await page.keyboard.press('Enter');
   await expect(page.getByLabel('Название карточки')).toBeFocused();
   await page.keyboard.type('Клавиатурная улика');
@@ -407,7 +410,9 @@ test('the main forms work with the keyboard alone and announce errors', async ({
     page.locator('.react-flow__node', { hasText: 'Клавиатурная улика' }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Новая карточка' }),
+    page
+      .locator('.board-tools')
+      .getByRole('button', { name: 'Новая карточка' }),
   ).toBeFocused();
 
   // Account: the profile saves with Enter, a password mismatch is announced.

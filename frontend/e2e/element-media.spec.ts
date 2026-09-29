@@ -18,7 +18,7 @@ async function upload(
       response.request().method() === 'POST' &&
       /\/elements\/[^/]+\/(cover|map)$/.test(response.url()),
   );
-  await page.getByLabel(label).setInputFiles({
+  await page.getByLabel(label, { exact: true }).setInputFiles({
     name: `${width}x${height}.png`,
     mimeType: 'image/png',
     buffer: await png(width, height),

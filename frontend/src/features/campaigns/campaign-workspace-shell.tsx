@@ -34,7 +34,11 @@ import './new-since-visit.css';
 
 type CampaignWorkspaceShellProps = {
   campaign?: Campaign;
-  /** The board takes the full width; other pages keep the default. */
+  /**
+   * The board and the content screens (case, materials, notes, characters)
+   * take the full width and cap reading text themselves; management screens
+   * keep the default, settings are narrow.
+   */
   width?: ContentWidth;
   children: ReactNode;
 };

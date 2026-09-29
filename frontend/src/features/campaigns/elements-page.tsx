@@ -302,7 +302,7 @@ export function ElementsPage() {
   const nothingFound = !loading && present.length > 0 && groups.length === 0;
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data}>
+    <CampaignWorkspaceShell campaign={campaign.data} width="full">
       <PageHeader
         title={t('elements.title')}
         actions={

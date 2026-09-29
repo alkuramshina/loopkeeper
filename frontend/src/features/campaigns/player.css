@@ -225,16 +225,6 @@
   font-size: var(--text-base);
   font-weight: 600;
 }
-.case-side-note {
-  display: flex;
-  gap: var(--space-2);
-  margin: 0;
-  color: var(--color-text-muted);
-}
-.case-side-note > svg {
-  flex: none;
-  margin-top: 0.2em;
-}
 .case-character-card {
   display: flex;
   align-items: center;

@@ -807,7 +807,7 @@ export function CharactersPage() {
     .join(' ');
 
   return (
-    <CampaignWorkspaceShell campaign={data}>
+    <CampaignWorkspaceShell campaign={data} width="full">
       <PageHeader title={t('characters.title')} />
       {error && (
         <p className="form-error" role="alert">

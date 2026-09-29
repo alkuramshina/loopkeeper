@@ -14,7 +14,6 @@ import { Button } from '../../components/ui/button';
 import { ImageIcon, Plus } from 'lucide-react';
 import './new-since-visit.css';
 
-
 function apiErrorMessage(cause: unknown, t: TFunction) {
   return cause instanceof ApiError
     ? t(`errors.${cause.code}`, { defaultValue: t('errors.unexpected') })
@@ -65,9 +64,7 @@ export function CampaignListPage() {
   };
 
   return (
-    <AppShell
-      sidebarLabel={t('campaigns.navigation')}
-    >
+    <AppShell sidebarLabel={t('campaigns.navigation')}>
       <PageHeader
         actions={
           campaigns.data?.length ? (

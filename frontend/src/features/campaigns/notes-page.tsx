@@ -461,7 +461,7 @@ export function NotesPage() {
   );
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data}>
+    <CampaignWorkspaceShell campaign={campaign.data} width="full">
       <PageHeader
         title={t('notes.title')}
         titleId="notes-title"

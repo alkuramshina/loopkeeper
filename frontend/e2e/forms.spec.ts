@@ -158,7 +158,10 @@ test('a new card stays on the board when its position cannot be saved', async ({
   await page.route('**/api/investigation-board/nodes/*', (route) =>
     route.abort('connectionrefused'),
   );
-  await page.getByRole('button', { name: 'Новая карточка' }).click();
+  await page
+    .locator('.board-tools')
+    .getByRole('button', { name: 'Новая карточка' })
+    .click();
   await page.getByLabel('Название карточки').fill('Без позиции');
   await page.getByRole('button', { name: 'Сохранить' }).click();
   const card = page.locator('.react-flow__node', { hasText: 'Без позиции' });
@@ -181,7 +184,10 @@ test('the tag composer refuses empty, repeated, overlong and extra tags; colour 
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/board`);
 
-  await page.getByRole('button', { name: 'Новая карточка' }).click();
+  await page
+    .locator('.board-tools')
+    .getByRole('button', { name: 'Новая карточка' })
+    .click();
   await page.getByLabel('Название карточки').fill('Много тегов');
   const input = page.getByRole('textbox', { name: 'Новый тег' });
   const chips = page.locator('.tag-composer-list .tag-chip');

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, PencilLine, UserRound } from 'lucide-react';
+import { LayoutDashboard, PencilLine } from 'lucide-react';
 import {
   ApiError,
   Board,
@@ -128,55 +128,39 @@ function MyCharacter({ campaign }: { campaign: Campaign }) {
       character?.data[field.key] === true,
   );
 
+  // No character yet: the block stays out of the case entirely.
+  if (!character) return null;
   return (
     <section aria-labelledby="case-character" className="case-character">
       <h2 className="case-side-title" id="case-character">
         {t('case.character.title')}
       </h2>
-      {characters.isLoading ? (
-        <Skeleton height="4.5rem" />
-      ) : character ? (
-        <>
-          <Link className="case-character-card" to={`${base}/characters`}>
-            <Avatar
-              alt=""
-              imageUrl={character.avatarUrl}
-              seed={character.name}
-            />
-            <span>
-              <strong>{character.name}</strong>
-              {character.description && (
-                <span className="case-character-description">
-                  {character.description}
-                </span>
-              )}
+      <Link className="case-character-card" to={`${base}/characters`}>
+        <Avatar alt="" imageUrl={character.avatarUrl} seed={character.name} />
+        <span>
+          <strong>{character.name}</strong>
+          {character.description && (
+            <span className="case-character-description">
+              {character.description}
             </span>
-          </Link>
-          {conditions.length > 0 && (
-            <ul
-              aria-label={t('case.character.conditions')}
-              className="case-conditions"
-            >
-              {conditions.map((field) => (
-                <li key={field.key}>
-                  <Chip>
-                    {t(`case.character.condition.${field.key}`, {
-                      defaultValue: field.label,
-                    })}
-                  </Chip>
-                </li>
-              ))}
-            </ul>
           )}
-        </>
-      ) : (
-        <p className="case-side-note">
-          <UserRound {...iconProps} />
-          <span>
-            {t('case.character.none')}{' '}
-            <Link to={`${base}/characters`}>{t('case.character.create')}</Link>
-          </span>
-        </p>
+        </span>
+      </Link>
+      {conditions.length > 0 && (
+        <ul
+          aria-label={t('case.character.conditions')}
+          className="case-conditions"
+        >
+          {conditions.map((field) => (
+            <li key={field.key}>
+              <Chip>
+                {t(`case.character.condition.${field.key}`, {
+                  defaultValue: field.label,
+                })}
+              </Chip>
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );
@@ -543,7 +527,7 @@ export function CasePage() {
   const player = campaign.data?.currentUserRole === 'PLAYER';
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data}>
+    <CampaignWorkspaceShell campaign={campaign.data} width="full">
       {campaign.data &&
         (elementId ? (
           <CaseReader
