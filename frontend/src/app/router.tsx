@@ -55,6 +55,14 @@ const CampaignSettingsPage = lazy(async () => ({
   default: (await import('../features/campaigns/campaign-settings-page'))
     .CampaignSettingsPage,
 }));
+const CampaignCoverPage = lazy(async () => ({
+  default: (await import('../features/campaigns/campaign-settings-page'))
+    .CampaignCoverPage,
+}));
+const CampaignDeletePage = lazy(async () => ({
+  default: (await import('../features/campaigns/campaign-settings-page'))
+    .CampaignDeletePage,
+}));
 const AccountSettingsPage = lazy(async () => ({
   default: (await import('../features/account/account-settings-page'))
     .AccountSettingsPage,
@@ -148,6 +156,14 @@ export function AppRouter() {
           <Route
             path="/campaigns/:campaignId/settings"
             element={<CampaignSettingsPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/settings/cover"
+            element={<CampaignCoverPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/settings/delete"
+            element={<CampaignDeletePage />}
           />
           <Route
             path="/campaigns/:campaignId/characters"

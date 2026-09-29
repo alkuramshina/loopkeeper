@@ -103,10 +103,11 @@ test('P5b: the campaign cover reaches every member, including viewers', async ({
 }) => {
   const { campaignId, owner, viewer } = await createCampaignWithRoles(request);
   await signInAs(page, owner);
-  await page.goto(`/campaigns/${campaignId}/settings`);
+  await page.goto(`/campaigns/${campaignId}/settings/cover`);
 
   const square = uploaded(page, /\/campaigns\/[^/]+\/cover$/);
   await page
+    .getByRole('main')
     .getByLabel('Обложка кампании')
     .setInputFiles(await pngFile(800, 800));
   expect((await square).status()).toBe(400);
@@ -116,6 +117,7 @@ test('P5b: the campaign cover reaches every member, including viewers', async ({
 
   const done = uploaded(page, /\/campaigns\/[^/]+\/cover$/);
   await page
+    .getByRole('main')
     .getByLabel('Обложка кампании')
     .setInputFiles(await pngFile(1200, 700));
   expect((await done).ok()).toBeTruthy();

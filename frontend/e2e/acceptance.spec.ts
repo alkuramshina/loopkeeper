@@ -75,7 +75,8 @@ test('the workspace shell follows every layout range', async ({
   await expect(side).toBeHidden();
   await expect(menu).toBeFocused();
   await menu.click();
-  await side.getByRole('link', { name: 'Настройки кампании' }).click();
+  await side.getByRole('button', { name: 'Настройки' }).click();
+  await side.getByRole('link', { name: 'Сведения о кампании' }).click();
   await expect(page).toHaveURL(/\/settings$/);
   await expect(side).toBeHidden();
   // A tap outside the menu closes it.

@@ -15,6 +15,9 @@ import {
   Menu,
   Search,
   ChevronDown,
+  FileText,
+  Image as ImageIcon,
+  Trash2,
 } from 'lucide-react';
 import { Campaign, GameSystem } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
@@ -36,6 +39,15 @@ type CampaignWorkspaceShellProps = {
   children: ReactNode;
 };
 
+/** A submenu starts open on its own pages and opens on arrival. */
+function useSubmenu(active: boolean) {
+  const [open, setOpen] = useState(active);
+  useEffect(() => {
+    if (active) setOpen(true);
+  }, [active]);
+  return [open, setOpen] as const;
+}
+
 export function CampaignWorkspaceShell({
   campaign,
   width,
@@ -47,14 +59,12 @@ export function CampaignWorkspaceShell({
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
-  // The members submenu starts open on its own pages and opens on arrival.
-  const inPeople = /\/campaigns\/[^/]+\/(members|invitations)(\/|$)/.test(
-    pathname,
+  const [peopleOpen, setPeopleOpen] = useSubmenu(
+    /\/campaigns\/[^/]+\/(members|invitations)(\/|$)/.test(pathname),
   );
-  const [peopleOpen, setPeopleOpen] = useState(inPeople);
-  useEffect(() => {
-    if (inPeople) setPeopleOpen(true);
-  }, [inPeople]);
+  const [settingsOpen, setSettingsOpen] = useSubmenu(
+    /\/campaigns\/[^/]+\/settings(\/|$)/.test(pathname),
+  );
   const menuButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -172,13 +182,26 @@ export function CampaignWorkspaceShell({
         },
       ]
     : [];
-  const management = isOwner
+  // Campaign settings, one screen per part, in a submenu of their own.
+  const settings = isOwner
     ? [
         {
           to: `${basePath}/settings`,
-          label: t('workspace.campaignSettings'),
-          displayLabel: t('account.settings'),
-          icon: Settings2,
+          label: t('campaignSettings.details'),
+          displayLabel: t('workspace.settingsDetails'),
+          icon: FileText,
+        },
+        {
+          to: `${basePath}/settings/cover`,
+          label: t('campaignSettings.cover'),
+          displayLabel: t('workspace.settingsCover'),
+          icon: ImageIcon,
+        },
+        {
+          to: `${basePath}/settings/delete`,
+          label: t('campaignSettings.dangerTitle'),
+          displayLabel: t('workspace.settingsDelete'),
+          icon: Trash2,
         },
       ]
     : [];
@@ -213,6 +236,53 @@ export function CampaignWorkspaceShell({
         )}
       </NavLink>
     ));
+  // A menu item that opens its pages nested under it.
+  const navBranch = ({
+    id,
+    label,
+    icon: Icon,
+    items,
+    open,
+    onToggle,
+  }: {
+    id: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    items: NavItem[];
+    open: boolean;
+    onToggle: () => void;
+  }) => (
+    <div
+      className="campaign-nav-branch"
+      role="group"
+      aria-labelledby={`campaign-nav-${id}`}
+    >
+      <button
+        aria-controls={`campaign-nav-${id}-list`}
+        aria-expanded={open}
+        className="campaign-nav-parent"
+        id={`campaign-nav-${id}`}
+        onClick={onToggle}
+        type="button"
+      >
+        <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
+        <span>{label}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className="campaign-nav-chevron"
+          size={16}
+          strokeWidth={1.8}
+        />
+      </button>
+      <div
+        className="campaign-nav-children"
+        hidden={!open}
+        id={`campaign-nav-${id}-list`}
+      >
+        {navLinks(items)}
+      </div>
+    </div>
+  );
 
   return (
     <div className="campaign-workspace-shell">
@@ -264,42 +334,27 @@ export function CampaignWorkspaceShell({
         >
           <div className="campaign-submenu">
             {navLinks(primary)}
-            {management.length > 0 && (
+            {isOwner && (
               <>
                 <span className="campaign-nav-group">
                   {t('workspace.campaignGroup')}
                 </span>
-                <div
-                  className="campaign-nav-branch"
-                  role="group"
-                  aria-labelledby="campaign-nav-members"
-                >
-                  <button
-                    aria-controls="campaign-nav-members-list"
-                    aria-expanded={peopleOpen}
-                    className="campaign-nav-parent"
-                    id="campaign-nav-members"
-                    onClick={() => setPeopleOpen((open) => !open)}
-                    type="button"
-                  >
-                    <Users aria-hidden="true" size={17} strokeWidth={1.8} />
-                    <span>{t('workspace.members')}</span>
-                    <ChevronDown
-                      aria-hidden="true"
-                      className="campaign-nav-chevron"
-                      size={16}
-                      strokeWidth={1.8}
-                    />
-                  </button>
-                  <div
-                    className="campaign-nav-children"
-                    hidden={!peopleOpen}
-                    id="campaign-nav-members-list"
-                  >
-                    {navLinks(people)}
-                  </div>
-                </div>
-                {navLinks(management)}
+                {navBranch({
+                  id: 'members',
+                  label: t('workspace.members'),
+                  icon: Users,
+                  items: people,
+                  open: peopleOpen,
+                  onToggle: () => setPeopleOpen((open) => !open),
+                })}
+                {navBranch({
+                  id: 'settings',
+                  label: t('account.settings'),
+                  icon: Settings2,
+                  items: settings,
+                  open: settingsOpen,
+                  onToggle: () => setSettingsOpen((open) => !open),
+                })}
               </>
             )}
           </div>

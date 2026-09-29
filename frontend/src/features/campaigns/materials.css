@@ -360,11 +360,6 @@
 }
 
 /* Reveal and hide dialogs */
-.access-dialog-body {
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-5) var(--space-6);
-}
 .reveal-dialog-body {
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   align-items: start;
@@ -458,33 +453,9 @@
   border-radius: 50%;
   background: var(--color-accent);
 }
-.access-dialog-consequence {
-  margin: 0;
-  font-size: var(--text-md);
-  font-weight: 500;
-  line-height: var(--leading-normal);
-}
-.access-dialog-error {
-  margin: 0 var(--space-6) var(--space-4);
-}
-.access-dialog-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-6);
-  border-top: 1px solid var(--color-line);
-}
-.modal-dialog > form .access-dialog-actions {
-  margin: 0 calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
-}
 @media (max-width: 599px) {
   .reveal-dialog-body {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .access-dialog-body,
-  .access-dialog-actions {
-    padding-inline: var(--space-4);
   }
   .material-toolbar,
   .material-scroll {

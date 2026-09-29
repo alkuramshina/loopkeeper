@@ -54,7 +54,7 @@ for (const width of [320, 768]) {
     await page.getByRole('button', { name: 'Меню' }).click();
     await expect(navigation).toBeVisible();
     await expect(
-      navigation.getByRole('link', { name: 'Настройки кампании' }),
+      navigation.getByRole('link', { name: 'Сведения о кампании' }),
     ).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
@@ -74,11 +74,11 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
 
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}`);
-  await page
-    .locator('.campaign-workspace-shell-navigation')
-    .getByRole('link', { name: 'Настройки кампании' })
-    .click();
-  const details = page.locator('form').filter({ hasText: 'Основные сведения' });
+  const navigation = page.locator('.campaign-workspace-shell-navigation');
+  await navigation.getByRole('button', { name: 'Настройки' }).click();
+  await navigation.getByRole('link', { name: 'Сведения о кампании' }).click();
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/settings`);
+  const details = page.getByRole('main').locator('form');
   await details.getByLabel('Название').fill('Финальная версия');
   await details.getByLabel('Описание').fill('Обновлённое описание.');
   await details.getByRole('button', { name: 'Сохранить' }).click();
@@ -98,12 +98,14 @@ test('M10: the owner edits and deletes a campaign; members lose it', async ({
   await playerPage.goto(`/campaigns/${campaignId}/settings`);
   await expect(playerPage.getByRole('alert')).toHaveText('Ресурс недоступен.');
 
+  await navigation.getByRole('link', { name: 'Удаление кампании' }).click();
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/settings/delete`);
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Отмена' })
     .click();
-  await expect(page).toHaveURL(`/campaigns/${campaignId}/settings`);
+  await expect(page).toHaveURL(`/campaigns/${campaignId}/settings/delete`);
 
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
   await expect(page.getByRole('dialog')).toContainText('Финальная версия');

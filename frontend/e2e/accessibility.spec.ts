@@ -154,7 +154,13 @@ test('main screens have no automatically detectable accessibility violations in 
       `/campaigns/${campaignId}/invitations`,
       'Создать приглашение',
     ],
-    ['campaign settings', `/campaigns/${campaignId}/settings`, 'Настройки'],
+    ['campaign details', `/campaigns/${campaignId}/settings`, 'Название'],
+    ['campaign cover', `/campaigns/${campaignId}/settings/cover`, 'Обложка'],
+    [
+      'campaign deletion',
+      `/campaigns/${campaignId}/settings/delete`,
+      'Удалить кампанию',
+    ],
     ['account', '/settings/account', 'Профиль'],
     ['password', '/settings/password', 'Текущий пароль'],
   ];
@@ -308,6 +314,8 @@ test('every screen and dialog has a visible focus in document order', async ({
     `/campaigns/${campaignId}/members`,
     `/campaigns/${campaignId}/invitations`,
     `/campaigns/${campaignId}/settings`,
+    `/campaigns/${campaignId}/settings/cover`,
+    `/campaigns/${campaignId}/settings/delete`,
     '/settings/account',
   ]) {
     await page.goto(path);

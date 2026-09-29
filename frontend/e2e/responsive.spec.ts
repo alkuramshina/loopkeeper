@@ -125,6 +125,8 @@ for (const { width, height, dialogs } of viewports) {
         `/campaigns/${campaignId}/members`,
         `/campaigns/${campaignId}/invitations`,
         `/campaigns/${campaignId}/settings`,
+        `/campaigns/${campaignId}/settings/cover`,
+        `/campaigns/${campaignId}/settings/delete`,
         `/campaigns/${campaignId}/board`,
         '/settings/account',
       ]) {

@@ -56,14 +56,9 @@
 .created-invitation code {
   display: block;
 }
-.settings-grid {
-  align-items: start;
-}
-.settings-grid .campaign-settings-card {
-  display: flex;
+/* A settings screen is one card, only as tall as its content. */
+.campaign-settings-card {
   min-height: 0;
-  flex-direction: column;
-  gap: 0;
 }
 .campaign-settings-card .section-heading {
   margin: 0;
@@ -76,12 +71,6 @@
 }
 .campaign-settings-card .account-card-footer {
   margin-top: auto;
-}
-.settings-grid .panel {
-  min-width: 0;
-}
-.settings-grid .panel h2 {
-  font-family: var(--font-heading);
 }
 @media (max-width: 599px) {
   .member-row {

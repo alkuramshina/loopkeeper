@@ -228,7 +228,7 @@ test('P5d: element covers keep their proportions; replacing and removing them wo
   const detail = page.getByRole('article');
   await detail.getByRole('button', { name: 'Изменить' }).click();
   const cover = detail.locator('img.element-cover');
-  const input = page.getByLabel('Обложка');
+  const input = page.getByRole('main').getByLabel('Обложка');
 
   await input.setInputFiles(await pngFile(600, 900));
   expect(await naturalSize(cover)).toEqual({ width: 600, height: 900 });
@@ -361,7 +361,7 @@ test('P5d: bad map and cover files are refused and nothing is stored', async ({
   for (const [name, label, file, message] of cases) {
     const upload = page.locator('.media-upload', { hasText: label });
     const done = uploaded(page, /\/elements\/[^/]+\/(map|cover)$/);
-    await page.getByLabel(label).setInputFiles(file);
+    await page.getByRole('main').getByLabel(label).setInputFiles(file);
     expect((await done).status(), name).toBeGreaterThanOrEqual(400);
     await expect(upload.getByRole('alert'), name).toHaveText(message);
   }
@@ -582,7 +582,7 @@ test('P5d: deleting a campaign with members, media and a board removes it for ev
   const { coverUrl, imageUrl } = await element(page, owner, location);
 
   await signInAs(page, owner);
-  await page.goto(`/campaigns/${campaignId}/settings`);
+  await page.goto(`/campaigns/${campaignId}/settings/delete`);
   await page.getByRole('button', { name: 'Удалить кампанию' }).click();
   await page
     .getByRole('dialog')

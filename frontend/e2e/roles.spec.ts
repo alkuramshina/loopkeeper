@@ -97,7 +97,6 @@ test('the owner sees members and campaign settings in the navigation', async ({
     'Доска',
     'Материалы',
     'Персонажи',
-    'Настройки',
   ]);
   // Members and invitations are two screens in a «Участники» submenu that
   // opens on a click.
@@ -113,6 +112,17 @@ test('the owner sees members and campaign settings in the navigation', async ({
       .getByRole('group', { name: 'Участники' })
       .getByRole('link'),
   ).toHaveText(['Состав', 'Приглашения']);
+  // Campaign settings are three screens in a «Настройки» submenu.
+  await page
+    .locator(sidebar)
+    .getByRole('button', { name: 'Настройки' })
+    .click();
+  await expect(
+    page
+      .locator(sidebar)
+      .getByRole('group', { name: 'Настройки' })
+      .getByRole('link'),
+  ).toHaveText(['Сведения', 'Обложка', 'Удаление']);
 });
 
 test('a viewer sees the board with its links but cannot change anything', async ({

@@ -3,9 +3,7 @@ import { Link, NavLink } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
 import { LogOut, Menu } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth/auth-context';
-import type { Campaign } from '../api/client';
 import { Avatar } from './avatar';
 import { Logo, LogoMark } from './brand/logo';
 import { OfflineNotice } from './offline-notice';
@@ -88,7 +86,6 @@ export function AppShell({
           aria-label={sidebarLabel}
           className="campaign-workspace-shell-navigation"
         >
-          <SidebarCampaignLinks />
           {sidebar}
           <SidebarProfileLink />
         </nav>
@@ -122,36 +119,6 @@ export function SidebarLogo() {
   );
 }
 
-export function SidebarCampaignLinks() {
-  const { t } = useTranslation();
-  const { api } = useAuth();
-  const campaigns = useQuery({
-    queryKey: ['campaigns'],
-    queryFn: () => api.request<Campaign[]>('/campaigns'),
-  });
-  const recent = [...(campaigns.data ?? [])]
-    .filter((campaign) => campaign.lastVisitAt)
-    .sort((a, b) => b.lastVisitAt!.localeCompare(a.lastVisitAt!))
-    .slice(0, 5);
-  return (
-    <>
-      {recent.length > 0 && (
-        <>
-          <SidebarGroup>{t('campaigns.recent')}</SidebarGroup>
-          {recent.map((campaign) => (
-            <SidebarLink
-              key={campaign.campaignId}
-              label={campaign.title}
-              mark={campaign.title.trim().charAt(0).toUpperCase()}
-              to={`/campaigns/${campaign.campaignId}`}
-            />
-          ))}
-        </>
-      )}
-    </>
-  );
-}
-
 export function SidebarProfileLink() {
   const { t } = useTranslation();
   const { profile, signOut } = useAuth();
@@ -159,13 +126,16 @@ export function SidebarProfileLink() {
   const roleNames = ['OWNER', 'PLAYER', 'VIEWER'].map((role) =>
     t(`workspace.roles.${role}`),
   );
-  const name = accountName && roleNames.includes(accountName)
-    ? t('account.profile')
-    : accountName || profile?.email || t('account.profile');
+  const name =
+    accountName && roleNames.includes(accountName)
+      ? t('account.profile')
+      : accountName || profile?.email || t('account.profile');
   return (
     <div className="sidebar-bottom">
       <NavLink
-        className={({ isActive }) => isActive ? 'sidebar-profile active' : 'sidebar-profile'}
+        className={({ isActive }) =>
+          isActive ? 'sidebar-profile active' : 'sidebar-profile'
+        }
         to="/settings/account"
       >
         <Avatar alt="" imageUrl={profile?.avatarUrl} seed={name} size="small" />
@@ -189,14 +159,11 @@ export function SidebarLink({
   to,
   label,
   icon: Icon,
-  mark,
   end,
 }: {
   to: string;
   label: string;
-  icon?: LucideIcon;
-  /** Shown instead of an icon, e.g. a campaign's initial. */
-  mark?: string;
+  icon: LucideIcon;
   end?: boolean;
 }) {
   return (
@@ -205,13 +172,7 @@ export function SidebarLink({
       end={end}
       to={to}
     >
-      {Icon ? (
-        <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
-      ) : (
-        <span aria-hidden="true" className="sidebar-link-mark">
-          {mark}
-        </span>
-      )}
+      <Icon aria-hidden="true" size={17} strokeWidth={1.8} />
       <span className="rail-label">{label}</span>
     </NavLink>
   );

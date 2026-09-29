@@ -108,7 +108,10 @@ describe('CampaignWorkspaceShell', () => {
       screen.queryByRole('link', { name: 'Приглашения' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: 'Настройки кампании' }),
+      screen.queryByRole('group', { name: 'Настройки' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Сведения о кампании' }),
     ).not.toBeInTheDocument();
   });
 
@@ -118,10 +121,31 @@ describe('CampaignWorkspaceShell', () => {
     expect(
       screen.getAllByRole('link', { name: 'Доска расследования' }).length,
     ).toBeGreaterThan(0);
-    expect(
-      screen.getAllByRole('link', { name: 'Настройки кампании' }).length,
-    ).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: 'Материалы' })).toHaveLength(1);
+
+    // Settings are a submenu of three screens, closed away from them.
+    const settings = screen.getByRole('button', { name: 'Настройки' });
+    expect(settings).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(settings);
+    expect(settings).toHaveAttribute('aria-expanded', 'true');
+    const links = within(
+      screen.getByRole('group', { name: 'Настройки' }),
+    ).getAllByRole('link');
+    expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
+      'Сведения о кампании',
+      'Обложка кампании',
+      'Удаление кампании',
+    ]);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/campaigns/campaign-1/settings',
+      '/campaigns/campaign-1/settings/cover',
+      '/campaigns/campaign-1/settings/delete',
+    ]);
+    expect(links.map((link) => link.textContent)).toEqual([
+      'Сведения',
+      'Обложка',
+      'Удаление',
+    ]);
   });
 
   it.each(['Мастер', 'Игрок', 'Наблюдатель'])(
