@@ -66,7 +66,11 @@ test('M5: a viewer reads the board and catalog without editing controls', async 
   for (const section of ['members', 'settings']) {
     await page.goto(`/campaigns/${campaignId}/${section}`);
     await expect(page.getByRole('alert')).toHaveText('Ресурс недоступен.');
-    await expect(page.locator(sidebar)).toHaveCount(0);
+    // The app frame stays, but nothing of the campaign leaks into it.
+    await expect(page.locator(sidebar)).toBeVisible();
+    await expect(
+      page.locator(sidebar).getByRole('link', { name: 'Доска расследования' }),
+    ).toHaveCount(0);
   }
 });
 

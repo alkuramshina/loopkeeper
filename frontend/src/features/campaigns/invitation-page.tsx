@@ -1,16 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
-import { AuthLayout } from '../../auth/auth-layout';
+import { AppShell } from '../../components/app-shell';
+import { ErrorPage } from '../../components/error-screen';
+import { errorMessage, isNetworkError } from '../../components/page-error';
 
+/**
+ * Joining a campaign by link. Only a signed-in person gets here (guests go
+ * through sign-in first), so the page keeps the app frame.
+ */
 export function InvitationPage() {
   const { token } = useParams();
   const { api } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [error, setError] = useState<string>();
+  const [error, setError] = useState<unknown>();
   const acceptedToken = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -25,37 +31,30 @@ export function InvitationPage() {
       .then((membership) =>
         navigate(`/campaigns/${membership.campaignId}`, { replace: true }),
       )
-      .catch((cause) =>
-        setError(
-          cause instanceof ApiError
-            ? t(`errors.${cause.code}`, {
-                defaultValue: t('errors.unexpected'),
-              })
-            : t('errors.unexpected'),
-        ),
-      );
-  }, [api, navigate, t, token]);
+      .catch((cause: unknown) => setError(cause ?? new Error('unknown')));
+  }, [api, navigate, token]);
 
-  // The same frame as sign-in: the invitation flow starts there.
+  if (error)
+    return (
+      <ErrorPage
+        kind={
+          isNetworkError(error)
+            ? 'network'
+            : error instanceof ApiError && error.status === 404
+              ? 'unavailable'
+              : 'unexpected'
+        }
+        message={errorMessage(error, t)}
+        title={t('invitations.failedTitle')}
+      />
+    );
   return (
-    <AuthLayout title={t('invitations.title')}>
-      {error ? (
-        <>
-          <p className="auth-error auth-invitation-error" role="alert">
-            {error}
-          </p>
-          <Link
-            className="ui-button ui-button-primary ui-button-lg auth-action"
-            to="/campaigns"
-          >
-            {t('invitations.toCampaigns')}
-          </Link>
-        </>
-      ) : (
-        <p className="auth-intro" role="status">
+    <AppShell sidebarLabel={t('campaigns.navigation')}>
+      <div className="error-screen">
+        <p className="invitation-accepting" role="status">
           {t('invitations.accepting')}
         </p>
-      )}
-    </AuthLayout>
+      </div>
+    </AppShell>
   );
 }

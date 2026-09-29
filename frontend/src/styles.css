@@ -1082,6 +1082,60 @@ textarea {
 .board-preview p {
   margin: 0.25rem 0;
 }
+/* Failed screens: centred in the content column of the app frame. */
+.error-screen {
+  display: grid;
+  min-height: 60vh;
+  place-items: center;
+}
+.error-screen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+.auth-card .error-screen-actions {
+  justify-content: flex-start;
+}
+.invitation-accepting {
+  color: var(--color-text-secondary);
+}
+/* Last resort outside the router: no frame, still the product's look. */
+.error-standalone {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-4);
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+.error-standalone-logo {
+  height: 2rem;
+  width: auto;
+}
+.error-standalone-card {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  max-width: 28rem;
+  padding: var(--space-8) var(--space-6);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.error-standalone-card h1 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-h2);
+}
+.error-standalone-card p {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-secondary);
+}
 .page-state {
   padding: 3rem;
   text-align: center;

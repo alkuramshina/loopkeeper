@@ -873,7 +873,7 @@ export function CharactersPage() {
         </section>
         <div className="materials-detail-pane">
           {characterId && !loading && !selected ? (
-            <PageError />
+            <PageError inline />
           ) : selected && !selectedTemplate && templates.isLoading ? (
             <p className="materials-select">{t('common.loading')}</p>
           ) : selected ? (

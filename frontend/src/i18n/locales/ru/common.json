@@ -2,7 +2,6 @@
   "appName": "Loopkeeper",
   "appTagline": "Пространство для кампаний",
   "common": {
-    "reload": "Перезагрузите страницу.",
     "loading": "Загрузка…",
     "cancel": "Отмена",
     "close": "Закрыть",
@@ -133,7 +132,8 @@
   "invitations": {
     "title": "Подключение к кампании",
     "accepting": "Проверяем приглашение и подключаем вас к кампании…",
-    "toCampaigns": "К моим кампаниям"
+    "toCampaigns": "К моим кампаниям",
+    "failedTitle": "Не удалось присоединиться к кампании"
   },
   "workspace": {
     "overview": "Обзор",
@@ -574,6 +574,17 @@
       "revoked": "Отозвано",
       "expired": "Истекло"
     }
+  },
+  "errorScreen": {
+    "titles": {
+      "unavailable": "Страница недоступна",
+      "network": "Нет связи",
+      "unexpected": "Что-то пошло не так"
+    },
+    "unavailableHint": "Ссылка могла устареть, или у вас нет к ней доступа.",
+    "toCampaigns": "К моим кампаниям",
+    "toSignIn": "Ко входу",
+    "reload": "Перезагрузить страницу"
   },
   "errors": {
     "validation.failed": "Проверьте заполнение полей.",

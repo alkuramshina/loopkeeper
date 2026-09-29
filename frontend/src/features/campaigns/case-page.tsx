@@ -424,7 +424,11 @@ function CaseReader({
 
   if (detail.isError && !(detail.error instanceof ApiError))
     return (
-      <PageError error={detail.error} onRetry={() => void detail.refetch()} />
+      <PageError
+        error={detail.error}
+        inline
+        onRetry={() => void detail.refetch()}
+      />
     );
   if (detail.isLoading)
     return (
