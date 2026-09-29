@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import '../../i18n';
 import { ApiError } from '../../api/client';
+import { ToastProvider } from '../../components/ui/toast';
 import { BoardPage } from './board-page';
 
 const request = vi.fn();
@@ -25,11 +26,16 @@ function renderBoard() {
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }
     >
-      <MemoryRouter initialEntries={['/campaigns/c/board']}>
-        <Routes>
-          <Route path="/campaigns/:campaignId/board" element={<BoardPage />} />
-        </Routes>
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter initialEntries={['/campaigns/c/board']}>
+          <Routes>
+            <Route
+              path="/campaigns/:campaignId/board"
+              element={<BoardPage />}
+            />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
     </QueryClientProvider>,
   );
 }
@@ -184,5 +190,90 @@ describe('BoardPage', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/Режим просмотра/)).not.toBeInTheDocument();
     expect(document.querySelector('.board-canvas-readonly')).toBeNull();
+  });
+
+  it('outlines a coloured free card without naming its type', async () => {
+    cards = [
+      {
+        cardId: 'card',
+        cardKind: 'FREE',
+        title: 'Broken fence',
+        tags: [],
+        color: 'rose',
+        node: { x: 0, y: 0, width: 240, height: 160 },
+      },
+    ];
+    renderBoard();
+    expect(await screen.findByText('Broken fence')).toBeInTheDocument();
+    expect(
+      document.querySelector('.flow-card.board-color-rose'),
+    ).not.toBeNull();
+    expect(screen.queryByText('Своя мысль')).not.toBeInTheDocument();
+  });
+
+  it('adds a shared material from the new card panel', async () => {
+    role = 'PLAYER';
+    cards = [
+      {
+        cardId: 'placed',
+        cardKind: 'ELEMENT_REFERENCE',
+        title: 'Power plant',
+        tags: [],
+        node: { x: 0, y: 0, width: 240, height: 160 },
+        reference: { kind: 'ELEMENT', elementId: 'on-board', type: 'LOCATION' },
+      },
+    ];
+    const boardResponse = request.getMockImplementation()!;
+    request.mockImplementation((path: string, init?: RequestInit) => {
+      if (path === '/campaigns/c/elements')
+        return Promise.resolve([
+          {
+            elementId: 'on-board',
+            type: 'LOCATION',
+            access: 'SHARED',
+            title: 'Power plant',
+          },
+          {
+            elementId: 'hidden',
+            type: 'NPC',
+            access: 'PRIVATE',
+            title: 'My guess',
+          },
+          {
+            elementId: 'radio',
+            type: 'NOTE',
+            access: 'SHARED',
+            title: 'Radio signal',
+          },
+        ]);
+      if (path === '/campaigns/c/cards' && init?.method === 'POST')
+        return Promise.resolve({ cardId: 'new' });
+      if (path === '/investigation-board/nodes/new') return Promise.resolve({});
+      return boardResponse(path);
+    });
+    renderBoard();
+    fireEvent.click(
+      (await screen.findAllByRole('button', { name: 'Новая карточка' }))[0],
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'Материал кампании' }));
+
+    const option = await screen.findByRole('button', { name: /Radio signal/ });
+    expect(
+      screen.queryByRole('button', { name: /My guess/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Power plant/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(option);
+
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('/campaigns/c/cards', {
+        method: 'POST',
+        body: JSON.stringify({
+          cardKind: 'ELEMENT_REFERENCE',
+          elementId: 'radio',
+        }),
+      }),
+    );
   });
 });

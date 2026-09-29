@@ -60,7 +60,7 @@ test('the workspace shell follows every layout range', async ({
   const board = side.getByRole('link', { name: 'Доска расследования' });
   await expect(board).toBeVisible();
   await board.hover();
-  await expect(board.getByText('Доска расследования')).toBeVisible();
+  await expect(board.getByText('Доска', { exact: true })).toBeVisible();
   await expect(menu).toBeHidden();
 
   // 600–1023: the sidebar slides out over the content.
@@ -283,7 +283,7 @@ test('reduced motion turns animations and the board’s fit into instant changes
   await page.mouse.move(box.x + 300, box.y + 260, { steps: 5 });
   await page.mouse.up();
   const panned = await viewport.getAttribute('style');
-  await page.getByRole('button', { name: 'Вписать всё' }).click();
+  await page.getByRole('button', { name: 'Показать все карточки' }).click();
   const first = await page.evaluate(
     () =>
       new Promise<string | null>((resolve) =>

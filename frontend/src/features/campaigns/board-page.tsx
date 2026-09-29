@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   addEdge,
   Connection,
+  ConnectionMode,
   Controls,
   Edge,
   Handle,
@@ -31,10 +32,12 @@ import './board-redesign.css';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
+  ApiError,
   Board,
   BoardCard,
   BoardLink,
   Campaign,
+  CampaignElement,
   Character,
   CharacterTemplate,
 } from '../../api/client';
@@ -54,7 +57,7 @@ import {
   prefersReducedMotion,
   useMediaQuery,
 } from '../../theme/breakpoints';
-import { ArrowUpRight, Link2, Maximize2, Plus, Search } from 'lucide-react';
+import { ArrowUpRight, Maximize2, Plus, Search } from 'lucide-react';
 
 type NodeDimensions = {
   x: number;
@@ -77,6 +80,31 @@ type EditorTarget =
 
 const apiErrorMessage = errorMessage;
 
+/** Default grid slot for the n-th card when it has no saved layout. */
+function defaultSlot(index: number) {
+  return {
+    x: 80 + (index % 4) * 280,
+    y: 80 + Math.floor(index / 4) * 210,
+  };
+}
+
+function cardTypeTag(card: BoardCard) {
+  return card.reference?.kind === 'CHARACTER'
+    ? 'CHARACTER'
+    : card.reference?.type || 'OTHER';
+}
+
+/** Links are undirected, so A–B and B–A are the same pair. */
+function sameCardPair(
+  a: { source: string; target: string },
+  b: { source: string; target: string },
+) {
+  return (
+    (a.source === b.source && a.target === b.target) ||
+    (a.source === b.target && a.target === b.source)
+  );
+}
+
 function boardNodes(
   cards: BoardCard[],
   links: BoardLink[],
@@ -89,10 +117,9 @@ function boardNodes(
   return cards.map((card, index) => ({
     id: card.cardId,
     type: 'card',
-    position: {
-      x: card.node?.x ?? 80 + (index % 4) * 280,
-      y: card.node?.y ?? 80 + Math.floor(index / 4) * 210,
-    },
+    position: card.node
+      ? { x: card.node.x, y: card.node.y }
+      : defaultSlot(index),
     width: card.node?.width ?? 240,
     height: card.node?.height ?? 160,
     data: {
@@ -155,7 +182,15 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
   const { campaignId } = useParams();
   const { card } = data;
   return (
-    <article className={`flow-card ${selected ? 'selected' : ''}`}>
+    <article
+      className={[
+        'flow-card',
+        selected ? 'selected' : '',
+        card.color ? `board-color-${card.color}` : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <NodeResizer
         isVisible={selected && data.canManage}
         maxHeight={2000}
@@ -164,7 +199,8 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
         minWidth={80}
         onResizeEnd={(_event, dimensions) => data.onResizeEnd(dimensions)}
       />
-      <Handle type="target" position={Position.Top} />
+      {/* Links are undirected: in loose mode either point starts or takes one. */}
+      <Handle id="top" type="source" position={Position.Top} />
       {card.reference?.coverUrl && (
         <ProtectedImage
           alt=""
@@ -173,24 +209,16 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
           imageUrl={card.reference.coverUrl}
         />
       )}
-      <div className="flow-card-top">
-        {data.isNew && <NewMark />}
-        <TypeTag
-          type={
-            card.cardKind === 'FREE'
-              ? 'FREE'
-              : card.reference?.kind === 'CHARACTER'
-                ? 'CHARACTER'
-                : card.reference?.type || 'OTHER'
-          }
-        />
-        {card.color && (
-          <span
-            className={`board-color-mark board-color-${card.color}`}
-            aria-label={t(`board.colors.${card.color}`)}
-          />
-        )}
-      </div>
+      {/* A free card is the default; only materials name their type. */}
+      {(data.isNew || card.cardKind !== 'FREE') && (
+        <div className="flow-card-top">
+          {data.isNew && <NewMark />}
+          {card.cardKind !== 'FREE' && <TypeTag type={cardTypeTag(card)} />}
+        </div>
+      )}
+      {card.color && (
+        <span className="sr-only">{t(`board.colors.${card.color}`)}</span>
+      )}
       <h3>{card.title}</h3>
       {card.content && <p className="flow-card-preview">{card.content}</p>}
       {data.conditions.length > 0 && (
@@ -239,7 +267,7 @@ function InvestigationCard({ data, selected }: NodeProps<Node<BoardNodeData>>) {
           <ArrowUpRight aria-hidden="true" size={16} />
         </Link>
       )}
-      <Handle type="source" position={Position.Bottom} />
+      <Handle id="bottom" type="source" position={Position.Bottom} />
     </article>
   );
 }
@@ -252,33 +280,19 @@ const cardIcons = ['clue', 'person', 'place', 'question', 'warning'];
 function BoardTools({
   canManage,
   onNewCard,
-  linking,
-  onLinkingChange,
 }: {
   canManage: boolean;
   onNewCard: () => void;
-  linking: boolean;
-  onLinkingChange: () => void;
 }) {
   const { t } = useTranslation();
   const { fitView } = useReactFlow();
   return (
     <Panel position="bottom-left" className="board-tools">
       {canManage && (
-        <>
-          <button type="button" onClick={onNewCard}>
-            <Plus aria-hidden="true" size={16} />
-            {t('board.cardAction')}
-          </button>
-          <button
-            type="button"
-            className={linking ? 'active' : ''}
-            onClick={onLinkingChange}
-          >
-            <Link2 aria-hidden="true" size={16} />
-            {t('board.linkAction')}
-          </button>
-        </>
+        <button type="button" onClick={onNewCard}>
+          <Plus aria-hidden="true" size={16} />
+          {t('board.cardAction')}
+        </button>
       )}
       <button
         type="button"
@@ -347,14 +361,83 @@ function TagComposer({ initialTags }: { initialTags: string[] }) {
   );
 }
 
+/** Shared materials that are not on the board yet, to add as reference cards. */
+function MaterialPicker({
+  onPick,
+  pending,
+}: {
+  onPick: (element: CampaignElement) => void;
+  pending: boolean;
+}) {
+  const { campaignId } = useParams();
+  const { api } = useAuth();
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [query, setQuery] = useState('');
+  const elements = useQuery({
+    queryKey: ['elements', campaignId],
+    queryFn: () =>
+      api.request<CampaignElement[]>(`/campaigns/${campaignId}/elements`),
+  });
+  const onBoard = new Set(
+    queryClient
+      .getQueryData<Board>(['board', campaignId])
+      ?.cards.map((card) => card.reference?.elementId)
+      .filter(Boolean),
+  );
+  const term = query.trim().toLocaleLowerCase('ru');
+  const available = (elements.data ?? []).filter(
+    (element) =>
+      element.access === 'SHARED' &&
+      !onBoard.has(element.elementId) &&
+      element.title.toLocaleLowerCase('ru').includes(term),
+  );
+  return (
+    <div className="board-material-picker">
+      <label>
+        {t('board.materialSearch')}
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t('board.materialSearchPlaceholder')}
+        />
+      </label>
+      {elements.isLoading ? (
+        <p className="muted">{t('common.loading')}</p>
+      ) : elements.isError ? (
+        <p className="form-error" role="alert">
+          {apiErrorMessage(elements.error, t)}
+        </p>
+      ) : available.length ? (
+        <ul>
+          {available.map((element) => (
+            <li key={element.elementId}>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => onPick(element)}
+              >
+                <TypeTag type={element.type} />
+                <span>{element.title}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">
+          {t(term ? 'board.materialsNotFound' : 'board.materialsEmpty')}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CardEditor({
   target,
   onClose,
-  onLinkStart,
 }: {
   target: EditorTarget;
   onClose: () => void;
-  onLinkStart: (cardId: string) => void;
 }) {
   const { campaignId } = useParams();
   const { api } = useAuth();
@@ -362,6 +445,9 @@ function CardEditor({
   const queryClient = useQueryClient();
   const toast = useToast();
   const [error, setError] = useState<string>();
+  const [newCardSource, setNewCardSource] = useState<'free' | 'material'>(
+    'free',
+  );
   const isNew = target.type === 'new-card';
   const card = target.type === 'card' ? target.card : undefined;
   const link = target.type === 'link' ? target.link : undefined;
@@ -411,46 +497,83 @@ function CardEditor({
       });
     },
     onSuccess: async (result) => {
-      if (isNew && campaignId) {
-        const current = queryClient.getQueryData<Board>(['board', campaignId]);
-        const index = current?.cards.length ?? 0;
-        const newCard = result as BoardCard;
-        try {
-          await api.request(`/investigation-board/nodes/${newCard.cardId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({
-              x: 80 + (index % 4) * 280,
-              y: 80 + Math.floor(index / 4) * 210,
-              width: 240,
-              height: 160,
-            }),
-          });
-        } catch {
-          // The card itself was created. It remains usable with the board's default position.
-        }
-      }
+      if (isNew) await placeNewCard(result as BoardCard);
       await queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
       onClose();
     },
     onError: (cause) => setError(apiErrorMessage(cause, t)),
   });
-  function scheduleRemoval() {
-    const path = card
-      ? `/cards/${card.cardId}`
-      : `/investigation-links/${link?.linkId}`;
+  const addMaterial = useMutation({
+    mutationFn: (element: CampaignElement) =>
+      api.request<BoardCard>(`/campaigns/${campaignId}/cards`, {
+        method: 'POST',
+        body: JSON.stringify({
+          cardKind: 'ELEMENT_REFERENCE',
+          elementId: element.elementId,
+        }),
+      }),
+    onSuccess: async (newCard) => {
+      await placeNewCard(newCard);
+      await queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
+      onClose();
+    },
+    onError: (cause) => setError(apiErrorMessage(cause, t)),
+  });
+  async function placeNewCard(newCard: BoardCard) {
+    const current = queryClient.getQueryData<Board>(['board', campaignId]);
+    try {
+      await api.request(`/investigation-board/nodes/${newCard.cardId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...defaultSlot(current?.cards.length ?? 0),
+          width: 240,
+          height: 160,
+        }),
+      });
+    } catch {
+      // The card itself was created. It remains usable with the board's default position.
+    }
+  }
+  function scheduleCardRemoval() {
+    if (!card) return;
     const commitRemoval = () => {
       void api
-        .request<void>(path, { method: 'DELETE' })
+        .request<void>(`/cards/${card.cardId}`, { method: 'DELETE' })
         .then(() =>
           queryClient.invalidateQueries({ queryKey: ['board', campaignId] }),
         )
         .catch((cause) => toast.show({ message: apiErrorMessage(cause, t) }));
     };
     toast.show({
-      message: t(card ? 'board.cardRemoved' : 'board.linkRemoved'),
+      message: t('board.cardRemoved'),
       onUndo: () => undefined,
       onExpire: commitRemoval,
     });
+    onClose();
+  }
+  // A link is cheap to draw again, so it goes at once; the toast only reports it.
+  function removeLink() {
+    if (!link) return;
+    queryClient.setQueryData<Board>(
+      ['board', campaignId],
+      (current) =>
+        current && {
+          ...current,
+          links: current.links.filter((item) => item.linkId !== link.linkId),
+        },
+    );
+    void api
+      .request<void>(`/investigation-links/${link.linkId}`, {
+        method: 'DELETE',
+      })
+      .then(() => toast.show({ message: t('board.linkRemoved') }))
+      .catch((cause) => toast.show({ message: apiErrorMessage(cause, t) }))
+      .finally(
+        () =>
+          void queryClient.invalidateQueries({
+            queryKey: ['board', campaignId],
+          }),
+      );
     onClose();
   }
 
@@ -490,15 +613,7 @@ function CardEditor({
       </div>
       {card && (
         <div className="board-inspector-summary">
-          <TypeTag
-            type={
-              card.cardKind === 'FREE'
-                ? 'FREE'
-                : card.reference?.kind === 'CHARACTER'
-                  ? 'CHARACTER'
-                  : card.reference?.type || 'OTHER'
-            }
-          />
+          {card.cardKind !== 'FREE' && <TypeTag type={cardTypeTag(card)} />}
           <h3>{card.title}</h3>
           {card.reference?.kind === 'ELEMENT' && (
             <>
@@ -541,91 +656,117 @@ function CardEditor({
           )}
         </div>
       )}
-      <form onSubmit={(event) => save.mutate(formData(event))}>
-        {link ? (
-          <label>
-            {t('board.linkLabel')}
-            <input
-              name="label"
-              defaultValue={link.label ?? ''}
-              maxLength={200}
-            />
-          </label>
-        ) : (
-          <>
+      {isNew && (
+        <div
+          className="board-card-source"
+          role="radiogroup"
+          aria-label={t('board.newCardSource')}
+        >
+          {(['free', 'material'] as const).map((source) => (
+            <button
+              key={source}
+              type="button"
+              role="radio"
+              aria-checked={newCardSource === source}
+              onClick={() => {
+                setError(undefined);
+                setNewCardSource(source);
+              }}
+            >
+              {t(`board.newCardSources.${source}`)}
+            </button>
+          ))}
+        </div>
+      )}
+      {isNew && newCardSource === 'material' ? (
+        <>
+          <MaterialPicker
+            onPick={(element) => addMaterial.mutate(element)}
+            pending={addMaterial.isPending}
+          />
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+        </>
+      ) : (
+        <form onSubmit={(event) => save.mutate(formData(event))}>
+          {link ? (
             <label>
-              {t('board.cardTitle')}
+              {t('board.linkLabel')}
               <input
-                name="title"
-                defaultValue={card?.title ?? ''}
+                name="label"
+                defaultValue={link.label ?? ''}
                 maxLength={200}
-                required={isNew}
-                disabled={Boolean(card && card.cardKind !== 'FREE')}
               />
             </label>
-            <label>
-              {t('board.content')}
-              <textarea
-                name="content"
-                defaultValue={card?.content ?? ''}
-                maxLength={10000}
-                disabled={Boolean(card && card.cardKind !== 'FREE')}
+          ) : (
+            <>
+              <label>
+                {t('board.cardTitle')}
+                <input
+                  name="title"
+                  defaultValue={card?.title ?? ''}
+                  maxLength={200}
+                  required={isNew}
+                  disabled={Boolean(card && card.cardKind !== 'FREE')}
+                />
+              </label>
+              <label>
+                {t('board.content')}
+                <textarea
+                  name="content"
+                  defaultValue={card?.content ?? ''}
+                  maxLength={10000}
+                  disabled={Boolean(card && card.cardKind !== 'FREE')}
+                />
+              </label>
+              {card && card.cardKind !== 'FREE' && (
+                <p className="muted">{t('board.referenceContent')}</p>
+              )}
+              <TagComposer
+                key={card?.cardId ?? 'new-card'}
+                initialTags={card?.tags ?? []}
               />
-            </label>
-            {card && card.cardKind !== 'FREE' && (
-              <p className="muted">{t('board.referenceContent')}</p>
-            )}
-            <TagComposer
-              key={card?.cardId ?? 'new-card'}
-              initialTags={card?.tags ?? []}
-            />
-            <label>
-              {t('board.color')}
-              <select name="color" defaultValue={card?.color ?? ''}>
-                <option value="">{t('board.notSelected')}</option>
-                {cardColors.map((color) => (
-                  <option key={color} value={color}>
-                    {t(`board.colors.${color}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              {t('board.icon')}
-              <select name="icon" defaultValue={card?.icon ?? ''}>
-                <option value="">{t('board.notSelected')}</option>
-                {cardIcons.map((icon) => (
-                  <option key={icon} value={icon}>
-                    {t(`board.icons.${icon}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </>
-        )}
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <button disabled={save.isPending}>{t('common.save')}</button>
-      </form>
+              <label>
+                {t('board.color')}
+                <select name="color" defaultValue={card?.color ?? ''}>
+                  <option value="">{t('board.notSelected')}</option>
+                  {cardColors.map((color) => (
+                    <option key={color} value={color}>
+                      {t(`board.colors.${color}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {t('board.icon')}
+                <select name="icon" defaultValue={card?.icon ?? ''}>
+                  <option value="">{t('board.notSelected')}</option>
+                  {cardIcons.map((icon) => (
+                    <option key={icon} value={icon}>
+                      {t(`board.icons.${icon}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          <button disabled={save.isPending}>{t('common.save')}</button>
+        </form>
+      )}
       {!isNew && (
         <div className="board-inspector-actions">
-          {card && (
-            <button
-              type="button"
-              className="button-ghost"
-              onClick={() => card && onLinkStart(card.cardId)}
-            >
-              <Link2 aria-hidden="true" size={16} />
-              {t('board.linkAction')}
-            </button>
-          )}
           <button
             className="button-danger"
             type="button"
-            onClick={scheduleRemoval}
+            onClick={card ? scheduleCardRemoval : removeLink}
           >
             {t(card ? 'board.removeCard' : 'board.removeLink')}
           </button>
@@ -659,8 +800,6 @@ export function BoardPage() {
   const [search, setSearch] = useState('');
   const [searchParams] = useSearchParams();
   const [now, setNow] = useState(() => Date.now());
-  const [linking, setLinking] = useState(false);
-  const [linkSourceId, setLinkSourceId] = useState<string>();
   const isPhone = useMediaQuery(mediaQueries.phone);
   // React Flow's own labels and hints for assistive technology.
   const ariaLabelConfig = useMemo(
@@ -882,25 +1021,27 @@ export function BoardPage() {
       void queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
     },
     onError: (cause) => {
-      setError(apiErrorMessage(cause, t));
+      // 409: someone already linked the pair; the refetch simply shows it.
+      if (!(cause instanceof ApiError && cause.status === 409))
+        setError(apiErrorMessage(cause, t));
       void queryClient.invalidateQueries({ queryKey: ['board', campaignId] });
     },
   });
 
+  // One link per pair of cards, whichever end the drag started from.
+  const isValidConnection = useCallback(
+    (connection: Edge | Connection) =>
+      connection.source !== connection.target &&
+      !edges.some((edge) => sameCardPair(edge, connection)),
+    [edges],
+  );
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (
-        !connection.source ||
-        !connection.target ||
-        connection.source === connection.target
-      )
-        return;
+      if (!isValidConnection(connection)) return;
       setEdges((current) => addEdge(connection, current));
       createLink.mutate(connection);
-      setLinking(false);
-      setLinkSourceId(undefined);
     },
-    [createLink, setEdges],
+    [createLink, isValidConnection, setEdges],
   );
   const onNodeDragStop = useCallback<OnNodeDrag<Node<BoardNodeData>>>(
     (_event, node) => {
@@ -944,28 +1085,43 @@ export function BoardPage() {
       .filter(Boolean)
       .join(' '),
   }));
-  const visibleEdges = edges.map((edge) => ({
-    ...edge,
-    className: [
-      selectedCardId
-        ? edge.source === selectedCardId || edge.target === selectedCardId
-          ? 'board-edge-connected'
-          : 'board-edge-dimmed'
-        : '',
-      board.data?.links.some(
-        (link) =>
-          link.linkId === edge.id &&
-          data?.newSinceAt &&
-          link.createdAt &&
-          link.createdAt > data.newSinceAt &&
-          link.createdById !== profile?.userId,
-      )
-        ? 'board-edge-new'
-        : '',
-    ]
-      .filter(Boolean)
-      .join(' '),
-  }));
+  const nodeCenterY = new Map(
+    nodes.map((node) => [
+      node.id,
+      node.position.y + (node.measured?.height ?? node.height ?? 0) / 2,
+    ]),
+  );
+  const visibleEdges = edges.map((edge) => {
+    // Stored links have no direction, so each line leaves the lower edge of
+    // the upper card and enters the upper edge of the lower one.
+    const sourceAbove =
+      (nodeCenterY.get(edge.source) ?? 0) <=
+      (nodeCenterY.get(edge.target) ?? 0);
+    return {
+      ...edge,
+      sourceHandle: sourceAbove ? 'bottom' : 'top',
+      targetHandle: sourceAbove ? 'top' : 'bottom',
+      className: [
+        selectedCardId
+          ? edge.source === selectedCardId || edge.target === selectedCardId
+            ? 'board-edge-connected'
+            : 'board-edge-dimmed'
+          : '',
+        board.data?.links.some(
+          (link) =>
+            link.linkId === edge.id &&
+            data?.newSinceAt &&
+            link.createdAt &&
+            link.createdAt > data.newSinceAt &&
+            link.createdById !== profile?.userId,
+        )
+          ? 'board-edge-new'
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    };
+  });
   // A failed refresh keeps the last snapshot on screen; only a board that
   // never loaded is replaced by the page state.
   if (campaign.isError || (board.isError && !board.data))
@@ -1000,6 +1156,7 @@ export function BoardPage() {
                 : t('common.loading')}{' '}
               ·{' '}
               <button
+                type="button"
                 className="board-refresh-link"
                 onClick={() => void board.refetch()}
               >
@@ -1044,7 +1201,6 @@ export function BoardPage() {
             {error ?? refreshError}
           </p>
         )}
-        {linking && <p className="board-link-hint">{t('board.linkHint')}</p>}
         {board.isLoading || campaign.isLoading ? (
           <section className="board-loading" aria-label={t('common.loading')}>
             <span />
@@ -1079,6 +1235,8 @@ export function BoardPage() {
                 fitView
                 nodes={visibleNodes}
                 nodeTypes={nodeTypes}
+                connectionMode={ConnectionMode.Loose}
+                isValidConnection={isValidConnection}
                 nodesConnectable={canManage && !isPhone}
                 nodesDraggable={canManage && !isPhone}
                 elementsSelectable
@@ -1098,20 +1256,8 @@ export function BoardPage() {
                 }
                 onNodeClick={
                   canManage && !isPhone
-                    ? (_event, node) => {
-                        if (linking) {
-                          if (!linkSourceId) setLinkSourceId(node.id);
-                          else if (linkSourceId !== node.id)
-                            onConnect({
-                              source: linkSourceId,
-                              target: node.id,
-                              sourceHandle: null,
-                              targetHandle: null,
-                            });
-                          return;
-                        }
-                        setEditor({ type: 'card', card: node.data.card });
-                      }
+                    ? (_event, node) =>
+                        setEditor({ type: 'card', card: node.data.card })
                     : undefined
                 }
                 onNodeDragStop={
@@ -1125,11 +1271,6 @@ export function BoardPage() {
                 <BoardTools
                   canManage={Boolean(canManage)}
                   onNewCard={() => setEditor({ type: 'new-card' })}
-                  linking={linking}
-                  onLinkingChange={() => {
-                    setLinkSourceId(undefined);
-                    setLinking((value) => !value);
-                  }}
                 />
               </ReactFlow>
             </div>
@@ -1137,11 +1278,6 @@ export function BoardPage() {
               <CardEditor
                 target={editor}
                 onClose={() => setEditor(undefined)}
-                onLinkStart={(cardId) => {
-                  setLinking(true);
-                  setLinkSourceId(cardId);
-                  setEditor(undefined);
-                }}
               />
             )}
           </section>

@@ -20,7 +20,9 @@
   text-underline-offset: 3px;
   font-size: inherit;
 }
-.board-refresh-link:hover {
+/* Matches the global button:hover:not(:disabled) so the link is never filled. */
+.board-refresh-link:hover:not(:disabled),
+.board-refresh-link:active {
   color: var(--color-accent-hover);
   background: none;
 }
@@ -129,12 +131,13 @@
   justify-content: space-between;
   gap: 0.5rem;
 }
-.board-color-mark {
-  width: 0.75rem;
-  height: 0.75rem;
-  flex: none;
-  border-radius: 2px;
-  background: var(--board-card-mark);
+/* The user colour outlines the card; it never fills it. */
+.flow-card[class*='board-color-'] {
+  border: 2px solid var(--board-card-mark);
+}
+.flow-card.selected[class*='board-color-'] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 .board-color-ochre {
   --board-card-mark: var(--card-mark-ochre);
@@ -290,10 +293,61 @@
 .board-empty p {
   margin: 0;
 }
-.board-link-hint {
-  margin: 0 0 0.7rem;
-  color: var(--color-accent);
+.board-card-source {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem;
+  margin: 0.75rem 0;
+  padding: 0.2rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-muted-bg);
+}
+.board-card-source button {
+  padding: 0.45rem 0.5rem;
+  color: var(--color-text-secondary);
+  background: transparent;
   font-size: var(--text-sm);
+}
+.board-card-source button:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-hover);
+}
+.board-card-source button[aria-checked='true'] {
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+.board-material-picker {
+  display: grid;
+  gap: 0.6rem;
+}
+.board-material-picker ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.board-material-picker li button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid var(--color-line);
+  color: var(--color-text);
+  background: var(--color-surface);
+  text-align: left;
+}
+.board-material-picker li button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background: var(--color-hover);
+}
+.board-material-picker li button span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 @media (max-width: 599px) {
   .board-toolbar {
@@ -327,9 +381,6 @@
   .board-tools button {
     padding: 0.5rem;
     font-size: var(--text-xs);
-  }
-  .board-tools button:nth-child(2) {
-    display: none;
   }
   .board-canvas .react-flow__controls,
   .board-canvas .react-flow__minimap {

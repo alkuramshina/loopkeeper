@@ -71,7 +71,6 @@ test('F13c: phone board is read only and creates a card in a bottom sheet', asyn
   await expect(
     page.getByRole('complementary', { name: 'Редактирование карточки' }),
   ).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Связать' })).toBeHidden();
   await page.getByRole('button', { name: 'Новая карточка' }).click();
   const inspector = page.getByRole('complementary', { name: 'Новая карточка' });
   await expect(inspector).toBeVisible();

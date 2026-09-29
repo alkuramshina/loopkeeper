@@ -26,7 +26,7 @@ test('M5: a viewer reads the board and catalog without editing controls', async 
 
   const navigation = page.locator(sidebar);
   await expect(navigation.getByRole('link')).toHaveText([
-    'Доска расследования',
+    'Доска',
     'Дело',
     'Персонажи',
   ]);

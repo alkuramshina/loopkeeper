@@ -33,6 +33,19 @@ async function dragBy(page: Page, target: Locator, dx: number, dy: number) {
   await page.mouse.up();
 }
 
+async function dragBetween(page: Page, from: Locator, to: Locator) {
+  await from.scrollIntoViewIfNeeded();
+  const start = await from.boundingBox();
+  const end = await to.boundingBox();
+  if (!start || !end) throw new Error('Handles are not visible');
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, {
+    steps: 10,
+  });
+  await page.mouse.up();
+}
+
 test('M6: the owner creates a card with tags that survives refresh and reload', async ({
   page,
   request,
@@ -41,7 +54,8 @@ test('M6: the owner creates a card with tags that survives refresh and reload', 
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/board`);
 
-  await page.getByRole('button', { name: 'Новая карточка' }).click();
+  // The empty board offers the action in its middle as well as in the toolbar.
+  await page.getByRole('button', { name: 'Новая карточка' }).first().click();
   await page.getByLabel('Название карточки').fill('Следы на снегу');
   await page.getByLabel('Текст').fill('Ведут к старой вышке.');
   const tagInput = page.getByRole('textbox', { name: 'Новый тег' });
@@ -121,17 +135,37 @@ test('M6: a player drags, resizes and links cards; the layout persists', async (
   const resizedNode = board.cards.find((card) => card.cardId === radioId)?.node;
   expect(resizedNode?.width).toBeGreaterThan(260);
 
-  // Link the two cards with the board's linking tool.
+  // Link bottom-up: from the top point of the lower card to the bottom point
+  // of the upper one. Links are undirected, so either point starts one.
+  let linkPosts = 0;
+  page.on('request', (outgoing) => {
+    if (
+      outgoing.method() === 'POST' &&
+      outgoing.url().endsWith('/investigation-links')
+    )
+      linkPosts += 1;
+  });
   const linked = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
       response.url().endsWith('/investigation-links') &&
       response.ok(),
   );
-  await page.getByRole('button', { name: 'Связать' }).click();
-  await farm.locator('h3').click();
-  await radio.locator('h3').click();
+  await dragBetween(
+    page,
+    radio.locator('.react-flow__handle-top'),
+    farm.locator('.react-flow__handle-bottom'),
+  );
   await linked;
+
+  // The same pair from the other side is simply not accepted.
+  await dragBetween(
+    page,
+    farm.locator('.react-flow__handle-bottom'),
+    radio.locator('.react-flow__handle-top'),
+  );
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(linkPosts).toBe(1);
 
   await page.getByRole('button', { name: 'Обновить' }).click();
   await expect(page.locator('.react-flow__edge')).toHaveCount(1);

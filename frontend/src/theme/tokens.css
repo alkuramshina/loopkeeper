@@ -91,13 +91,17 @@
   --logo-face: light-dark(transparent, #26252a);
 
   /* Board */
-  --board-bg: var(--color-bg);
-  --board-dot: light-dark(rgb(33 32 36 / 13%), rgb(236 234 230 / 9%));
-  --board-pattern: radial-gradient(var(--board-dot) 1px, transparent 1.5px);
-  --board-pattern-size: 20px;
+  /* Base theme: a quiet cork. --board-bg tints it per variation; the texture
+     is a colourless tile of dark specks, so a theme swaps the tile (or sets
+     none) without touching components. The tile pans and zooms with the
+     board at --board-pattern-size. */
+  --board-bg: light-dark(#e7dac5, #26221d);
+  --board-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .25 0 0 0 0 .16 0 0 0 0 .07 1.1 0 0 0 -.52'/%3E%3C/filter%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .19 0 0 0 0 .08 .5 0 0 0 -.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --board-pattern: var(--board-texture);
+  --board-pattern-size: 240px;
   --board-unrelated-opacity: 0.45;
   /* 3:1 against the board colour, which also forms the halo of a link. */
-  --link-color: light-dark(#807d87, #75727d);
+  --link-color: light-dark(#6f6b75, #807c87);
   --link-halo: drop-shadow(0 0 1px var(--board-bg))
     drop-shadow(0 0 1px var(--board-bg));
   --link-selected-color: var(--color-accent);
