@@ -535,7 +535,11 @@ export function ElementDetail({
 
   if (view.unavailable)
     return (
-      <PageError unavailableKey="elements.unavailable" error={undefined} />
+      <PageError
+        inline
+        unavailableKey="elements.unavailable"
+        error={undefined}
+      />
     );
   return (
     <article

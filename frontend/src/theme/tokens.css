@@ -183,6 +183,9 @@
   --content-narrow: 40rem;
   --content-default: 75rem;
   --content-full: none;
+  --quick-note-width: 20rem;
+  --quick-note-fab-size: 3.5rem;
+  --quick-note-mobile-bottom: 5.25rem;
 
   /* Motion: short and quiet */
   --duration-fast: 120ms;

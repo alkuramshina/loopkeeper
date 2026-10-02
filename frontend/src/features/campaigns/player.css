@@ -1,20 +1,9 @@
-/*
- * The player's case and notes. The case keeps its side column (quick note,
- * my character) from 1280px; below that the quick note goes above the list
- * and the character after it; on a phone the quick note is a button that
- * opens a bottom sheet.
- */
+/* The case and personal notes. Quick note styles live in the campaign widget. */
 .case-layout {
   display: grid;
   gap: var(--space-6);
-  grid-template-areas:
-    'quick'
-    'main'
-    'character';
-  grid-template-columns: minmax(0, 1fr);
-}
-.case-layout-single {
   grid-template-areas: 'main';
+  grid-template-columns: minmax(0, 1fr);
 }
 .case-main {
   display: grid;
@@ -22,26 +11,7 @@
   align-content: start;
   gap: var(--space-6);
   grid-area: main;
-  /* One column that never grows to fit an unwrapped row. */
   grid-template-columns: minmax(0, 1fr);
-}
-.case-quick-note {
-  grid-area: quick;
-}
-.case-character {
-  display: grid;
-  align-content: start;
-  gap: var(--space-3);
-  grid-area: character;
-}
-@media (min-width: 1280px) {
-  .case-layout:not(.case-layout-single) {
-    grid-template-areas:
-      'main quick'
-      'main character';
-    grid-template-columns: minmax(0, 1fr) minmax(18rem, 22rem);
-    grid-template-rows: auto 1fr;
-  }
 }
 
 /* Five short words fit at 390px; narrower, the filter scrolls inside itself. */
@@ -225,152 +195,6 @@
   font-size: var(--text-base);
   font-weight: 600;
 }
-.case-character-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-xl);
-  color: var(--color-text);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-  text-decoration: none;
-}
-.case-character-card > span {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-.case-character-card strong {
-  font-family: var(--font-heading);
-  font-size: var(--text-h3);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.case-character-description {
-  overflow: hidden;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.case-conditions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* Quick note */
-.quick-note {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-xl);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
-}
-.quick-note-label {
-  font-weight: 600;
-}
-.quick-note-input {
-  min-height: 6.5rem;
-  resize: vertical;
-  border-radius: var(--radius-lg);
-  font-size: var(--text-md);
-  line-height: var(--leading-normal);
-  field-sizing: content;
-}
-.quick-note-input:focus-visible {
-  border-color: var(--color-focus);
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-.quick-note-access {
-  display: grid;
-  gap: var(--space-2);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-.quick-note-access .ui-segmented {
-  display: flex;
-}
-.quick-note-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
-.quick-note-status {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-2);
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-.quick-note-status:empty {
-  display: none;
-}
-.quick-note-sheet {
-  padding: var(--space-4) var(--space-6) var(--space-6);
-}
-.quick-note-sheet .quick-note {
-  padding: 0;
-  border: 0;
-  box-shadow: none;
-}
-.quick-note-sheet .quick-note-label {
-  /* The sheet's own title already names the form. */
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-.case-quick-note-fab {
-  display: none;
-}
-
-@media (max-width: 599px) {
-  .case-layout:not(.case-layout-single) {
-    grid-template-areas:
-      'main'
-      'character';
-  }
-  .case-quick-note {
-    display: none;
-  }
-  .case-quick-note-fab {
-    position: fixed;
-    z-index: var(--z-navigation);
-    right: var(--space-4);
-    bottom: calc(5.25rem + env(safe-area-inset-bottom));
-    display: inline-flex;
-    width: 3.5rem;
-    height: 3.5rem;
-    padding: 0;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-lg);
-  }
-  .case-quick-note-fab svg {
-    width: 1.375rem;
-    height: 1.375rem;
-  }
-  .case-main {
-    /* Keep the last row clear of the quick note button. */
-    padding-bottom: var(--space-12);
-  }
-  .quick-note-sheet {
-    padding-inline: var(--space-4);
-  }
-}
-
 /* Reading a material from the case */
 .case-reader {
   /* Clip, not hide: a hidden overflow would stop the action bar sticking. */

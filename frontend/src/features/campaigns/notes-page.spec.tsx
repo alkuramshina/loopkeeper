@@ -257,7 +257,7 @@ describe('NotesPage', () => {
     ).toHaveLength(0);
   });
 
-  it('sends somebody else’s note to the case, a viewer and the master away', async () => {
+  it('sends somebody else’s note to the case, a viewer away while the master keeps their notes', async () => {
     const view = renderPage('/campaigns/c/notes/master-note');
     expect(await screen.findByText('Case reader')).toBeInTheDocument();
     view.unmount();
@@ -267,6 +267,8 @@ describe('NotesPage', () => {
     viewer.unmount();
     role = 'OWNER';
     renderPage();
-    expect(await screen.findByText('Materials')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Мои заметки' }),
+    ).toBeInTheDocument();
   });
 });

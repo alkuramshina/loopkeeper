@@ -13,7 +13,6 @@ import {
   CharacterTemplate,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { PageHeader } from '../../components/page-header';
 import { Avatar } from '../../components/avatar';
 import { MediaUpload } from '../../components/media-upload';
@@ -763,6 +762,7 @@ export function CharactersPage() {
   if (campaign.isError || characters.isError || templates.isError) {
     return (
       <PageError
+        inline
         error={
           campaign.error ?? characters.error ?? templates.error ?? undefined
         }
@@ -807,7 +807,7 @@ export function CharactersPage() {
     .join(' ');
 
   return (
-    <CampaignWorkspaceShell campaign={data} width="full">
+    <>
       <PageHeader title={t('characters.title')} />
       {error && (
         <p className="form-error" role="alert">
@@ -903,6 +903,6 @@ export function CharactersPage() {
           )}
         </div>
       </div>
-    </CampaignWorkspaceShell>
+    </>
   );
 }

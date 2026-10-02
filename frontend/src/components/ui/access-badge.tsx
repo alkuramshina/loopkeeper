@@ -17,16 +17,18 @@ const icons = {
 export function AccessBadge({
   access,
   variant = 'status',
+  labelKey,
 }: {
   access: Access;
   variant?: 'status' | 'visibility';
+  labelKey?: string;
 }) {
   const { t } = useTranslation();
   const Icon = icons[variant][access];
   return (
     <span className={`ui-access ui-access-${access.toLowerCase()}`}>
       <Icon {...iconProps} size={14} />
-      {t(`ui.access.${variant}.${access}`)}
+      {t(labelKey ?? `ui.access.${variant}.${access}`)}
     </span>
   );
 }

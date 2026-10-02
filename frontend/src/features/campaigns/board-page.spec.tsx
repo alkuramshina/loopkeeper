@@ -82,7 +82,9 @@ describe('BoardPage', () => {
   it('opens the board read-only for a viewer', async () => {
     renderBoard();
     expect(await screen.findByText(/Режим просмотра/)).toBeInTheDocument();
-    expect(request).toHaveBeenCalledWith('/campaigns/c/investigation-board');
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith('/campaigns/c/investigation-board'),
+    );
     expect(
       screen.queryByRole('button', { name: 'Новая карточка' }),
     ).not.toBeInTheDocument();

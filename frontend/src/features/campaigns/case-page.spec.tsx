@@ -1,3 +1,4 @@
+import { CampaignWorkspaceRoute } from './campaign-workspace-route';
 import {
   fireEvent,
   render,
@@ -117,19 +118,27 @@ function renderPage(path = '/campaigns/c/case') {
       <ToastProvider>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
-            <Route path="/campaigns/:campaignId/case" element={<CasePage />} />
             <Route
-              path="/campaigns/:campaignId/case/:elementId"
-              element={<CasePage />}
-            />
-            <Route
-              path="/campaigns/:campaignId/elements"
-              element={<p>Materials</p>}
-            />
-            <Route
-              path="/campaigns/:campaignId/notes/:elementId"
-              element={<p>Note editor</p>}
-            />
+              path="/campaigns/:campaignId"
+              element={<CampaignWorkspaceRoute />}
+            >
+              <Route
+                path="/campaigns/:campaignId/case"
+                element={<CasePage />}
+              />
+              <Route
+                path="/campaigns/:campaignId/case/:elementId"
+                element={<CasePage />}
+              />
+              <Route
+                path="/campaigns/:campaignId/elements"
+                element={<p>Materials</p>}
+              />
+              <Route
+                path="/campaigns/:campaignId/notes/:elementId"
+                element={<p>Note editor</p>}
+              />
+            </Route>
           </Routes>
         </MemoryRouter>
       </ToastProvider>
@@ -212,59 +221,6 @@ describe('CasePage', () => {
     expect(screen.queryByText('Трансформаторная будка')).toBeNull();
   });
 
-  it('saves a quick note with its first line as the title and the chosen audience', async () => {
-    renderPage();
-    const form = await screen.findByRole('form', { name: 'Быстрая заметка' });
-    const save = within(form).getByRole('button', {
-      name: 'Сохранить заметку',
-    });
-    expect(save).toBeDisabled();
-    expect(within(form).getByRole('radio', { name: 'Личное' })).toBeChecked();
-    fireEvent.change(within(form).getByLabelText('Быстрая заметка'), {
-      target: { value: 'Кто взял ключ?\nСпросить у Рикарды' },
-    });
-    fireEvent.click(within(form).getByRole('radio', { name: 'Мастеру' }));
-    fireEvent.click(save);
-    await waitFor(() =>
-      expect(request).toHaveBeenCalledWith('/campaigns/c/elements', {
-        method: 'POST',
-        body: JSON.stringify({
-          type: 'NOTE',
-          access: 'MASTER_ONLY',
-          title: 'Кто взял ключ?',
-          content: 'Спросить у Рикарды',
-        }),
-      }),
-    );
-    expect(
-      await within(form).findByRole('link', { name: 'Открыть заметку' }),
-    ).toHaveAttribute('href', '/campaigns/c/notes/quick');
-    expect(within(form).getByLabelText('Быстрая заметка')).toHaveValue('');
-    expect(within(form).getByRole('radio', { name: 'Личное' })).toBeChecked();
-  });
-
-  it('keeps the quick note draft when it moves into the phone sheet', async () => {
-    renderPage();
-    const form = await screen.findByRole('form', { name: 'Быстрая заметка' });
-    fireEvent.change(within(form).getByLabelText('Быстрая заметка'), {
-      target: { value: 'Гул за дверью' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Быстрая заметка' }));
-    const sheet = screen.getByRole('dialog', { name: 'Быстрая заметка' });
-    expect(within(sheet).getByRole('textbox')).toHaveValue('Гул за дверью');
-  });
-
-  it('shows my character with the conditions that are on', async () => {
-    renderPage();
-    const block = await screen.findByRole('region', { name: 'Мой персонаж' });
-    expect(await within(block).findByText('Майя Стрём')).toBeVisible();
-    const conditions = await within(block).findByRole('list', {
-      name: 'Состояния персонажа',
-    });
-    expect(conditions).toHaveTextContent('Напуган(а)');
-    expect(conditions).not.toHaveTextContent('Расстроен(а)');
-  });
-
   it('lets a viewer read without notes or a character', async () => {
     role = 'VIEWER';
     renderPage();
@@ -298,7 +254,7 @@ describe('CasePage', () => {
     );
     fireEvent.click(within(article).getByRole('button', { name: 'Заметка' }));
     expect(
-      screen.getByRole('dialog', { name: 'Быстрая заметка' }),
+      await screen.findByRole('region', { name: 'Быстрая заметка' }),
     ).toBeInTheDocument();
   });
 

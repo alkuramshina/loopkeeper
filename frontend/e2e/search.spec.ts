@@ -46,7 +46,7 @@ test('F13f: owner filters materials; board cards stay out of search', async ({
   await expect(dialog.getByText('Ничего не найдено')).toBeVisible();
   await dialog.getByRole('searchbox').fill('карта');
   await dialog.getByRole('searchbox').press('Enter');
-  await expect(page).toHaveURL(/\/elements\/[^/]+$/);
+  await expect(page).toHaveURL(/\/notes\/[^/]+$/);
   // A Russian layout reports "л" for the K key; the shortcut still works.
   await page.evaluate(() =>
     window.dispatchEvent(
@@ -108,7 +108,7 @@ test('F13f: player can write from search; viewer sees only shared material', asy
   );
   await dialog.getByRole('button', { name: 'Быстрая заметка' }).click();
   await expect(
-    page.getByRole('dialog', { name: 'Быстрая заметка' }),
+    page.getByRole('region', { name: 'Быстрая заметка' }),
   ).toBeVisible();
   await signInAs(page, viewer);
   await page.goto(`/campaigns/${campaignId}/case`);

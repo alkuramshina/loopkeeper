@@ -214,7 +214,7 @@ test('F13e: a player keeps a private note, shows it to the master, edits and del
     page.getByRole('heading', { name: 'Мои заметки' }),
   ).toBeVisible();
   // A new note opens at once, private, with its title ready to type.
-  await page.getByRole('button', { name: 'Заметка' }).first().click();
+  await page.getByRole('button', { name: 'Заметка', exact: true }).click();
   const title = detail(page).getByLabel('Название');
   await expect(title).toBeFocused();
   await title.fill('Подозрение');
@@ -227,12 +227,11 @@ test('F13e: a player keeps a private note, shows it to the master, edits and del
     .fill('Сторож что-то скрывает.');
   await expect(detail(page).getByRole('status')).toHaveText(/^Сохранено · /);
   const noteUrl = page.url();
-  const elementPath = noteUrl.replace('/notes/', '/elements/');
 
   // Private: nobody else sees it, not even the master, not even by URL.
   expect(await listElementTitles(request, owner, campaignId)).toEqual([]);
   const ownerPage = await openAs(browser, owner, noteUrl);
-  await expect(ownerPage).toHaveURL(elementPath);
+  await expect(ownerPage).toHaveURL(noteUrl);
   await expect(
     ownerPage.getByRole('heading', { name: 'Материал недоступен' }),
   ).toBeVisible();

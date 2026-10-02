@@ -100,6 +100,7 @@ test('the owner sees members and campaign settings in the navigation', async ({
   await expect(page.locator(sidebar).getByRole('link')).toHaveText([
     'Доска',
     'Материалы',
+    'Мои заметки',
     'Персонажи',
   ]);
   // Members and invitations are two screens in a «Участники» submenu that

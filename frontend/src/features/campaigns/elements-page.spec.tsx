@@ -30,7 +30,7 @@ const player = { userId: 'player', name: 'Player' };
 const privateElement = {
   elementId: 'private',
   campaignId: 'c',
-  type: 'NOTE',
+  type: 'OTHER',
   access: 'MASTER_ONLY',
   title: 'Secret',
   content: 'Hidden',
@@ -51,6 +51,7 @@ const sharedElement = {
 const playerNote = {
   ...privateElement,
   elementId: 'player-note',
+  type: 'NOTE',
   title: 'My hunch',
   content: 'The tower hums',
   createdById: player.userId,
@@ -224,10 +225,8 @@ describe('ElementsPage', () => {
     ).findAllByRole('region');
     expect(
       groups.map((group) => group.getAttribute('aria-labelledby')),
-    ).toEqual(['materials-group-NOTE', 'materials-group-PLAYER_NOTES']);
-    expect(within(groups[0]).getByRole('heading')).toHaveTextContent(
-      'Заметки2',
-    );
+    ).toEqual(['materials-group-OTHER', 'materials-group-PLAYER_NOTES']);
+    expect(within(groups[0]).getByRole('heading')).toHaveTextContent('Другое2');
     expect(within(groups[1]).getByRole('link')).toHaveTextContent(
       'My hunchМастеру',
     );

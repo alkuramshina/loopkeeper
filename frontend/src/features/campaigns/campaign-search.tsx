@@ -1,3 +1,4 @@
+import { noteProfile } from './quick-note';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -32,9 +33,11 @@ function Highlight({ text, term }: { text: string; term: string }) {
 export function CampaignSearch({
   campaign,
   onClose,
+  onQuickNote,
 }: {
   campaign: Campaign;
   onClose: () => void;
+  onQuickNote?: () => void;
 }) {
   const { api, profile } = useAuth();
   const { t } = useTranslation();
@@ -57,11 +60,12 @@ export function CampaignSearch({
       if (owner && filter === 'hidden' && element.access === 'SHARED') continue;
       const ownNote =
         element.type === 'NOTE' && element.createdById === profile?.userId;
-      const section = owner
-        ? 'elements'
-        : ownNote && campaign.currentUserRole === 'PLAYER'
+      const section =
+        ownNote && noteProfile(campaign.currentUserRole)
           ? 'notes'
-          : 'case';
+          : owner
+            ? 'elements'
+            : 'case';
       items.push({
         id: `element-${element.elementId}`,
         title: element.title,
@@ -92,7 +96,9 @@ export function CampaignSearch({
     onClose();
     void navigate(href);
   };
-  const canWrite = campaign.currentUserRole === 'PLAYER';
+  const canWrite = Boolean(
+    profile && noteProfile(campaign.currentUserRole) && onQuickNote,
+  );
 
   return (
     <ModalDialog title={t('search.title')} onClose={onClose} wide sheet>
@@ -176,7 +182,7 @@ export function CampaignSearch({
           <button
             className="campaign-search-action"
             type="button"
-            onClick={() => open(`${base}/case?quick-note=1`)}
+            onClick={onQuickNote}
           >
             <PencilLine size={17} aria-hidden="true" />
             {t('search.quickNote')}

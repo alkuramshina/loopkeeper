@@ -42,15 +42,15 @@ test('M3: an expired access token is refreshed once and the requests are retried
     });
   });
 
-  // The board loads the campaign and the board in parallel: both get 401.
+  // The persistent workspace already has the campaign; the board request gets 401.
   await navigation.getByRole('link', { name: 'Доска расследования' }).click();
   await expect(
     page.locator('.react-flow__node', { hasText: 'Сигнал в эфире' }),
   ).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignId}/board$`));
-  expect(rejected).toBeGreaterThanOrEqual(2);
-  expect(refreshes).toBe(1);
+  await expect.poll(() => rejected).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => refreshes).toBe(1);
 
   // Later requests use the new token without another refresh.
   await navigation.getByRole('link', { name: 'Персонажи' }).click();

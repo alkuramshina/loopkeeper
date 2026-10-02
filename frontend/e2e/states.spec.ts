@@ -32,7 +32,7 @@ test('M13: an outsider gets the same neutral unavailable state everywhere', asyn
 
   for (const section of ['characters', 'elements', 'members', 'settings']) {
     await page.goto(`/campaigns/${campaignId}/${section}`);
-    await expect(page.getByRole('alert')).toHaveText('Ресурс недоступен.');
+    await expect(page.getByRole('alert')).toHaveText('Этот ресурс недоступен.');
     await expect(page.getByRole('button', { name: 'Повторить' })).toHaveCount(
       0,
     );

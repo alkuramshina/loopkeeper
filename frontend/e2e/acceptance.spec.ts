@@ -214,14 +214,17 @@ test('changing the layout range keeps input, selection and open panels', async (
     ).toBeVisible();
   }
 
-  // The case: the quick note draft moves between the column and the sheet.
+  // The campaign widget keeps its draft across desktop and mobile layouts.
   await signInAs(page, player);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/campaigns/${campaignId}/case`);
+  await expect(
+    page.getByRole('button', { name: 'Быстрая заметка', exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press('Alt+n');
   const quickNote = page.getByRole('form', { name: 'Быстрая заметка' });
   await quickNote.getByRole('textbox').first().fill('Башня, лестница, полночь');
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.getByRole('button', { name: 'Быстрая заметка' }).click();
   await expect(
     page
       .getByRole('dialog', { name: 'Быстрая заметка' })
@@ -230,6 +233,7 @@ test('changing the layout range keeps input, selection and open panels', async (
   ).toHaveValue('Башня, лестница, полночь');
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.keyboard.press('Alt+n');
   await expect(quickNote.getByRole('textbox').first()).toHaveValue(
     'Башня, лестница, полночь',
   );

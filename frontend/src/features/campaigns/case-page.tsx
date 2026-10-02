@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useQuickNote } from './quick-note-context';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LayoutDashboard, PencilLine } from 'lucide-react';
 import {
@@ -9,29 +10,25 @@ import {
   Campaign,
   CampaignElement,
   CampaignElementType,
-  Character,
-  CharacterTemplate,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
-import { Avatar } from '../../components/avatar';
-import { ModalDialog } from '../../components/modal-dialog';
+
 import { PageError } from '../../components/page-error';
 import { PageHeader } from '../../components/page-header';
 import { ProtectedImage } from '../../components/protected-image';
 import { Button } from '../../components/ui/button';
-import { Chip } from '../../components/ui/chip';
+
 import { EmptyState } from '../../components/ui/empty-state';
 import { iconProps } from '../../components/ui/icon';
 import { NewMark } from '../../components/ui/new-mark';
 import { SegmentedControl } from '../../components/ui/segmented-control';
 import { Skeleton } from '../../components/ui/skeleton';
-import { useToast } from '../../components/ui/toast';
+
 import { TypeTag, typeIcons } from '../../components/ui/type-tag';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { ElementDetail } from './element-detail';
 import { elementTypes, formatChanged } from './element-model';
 import { caseEntries, elementsOnBoard, plainExcerpt } from './player-model';
-import { QuickNoteDraft, QuickNoteForm, emptyQuickNote } from './quick-note';
+
 import { useAddToBoard } from './use-element-actions';
 import './materials.css';
 import './player.css';
@@ -64,106 +61,6 @@ function useCampaignData() {
     retry: false,
   });
   return { campaign, elements };
-}
-
-/** The phone's quick note: a button that opens the form in a bottom sheet. */
-function QuickNoteSheet({
-  draft,
-  onDraft,
-  onClose,
-}: {
-  draft: QuickNoteDraft;
-  onDraft: (draft: QuickNoteDraft) => void;
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const toast = useToast();
-  return (
-    <ModalDialog onClose={onClose} sheet title={t('case.quickNote.title')}>
-      <div className="quick-note-sheet">
-        <QuickNoteForm
-          autoFocus
-          draft={draft}
-          onDraft={onDraft}
-          onSaved={() => {
-            onClose();
-            toast.show({ message: t('case.quickNote.savedToast') });
-          }}
-        />
-      </div>
-    </ModalDialog>
-  );
-}
-
-/** The player's active character with the conditions switched on. */
-function MyCharacter({ campaign }: { campaign: Campaign }) {
-  const { api, profile } = useAuth();
-  const { t } = useTranslation();
-  const base = `/campaigns/${campaign.campaignId}`;
-  const characters = useQuery({
-    queryKey: ['characters', campaign.campaignId],
-    queryFn: () => api.request<Character[]>(`${base}/characters`),
-    retry: false,
-  });
-  const templates = useQuery({
-    queryKey: ['character-templates', campaign.system],
-    queryFn: () =>
-      api.request<CharacterTemplate[]>(
-        `/game-systems/${campaign.system}/templates`,
-      ),
-    enabled: Boolean(campaign.system),
-    retry: false,
-  });
-  const character = characters.data?.find(
-    (item) => item.isActive && item.ownerId === profile?.userId,
-  );
-  // Conditions come from the system's template, not from this component.
-  const conditions = (
-    templates.data?.find((item) => item.templateId === character?.templateId)
-      ?.schema.fields ?? []
-  ).filter(
-    (field) =>
-      field.section === 'conditions' &&
-      field.type === 'boolean' &&
-      character?.data[field.key] === true,
-  );
-
-  // No character yet: the block stays out of the case entirely.
-  if (!character) return null;
-  return (
-    <section aria-labelledby="case-character" className="case-character">
-      <h2 className="case-side-title" id="case-character">
-        {t('case.character.title')}
-      </h2>
-      <Link className="case-character-card" to={`${base}/characters`}>
-        <Avatar alt="" imageUrl={character.avatarUrl} seed={character.name} />
-        <span>
-          <strong>{character.name}</strong>
-          {character.description && (
-            <span className="case-character-description">
-              {character.description}
-            </span>
-          )}
-        </span>
-      </Link>
-      {conditions.length > 0 && (
-        <ul
-          aria-label={t('case.character.conditions')}
-          className="case-conditions"
-        >
-          {conditions.map((field) => (
-            <li key={field.key}>
-              <Chip>
-                {t(`case.character.condition.${field.key}`, {
-                  defaultValue: field.label,
-                })}
-              </Chip>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
 }
 
 function RecentCard({
@@ -212,16 +109,10 @@ function CaseOverview({
   campaign,
   elements,
   loading,
-  quickNote,
 }: {
   campaign: Campaign;
   elements: CampaignElement[];
   loading: boolean;
-  quickNote?: {
-    draft: QuickNoteDraft;
-    onDraft: (draft: QuickNoteDraft) => void;
-    onOpenSheet: () => void;
-  };
 }) {
   const { campaignId } = useParams();
   const { api, profile } = useAuth();
@@ -264,9 +155,7 @@ function CaseOverview({
         titleId="case-title"
         lead={t('case.lead')}
       />
-      <div
-        className={player ? 'case-layout' : 'case-layout case-layout-single'}
-      >
+      <div className="case-layout case-layout-single">
         <section aria-labelledby="case-title" className="case-main">
           {total > 0 && (
             <div className="case-filter">
@@ -371,25 +260,6 @@ function CaseOverview({
             </>
           )}
         </section>
-        {quickNote && (
-          <>
-            <div className="case-quick-note">
-              <QuickNoteForm
-                draft={quickNote.draft}
-                onDraft={quickNote.onDraft}
-              />
-            </div>
-            <MyCharacter campaign={campaign} />
-            <Button
-              aria-label={t('case.quickNote.title')}
-              className="case-quick-note-fab"
-              icon={PencilLine}
-              onClick={quickNote.onOpenSheet}
-              size="lg"
-              variant="primary"
-            />
-          </>
-        )}
       </div>
     </>
   );
@@ -433,7 +303,12 @@ function CaseReader({
         <Skeleton height="6rem" />
       </div>
     );
-  if (element && contributor && element.createdById === profile?.userId)
+  if (
+    element &&
+    element.type === 'NOTE' &&
+    contributor &&
+    element.createdById === profile?.userId
+  )
     return (
       <Navigate
         replace
@@ -487,27 +362,13 @@ function CaseReader({
 
 export function CasePage() {
   const { campaignId, elementId } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const quickNote = useQuickNote();
   const { campaign, elements } = useCampaignData();
-  const [draft, setDraft] = useState<QuickNoteDraft>(emptyQuickNote);
-  const [sheet, setSheet] = useState(
-    () => searchParams.get('quick-note') === '1',
-  );
-  useEffect(() => {
-    if (searchParams.get('quick-note') === '1') setSheet(true);
-  }, [searchParams]);
-  const closeSheet = () => {
-    setSheet(false);
-    if (searchParams.has('quick-note')) {
-      const next = new URLSearchParams(searchParams);
-      next.delete('quick-note');
-      setSearchParams(next, { replace: true });
-    }
-  };
 
   if (campaign.isError || elements.isError)
     return (
       <PageError
+        inline
         error={campaign.error ?? elements.error ?? undefined}
         onRetry={() => {
           void campaign.refetch();
@@ -523,36 +384,23 @@ export function CasePage() {
         to={`/campaigns/${campaignId}/elements${elementId ? `/${elementId}` : ''}`}
       />
     );
-  const player = campaign.data?.currentUserRole === 'PLAYER';
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data} width="full">
+    <>
       {campaign.data &&
         (elementId ? (
           <CaseReader
             campaign={campaign.data}
             elementId={elementId}
-            onQuickNote={player ? () => setSheet(true) : undefined}
+            onQuickNote={quickNote?.profile ? quickNote.openNote : undefined}
           />
         ) : (
           <CaseOverview
             campaign={campaign.data}
             elements={elements.data ?? []}
             loading={elements.isLoading}
-            quickNote={
-              player
-                ? {
-                    draft,
-                    onDraft: setDraft,
-                    onOpenSheet: () => setSheet(true),
-                  }
-                : undefined
-            }
           />
         ))}
-      {sheet && (
-        <QuickNoteSheet draft={draft} onClose={closeSheet} onDraft={setDraft} />
-      )}
-    </CampaignWorkspaceShell>
+    </>
   );
 }

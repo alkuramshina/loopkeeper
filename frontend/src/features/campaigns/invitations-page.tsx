@@ -6,7 +6,6 @@ import {
   CreatedCampaignInvitation,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { PageHeader } from '../../components/page-header';
 import { Avatar } from '../../components/avatar';
 import { ModalDialog } from '../../components/modal-dialog';
@@ -110,6 +109,7 @@ export function InvitationsPage() {
   if (campaign.isError || (campaign.data && !isOwner)) {
     return (
       <PageError
+        inline
         error={campaign.error ?? undefined}
         onRetry={() => void campaign.refetch()}
       />
@@ -122,7 +122,7 @@ export function InvitationsPage() {
   });
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data}>
+    <>
       <PageHeader
         title={t('members.invitations')}
         actions={
@@ -270,7 +270,7 @@ export function InvitationsPage() {
           )}
         </section>
       )}
-    </CampaignWorkspaceShell>
+    </>
   );
 }
 

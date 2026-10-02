@@ -1,4 +1,12 @@
-import { MouseEvent, ReactNode, useEffect, useId, useRef } from 'react';
+import {
+  KeyboardEvent,
+  MouseEvent,
+  ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useId,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import { iconProps } from './ui/icon';
@@ -11,6 +19,11 @@ type ModalDialogProps = {
   wide?: boolean;
   /** On a phone, a sheet along the bottom edge instead of a centred box. */
   sheet?: boolean;
+  /** A persistent auxiliary region can become modal on a phone. */
+  modal?: boolean;
+  className?: string;
+  headerActions?: ReactNode;
+  onKeyDown?: (event: KeyboardEvent<HTMLDialogElement>) => void;
   children: ReactNode;
   onClose: () => void;
 };
@@ -32,6 +45,10 @@ export function ModalDialog({
   description,
   wide,
   sheet,
+  modal = true,
+  className,
+  headerActions,
+  onKeyDown,
   children,
   onClose,
 }: ModalDialogProps) {
@@ -39,33 +56,55 @@ export function ModalDialog({
   const pressedOutside = useRef(false);
   const titleId = useId();
   const descriptionId = useId();
+  const opener = useRef<HTMLElement | null>(null);
+  const modeFocus = useRef<HTMLElement | null>(null);
   const { t } = useTranslation();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
-    const opener =
-      document.activeElement instanceof HTMLElement
+    const active =
+      modeFocus.current ??
+      (document.activeElement instanceof HTMLElement
         ? document.activeElement
-        : null;
-    dialog.showModal();
+        : null);
+    modeFocus.current = null;
+    if (!opener.current) opener.current = active;
+    if (modal) dialog.showModal();
+    else dialog.show();
+    // Changing presentation keeps the same controls and their focus.
+    if (active?.isConnected && (dialog.contains(active) || !modal))
+      active.focus();
     return () => {
+      modeFocus.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
       if (dialog.open) dialog.close();
+    };
+  }, [modal]);
+  useEffect(
+    () => () => {
       // The dialog is already detached on unmount, so the browser cannot
       // restore focus by itself; return it to the control that opened it.
-      if (opener?.isConnected) opener.focus();
-    };
-  }, []);
+      if (opener.current?.isConnected) opener.current.focus();
+    },
+    [],
+  );
 
   return (
     <dialog
       aria-describedby={description ? descriptionId : undefined}
       aria-labelledby={titleId}
+      aria-modal={modal ? true : undefined}
+      role={modal ? 'dialog' : 'region'}
+      onKeyDown={onKeyDown}
       className={[
         'modal-dialog',
         wide && 'modal-dialog-wide',
         sheet && 'modal-dialog-sheet',
+        className,
       ]
         .filter(Boolean)
         .join(' ')}
@@ -79,7 +118,7 @@ export function ModalDialog({
         pressedOutside.current = isOutside(event);
       }}
       onClick={(event) => {
-        if (pressedOutside.current && isOutside(event)) onClose();
+        if (modal && pressedOutside.current && isOutside(event)) onClose();
         pressedOutside.current = false;
       }}
       ref={dialogRef}
@@ -93,6 +132,7 @@ export function ModalDialog({
             </p>
           )}
         </div>
+        {headerActions}
         <button
           aria-label={t('common.close')}
           className="ui-icon-button"

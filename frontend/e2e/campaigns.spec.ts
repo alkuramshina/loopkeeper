@@ -212,7 +212,7 @@ test('the campaign sidebar keeps its layout and typography', async ({
     });
   expect(sidebarStyle).toEqual({ width: 248, left: '0px', right: '1px' });
   const searchStyle = await page
-    .locator('.campaign-search-trigger')
+    .locator('.campaign-search-trigger:not([data-quick-note-trigger])')
     .evaluate((element) => {
       const style = getComputedStyle(element);
       return {

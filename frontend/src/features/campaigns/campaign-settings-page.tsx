@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Campaign } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { MediaUpload } from '../../components/media-upload';
 import { ProtectedImage } from '../../components/protected-image';
 import { PageError } from '../../components/page-error';
@@ -31,6 +30,7 @@ function CampaignSettingsScreen({
   if (campaign.isError || (campaign.data && !isOwner)) {
     return (
       <PageError
+        inline
         error={campaign.error ?? undefined}
         onRetry={() => void campaign.refetch()}
       />
@@ -38,10 +38,10 @@ function CampaignSettingsScreen({
   }
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data} width="narrow">
+    <>
       <PageHeader title={title} />
       {campaign.data ? children(campaign.data) : <p>{t('common.loading')}</p>}
-    </CampaignWorkspaceShell>
+    </>
   );
 }
 

@@ -196,22 +196,17 @@ for (const { width, height, dialogs } of viewports) {
       for (const name of ['Добавить на доску', 'Заметка'])
         await expectClickable(
           page,
-          page.getByRole('button', { name, exact: true }),
+          page.getByRole('article').getByRole('button', { name, exact: true }),
         );
 
-      // The quick note is always one step away: in the side column or, on a
-      // phone, behind a button above the navigation.
+      // The campaign widget is one step away at every width.
       await page.goto(`/campaigns/${campaignId}/case`);
       const quickNote = page.getByRole('form', { name: 'Быстрая заметка' });
-      if (width < 600) {
-        await expect(quickNote).toBeHidden();
-        await expectClickable(
-          page,
-          page.getByRole('button', { name: 'Быстрая заметка' }),
-        );
-      } else {
-        await expect(quickNote).toBeVisible();
-      }
+      await expect(quickNote).toBeHidden();
+      await expectClickable(
+        page,
+        page.getByRole('button', { name: 'Быстрая заметка' }),
+      );
     });
 
     if (!dialogs) return;
@@ -247,8 +242,17 @@ for (const { width, height, dialogs } of viewports) {
       ];
       for (const [path, opener, title, submit] of dialogs) {
         await page.goto(path);
-        await page.getByRole('button', { name: opener }).first().click();
-        const dialog = page.getByRole('dialog', { name: title });
+        const trigger =
+          title === 'Быстрая заметка'
+            ? page
+                .getByRole('article')
+                .getByRole('button', { name: opener, exact: true })
+            : page.getByRole('button', { name: opener }).first();
+        await trigger.click();
+        const dialog = page.getByRole(
+          title === 'Быстрая заметка' && width >= 600 ? 'region' : 'dialog',
+          { name: title },
+        );
         await expect(dialog).toBeVisible();
         const fits = await dialog.evaluate((node) => {
           const box = node.getBoundingClientRect();

@@ -18,7 +18,7 @@ test('a dialog closes by the cross, Escape and a click outside without moving th
 }) => {
   const { campaignId, owner } = await createCampaignWithRoles(request);
   await createElement(request, owner, campaignId, {
-    type: 'NOTE',
+    type: 'OTHER',
     title: 'Старая заметка',
   });
   await signInAs(page, owner);

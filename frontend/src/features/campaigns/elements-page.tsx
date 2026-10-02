@@ -30,10 +30,10 @@ import { SegmentedControl } from '../../components/ui/segmented-control';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useToast } from '../../components/ui/toast';
 import { typeIcons } from '../../components/ui/type-tag';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { ElementDetail } from './element-detail';
 import { apiErrorText, elementTypes, npcLimits } from './element-model';
 import './materials.css';
+const materialTypes = elementTypes.filter((type) => type !== 'NOTE');
 
 type AccessFilter = 'all' | 'shared' | 'hidden';
 
@@ -96,7 +96,7 @@ function CreateElementDialog({
             }
             value={type}
           >
-            {elementTypes.map((item) => (
+            {materialTypes.map((item) => (
               <option key={item} value={item}>
                 {t(`elements.types.${item}`)}
               </option>
@@ -156,7 +156,7 @@ export function ElementsPage() {
   const location = useLocation();
   const [params] = useSearchParams();
   // A link may ask for a type up front, e.g. "?type=LOCATION".
-  const requestedType = elementTypes.find(
+  const requestedType = materialTypes.find(
     (type) => type === params.get('type'),
   );
   const navigate = useNavigate();
@@ -196,9 +196,15 @@ export function ElementsPage() {
   const present = useMemo(
     () =>
       (elements.data ?? []).filter(
-        (item) => !pendingDeletes.includes(item.elementId),
+        (item) =>
+          !pendingDeletes.includes(item.elementId) &&
+          !(
+            owner &&
+            item.type === 'NOTE' &&
+            item.createdById === profile?.userId
+          ),
       ),
-    [elements.data, pendingDeletes],
+    [elements.data, pendingDeletes, owner, profile?.userId],
   );
   const counts = {
     all: present.length,
@@ -221,7 +227,7 @@ export function ElementsPage() {
       : [];
     const rest = matches.filter((item) => !playerNotes.includes(item));
     return [
-      ...elementTypes.map((type) => ({
+      ...materialTypes.map((type) => ({
         key: type,
         label: t(`elements.groups.${type}`),
         items: rest.filter((item) => item.type === type),
@@ -280,6 +286,7 @@ export function ElementsPage() {
   if (campaign.isError || elements.isError || detailFailed)
     return (
       <PageError
+        inline
         error={campaign.error ?? elements.error ?? detail.error ?? undefined}
         onRetry={() => {
           void campaign.refetch();
@@ -298,12 +305,20 @@ export function ElementsPage() {
       />
     );
 
+  if (selected?.type === 'NOTE' && isAuthor(selected))
+    return (
+      <Navigate
+        replace
+        to={`/campaigns/${campaignId}/notes/${selected.elementId}`}
+      />
+    );
+
   const loading = campaign.isLoading || elements.isLoading;
   const emptyCatalog = !loading && present.length === 0;
   const nothingFound = !loading && present.length > 0 && groups.length === 0;
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data} width="full">
+    <>
       <PageHeader
         title={t('elements.title')}
         actions={
@@ -490,7 +505,7 @@ export function ElementsPage() {
           initialType={requestedType}
         />
       )}
-    </CampaignWorkspaceShell>
+    </>
   );
 }
 

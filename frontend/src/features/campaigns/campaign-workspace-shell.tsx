@@ -1,3 +1,6 @@
+import { useQuickNote } from './quick-note-context';
+import { QuickNoteWidget } from './quick-note-widget';
+import { noteProfile } from './quick-note';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -58,6 +61,13 @@ export function CampaignWorkspaceShell({
   children,
 }: CampaignWorkspaceShellProps) {
   const { api } = useAuth();
+  const quickNote = useQuickNote();
+  const openNoteAfterSearch = () => {
+    setSearchOpen(false);
+    setMenuOpen(false);
+    if (searchOpen) requestAnimationFrame(() => quickNote?.openNote());
+    else quickNote?.openNote();
+  };
   useCampaignVisit(campaign);
   const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -107,13 +117,30 @@ export function CampaignWorkspaceShell({
         !event.metaKey &&
         !event.altKey &&
         !typing;
+      if (
+        event.altKey &&
+        event.code === 'KeyN' &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        quickNote?.profile
+      ) {
+        if (
+          document.querySelector('dialog[open][aria-modal="true"]') &&
+          !searchOpen
+        )
+          return;
+        event.preventDefault();
+        openNoteAfterSearch();
+        return;
+      }
       if (!ctrlK && !slash) return;
+      if (document.querySelector('dialog[open][aria-modal="true"]')) return;
       event.preventDefault();
       setSearchOpen(true);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [quickNote, searchOpen]);
   const campaignTitle = campaign?.title;
   useEffect(() => {
     if (!campaignTitle) return;
@@ -154,8 +181,8 @@ export function CampaignWorkspaceShell({
           label: t('workspace.case'),
           icon: FileCheck2,
         },
-    // Only a player writes notes of their own.
-    ...(campaign.currentUserRole === 'PLAYER'
+    // Authors keep their own notes in a shared section.
+    ...(noteProfile(campaign.currentUserRole)
       ? [
           {
             to: `${basePath}/notes`,
@@ -289,7 +316,9 @@ export function CampaignWorkspaceShell({
   );
 
   return (
-    <div className="campaign-workspace-shell">
+    <div
+      className={`campaign-workspace-shell${quickNote?.open && quickNote.pinned ? ' campaign-workspace-note-pinned' : ''}`}
+    >
       <button
         aria-controls="campaign-sidebar"
         aria-expanded={menuOpen}
@@ -332,6 +361,18 @@ export function CampaignWorkspaceShell({
           <span className="rail-label">{t('search.trigger')}</span>
           <kbd>Ctrl K</kbd>
         </button>
+        {quickNote?.profile && (
+          <button
+            className="campaign-search-trigger"
+            data-quick-note-trigger
+            type="button"
+            onClick={openNoteAfterSearch}
+          >
+            <PencilLine aria-hidden="true" size={17} />
+            <span className="rail-label">{t('quickNote.menu')}</span>
+            <kbd>{/Mac/i.test(navigator.platform) ? '?N' : 'Alt+N'}</kbd>
+          </button>
+        )}
         <nav
           className="campaign-workspace-shell-navigation"
           aria-label={t('workspace.navigation')}
@@ -376,10 +417,12 @@ export function CampaignWorkspaceShell({
         <OfflineNotice />
         <PageFrame width={width}>{children}</PageFrame>
       </main>
+      <QuickNoteWidget campaign={campaign} />
       {searchOpen && (
         <CampaignSearch
           campaign={campaign}
           onClose={() => setSearchOpen(false)}
+          onQuickNote={openNoteAfterSearch}
         />
       )}
     </div>

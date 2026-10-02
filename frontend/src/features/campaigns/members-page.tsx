@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { CampaignMember } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { PageHeader } from '../../components/page-header';
 import { Avatar } from '../../components/avatar';
 import { PageError } from '../../components/page-error';
@@ -58,6 +57,7 @@ export function MembersPage() {
   if (campaign.isError || (campaign.data && !isOwner)) {
     return (
       <PageError
+        inline
         error={campaign.error ?? undefined}
         onRetry={() => void campaign.refetch()}
       />
@@ -65,7 +65,7 @@ export function MembersPage() {
   }
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data}>
+    <>
       <PageHeader title={t('members.title')} />
       {error && (
         <p className="form-error" role="alert">
@@ -145,6 +145,6 @@ export function MembersPage() {
           )}
         </section>
       )}
-    </CampaignWorkspaceShell>
+    </>
   );
 }

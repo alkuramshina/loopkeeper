@@ -44,7 +44,6 @@ import {
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ProtectedImage } from '../../components/protected-image';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { PageHeader } from '../../components/page-header';
 import { Button } from '../../components/ui/button';
 import { errorMessage, PageError } from '../../components/page-error';
@@ -1052,7 +1051,6 @@ export function BoardPage() {
     [persistNodeDimensions],
   );
 
-  const data = campaign.data;
   const linkedCardId = searchParams.get('card');
   const selectedCardId =
     nodes.find((node) => node.id === linkedCardId)?.id ??
@@ -1119,6 +1117,7 @@ export function BoardPage() {
   if (views.unavailable || campaign.isError || (board.isError && !board.data))
     return (
       <PageError
+        inline
         error={campaign.error ?? board.error ?? undefined}
         unavailableKey="workspace.boardUnavailable"
         onRetry={() => {
@@ -1131,7 +1130,7 @@ export function BoardPage() {
     board.isError && board.data ? errorMessage(board.error, t) : undefined;
 
   return (
-    <CampaignWorkspaceShell campaign={data} width="full">
+    <>
       <div className="board-page">
         <PageHeader
           compact
@@ -1282,6 +1281,6 @@ export function BoardPage() {
           </section>
         )}
       </div>
-    </CampaignWorkspaceShell>
+    </>
   );
 }

@@ -1,3 +1,4 @@
+import { CampaignWorkspaceRoute } from '../features/campaigns/campaign-workspace-route';
 import { lazy, Suspense } from 'react';
 import {
   Navigate,
@@ -131,57 +132,29 @@ export function AppRouter() {
           <Route path="/settings/password" element={<PasswordSettingsPage />} />
           <Route
             path="/campaigns/:campaignId"
-            element={<Navigate to="board" replace />}
-          />
-          <Route path="/campaigns/:campaignId/board" element={<BoardPage />} />
-          <Route
-            path="/campaigns/:campaignId/elements"
-            element={<ElementsPage />}
-          />
-          <Route
-            path="/campaigns/:campaignId/elements/:elementId"
-            element={<ElementsPage />}
-          />
-          <Route path="/campaigns/:campaignId/case" element={<CasePage />} />
-          <Route
-            path="/campaigns/:campaignId/case/:elementId"
-            element={<CasePage />}
-          />
-          <Route path="/campaigns/:campaignId/notes" element={<NotesPage />} />
-          <Route
-            path="/campaigns/:campaignId/notes/:elementId"
-            element={<NotesPage />}
-          />
+            element={<CampaignWorkspaceRoute />}
+          >
+            <Route index element={<Navigate to="board" replace />} />
+            <Route path="board" element={<BoardPage />} />
+            <Route path="elements" element={<ElementsPage />} />
+            <Route path="elements/:elementId" element={<ElementsPage />} />
+            <Route path="case" element={<CasePage />} />
+            <Route path="case/:elementId" element={<CasePage />} />
+            <Route path="notes" element={<NotesPage />} />
+            <Route path="notes/:elementId" element={<NotesPage />} />
 
-          <Route
-            path="/campaigns/:campaignId/settings"
-            element={<CampaignSettingsPage />}
-          />
-          <Route
-            path="/campaigns/:campaignId/settings/cover"
-            element={<CampaignCoverPage />}
-          />
-          <Route
-            path="/campaigns/:campaignId/settings/delete"
-            element={<CampaignDeletePage />}
-          />
-          <Route
-            path="/campaigns/:campaignId/characters"
-            element={<CharactersPage />}
-          />
-          <Route
-            path="/campaigns/:campaignId/characters/:characterId"
-            element={<CharactersPage />}
-          />
+            <Route path="settings" element={<CampaignSettingsPage />} />
+            <Route path="settings/cover" element={<CampaignCoverPage />} />
+            <Route path="settings/delete" element={<CampaignDeletePage />} />
+            <Route path="characters" element={<CharactersPage />} />
+            <Route
+              path="characters/:characterId"
+              element={<CharactersPage />}
+            />
 
-          <Route
-            path="/campaigns/:campaignId/members"
-            element={<MembersPage />}
-          />
-          <Route
-            path="/campaigns/:campaignId/invitations"
-            element={<InvitationsPage />}
-          />
+            <Route path="members" element={<MembersPage />} />
+            <Route path="invitations" element={<InvitationsPage />} />
+          </Route>
         </Route>
         <Route path="/invitations/:token" element={<InvitationEntry />} />
         {UiGalleryPage && <Route path="/dev/ui" element={<UiGalleryPage />} />}

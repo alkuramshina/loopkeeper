@@ -32,7 +32,6 @@ import { MenuButton } from '../../components/ui/menu-button';
 import { SegmentedControl } from '../../components/ui/segmented-control';
 import { Skeleton } from '../../components/ui/skeleton';
 import { useToast } from '../../components/ui/toast';
-import { CampaignWorkspaceShell } from './campaign-workspace-shell';
 import { apiErrorText } from './element-model';
 import {
   MarkdownAction,
@@ -41,7 +40,7 @@ import {
   plainExcerpt,
   titleLimit,
 } from './player-model';
-import { noteAccess } from './quick-note';
+import { noteProfile, noteAccessLabel, NoteProfile } from './quick-note';
 import { useAccessChange, useAddToBoard } from './use-element-actions';
 import './materials.css';
 import './player.css';
@@ -96,8 +95,10 @@ function NoteEditor({
   note,
   focusTitle,
   onDelete,
+  profile,
 }: {
   note: CampaignElement;
+  profile: NoteProfile;
   focusTitle: boolean;
   onDelete: (note: CampaignElement) => void;
 }) {
@@ -136,7 +137,7 @@ function NoteEditor({
   });
   const access = useAccessChange({
     element: note,
-    owner: false,
+    owner: !profile.showCharacter,
     beforeChange: flush,
   });
   const addToBoard = useAddToBoard(note.elementId);
@@ -166,7 +167,11 @@ function NoteEditor({
 
   if (view.unavailable)
     return (
-      <PageError unavailableKey="elements.unavailable" error={undefined} />
+      <PageError
+        inline
+        unavailableKey="elements.unavailable"
+        error={undefined}
+      />
     );
   return (
     <article aria-label={note.title} className="note-editor">
@@ -233,14 +238,18 @@ function NoteEditor({
             <SegmentedControl
               label={t('notes.whoSees')}
               onChange={access.request}
-              options={noteAccess.map((item) => ({
+              options={profile.accessOptions.map((item) => ({
                 value: item,
-                label: t(`ui.access.visibility.${item}`),
+                label: t(noteAccessLabel(profile, item)),
               }))}
               value={note.access}
             />
             <span className="note-visibility-hint">
-              {t(`notes.visibilityHint.${note.access}`)}
+              {t(
+                !profile.showCharacter && note.access === 'MASTER_ONLY'
+                  ? 'quickNote.ownerHint'
+                  : `notes.visibilityHint.${note.access}`,
+              )}
             </span>
           </div>
           <div
@@ -342,17 +351,18 @@ export function NotesPage() {
     retry: false,
   });
   const role = campaign.data?.currentUserRole;
+  const noteCapabilities = profile ? noteProfile(role) : null;
   const elements = useQuery({
     queryKey: ['elements', campaignId],
     queryFn: () =>
       api.request<CampaignElement[]>(`/campaigns/${campaignId}/elements`),
-    enabled: role === 'PLAYER',
+    enabled: Boolean(noteCapabilities),
     retry: false,
   });
   const detail = useQuery({
     queryKey: ['element', elementId],
     queryFn: () => api.request<CampaignElement>(`/elements/${elementId}`),
-    enabled: Boolean(elementId) && role === 'PLAYER',
+    enabled: Boolean(elementId) && Boolean(noteCapabilities),
     retry: false,
   });
   const notes = useMemo(
@@ -371,7 +381,7 @@ export function NotesPage() {
           type: 'NOTE',
           title: t('notes.untitled'),
           content: '',
-          access: 'PRIVATE',
+          access: noteCapabilities?.defaultAccess,
         }),
       }),
     onSuccess: (note) => {
@@ -423,6 +433,7 @@ export function NotesPage() {
   )
     return (
       <PageError
+        inline
         error={campaign.error ?? elements.error ?? detail.error ?? undefined}
         onRetry={() => {
           void campaign.refetch();
@@ -431,21 +442,22 @@ export function NotesPage() {
         }}
       />
     );
-  // Only a player writes notes; the master has the materials, a viewer the case.
+  // Viewers read shared material in the case.
   const keep = elementId ? `/${elementId}` : '';
-  if (role === 'OWNER')
-    return <Navigate replace to={`/campaigns/${campaignId}/elements${keep}`} />;
   if (role === 'VIEWER')
     return <Navigate replace to={`/campaigns/${campaignId}/case${keep}`} />;
 
   const loaded =
     detail.data?.campaignId === campaignId ? detail.data : undefined;
   // Somebody else's shared note is read in the case, not edited here.
-  if (loaded && loaded.createdById !== profile?.userId)
+  if (
+    loaded &&
+    (loaded.type !== 'NOTE' || loaded.createdById !== profile?.userId)
+  )
     return (
       <Navigate
         replace
-        to={`/campaigns/${campaignId}/case/${loaded.elementId}`}
+        to={`/campaigns/${campaignId}/${role === 'OWNER' ? 'elements' : 'case'}/${loaded.elementId}`}
       />
     );
   const selected =
@@ -468,7 +480,7 @@ export function NotesPage() {
   );
 
   return (
-    <CampaignWorkspaceShell campaign={campaign.data} width="full">
+    <>
       <PageHeader
         title={t('notes.title')}
         titleId="notes-title"
@@ -510,6 +522,11 @@ export function NotesPage() {
                         <AccessBadge
                           access={note.access}
                           variant="visibility"
+                          labelKey={
+                            noteCapabilities
+                              ? noteAccessLabel(noteCapabilities, note.access)
+                              : undefined
+                          }
                         />
                       </span>
                       {plainExcerpt(note.content) && (
@@ -530,13 +547,14 @@ export function NotesPage() {
           )}
         </section>
         <section className="materials-detail-pane notes-detail-pane">
-          {selected ? (
+          {selected && noteCapabilities ? (
             <NoteEditor
               focusTitle={Boolean(
                 (location.state as { focusTitle?: boolean } | null)?.focusTitle,
               )}
               key={selected.elementId}
               note={selected}
+              profile={noteCapabilities}
               onDelete={scheduleDelete}
             />
           ) : unavailable ? (
@@ -557,6 +575,6 @@ export function NotesPage() {
           )}
         </section>
       </div>
-    </CampaignWorkspaceShell>
+    </>
   );
 }

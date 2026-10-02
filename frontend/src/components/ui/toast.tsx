@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import {
   createContext,
   ReactNode,
@@ -14,6 +15,7 @@ import { iconProps } from './icon';
 
 type ToastInput = {
   message: string;
+  action?: { label: string; to: string };
   /** Reverses the action; reversible actions ask no confirmation. */
   onUndo?: () => void;
   /** Commits a pending action when the notification expires or is closed. */
@@ -86,6 +88,11 @@ function ToastItem({
       role="status"
     >
       <p>{toast.message}</p>
+      {toast.action && (
+        <Link className="ui-toast-undo" to={toast.action.to}>
+          {toast.action.label}
+        </Link>
+      )}
       {toast.onUndo && (
         <button
           className="ui-toast-undo"

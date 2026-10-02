@@ -242,7 +242,7 @@ test('every dialog is named, keeps focus inside, closes with Escape and returns 
   const { campaignId, owner, player } = await createCampaignWithRoles(request);
   await createPlayerCharacter(request, player, campaignId, 'Ольга');
   const elementId = await createElement(request, owner, campaignId, {
-    type: 'NOTE',
+    type: 'OTHER',
     title: 'Заметка',
   });
 

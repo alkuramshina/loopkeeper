@@ -6,7 +6,7 @@ import {
   signInAs,
 } from './support/api';
 
-test('F13g: player conditions autosave and appear in the case and on the board', async ({
+test('F13g: player conditions autosave and appear in the note widget and on the board', async ({
   browser,
   page,
   request,
@@ -40,6 +40,7 @@ test('F13g: player conditions autosave and appear in the case and on the board',
     'Сохранено',
   );
   await page.goto(`/campaigns/${campaignId}/case`);
+  await page.getByRole('button', { name: 'Заметка Alt+N' }).click();
   await expect(page.getByText('Сломлен(а)')).toBeVisible();
   await page.goto(`/campaigns/${campaignId}/board`);
   await expect(
