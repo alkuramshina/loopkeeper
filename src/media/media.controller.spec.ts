@@ -58,14 +58,52 @@ describe('Protected media streaming', () => {
     expect(body.destroyed).toBe(true);
   });
   it('terminates the response when an upstream failure follows the first bytes', async () => {
+    let sent = false;
     const body = new Readable({
       read() {
-        this.push(Buffer.from('im'));
-        setImmediate(() => this.destroy(new Error('upstream failed')));
+        if (!sent) {
+          sent = true;
+          this.push(Buffer.from('im'));
+        }
       },
     });
-    await expect(request(app(body)).get('/media')).rejects.toThrow();
-    expect(body.destroyed).toBe(true);
+    const server = app(body).listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    try {
+      // Exercise a truncated HTTP response directly. Superagent's image parser
+      // may call back twice on abort, obscuring the transport behavior on LTS.
+      const result = await new Promise<{
+        status: number | undefined;
+        complete: boolean;
+        bytes: string;
+      }>((resolve, reject) => {
+        const client = get(
+          `http://127.0.0.1:${(server.address() as AddressInfo).port}/media`,
+          (response) => {
+            const chunks: Buffer[] = [];
+            response.on('data', (chunk: Buffer) => {
+              chunks.push(chunk);
+              body.destroy(new Error('upstream failed'));
+            });
+            response.on('error', () => {
+              // A truncated response emits an error followed by close.
+            });
+            response.once('close', () =>
+              resolve({
+                status: response.statusCode,
+                complete: response.complete,
+                bytes: Buffer.concat(chunks).toString(),
+              }),
+            );
+          },
+        );
+        client.once('error', reject);
+      });
+      expect(result).toEqual({ status: 200, complete: false, bytes: 'im' });
+      expect(body.destroyed).toBe(true);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
   it('closes the upstream stream when the HTTP client disconnects', async () => {
     let sent = false;

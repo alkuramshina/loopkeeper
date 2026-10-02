@@ -13,3 +13,12 @@ test
 .windsurf
 Dockerfile
 *.md
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+frontend/.env
+frontend/.env.*
+Claude outputs
+.codex
+.aws

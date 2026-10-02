@@ -10,11 +10,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   configureApplication(app);
 
-  SwaggerModule.setup('docs', app, () => createOpenApiDocument(app));
-
   const applicationConfig = app.get<ConfigType<typeof appConfig>>(
     appConfig.KEY,
   );
+  if (applicationConfig.environment !== 'production') {
+    SwaggerModule.setup('docs', app, () => createOpenApiDocument(app));
+  }
   await app.listen(applicationConfig.port);
 }
 

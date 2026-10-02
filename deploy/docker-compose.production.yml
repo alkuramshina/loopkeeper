@@ -1,0 +1,131 @@
+name: loopkeeper-production
+
+x-database: &database
+  DATABASE_URL: postgresql://${POSTGRES_USER:?Required}:${POSTGRES_PASSWORD:?Required}@postgres:5432/${POSTGRES_DB:?Required}
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?Use the manifest}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+      POSTGRES_DB: ${POSTGRES_DB:?Required}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    networks: [backend]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: ${MINIO_IMAGE:?Use the manifest}
+    restart: unless-stopped
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Required}
+    volumes: [minio_data:/data]
+    networks: [backend]
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  provision:
+    image: ${MC_IMAGE:?Use the manifest}
+    profiles: [operations]
+    entrypoint: ['/bin/sh', '/usr/local/bin/minio-init.sh']
+    environment:
+      MINIO_URL: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Required}
+      MINIO_BUCKET: ${S3_BUCKET:?Required}
+      MINIO_APP_USER: ${S3_ACCESS_KEY_ID:?Required}
+      MINIO_APP_PASSWORD: ${S3_SECRET_ACCESS_KEY:?Required}
+    networks: [backend]
+    restart: 'no'
+
+  migrate:
+    image: ${MIGRATION_IMAGE:?Use the manifest}
+    profiles: [operations]
+    environment: *database
+    networks: [backend]
+    restart: 'no'
+
+  bootstrap:
+    image: ${MIGRATION_IMAGE:?Use the manifest}
+    profiles: [operations]
+    command: ['npm', 'run', 'prisma:seed']
+    environment:
+      <<: *database
+      SEED_ADMIN: 'false'
+    networks: [backend]
+    restart: 'no'
+
+  api:
+    image: ${API_IMAGE:?Use the manifest}
+    restart: unless-stopped
+    environment:
+      <<: *database
+      NODE_ENV: production
+      PORT: 3000
+      TRUST_PROXY_HOPS: 1
+      FRONTEND_URL: https://${DOMAIN:?Required}
+      JWT_SECRET: ${JWT_SECRET:?Required}
+      REFRESH_JWT_SECRET: ${REFRESH_JWT_SECRET:?Required}
+      INVITATION_SECRET: ${INVITATION_SECRET:?Required}
+      REFRESH_COOKIE_SECURE: 'true'
+      REFRESH_COOKIE_SAMESITE: lax
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: ${S3_BUCKET:?Required}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Required}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Required}
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_KEY_PREFIX: ''
+    networks: [backend, ingress]
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://localhost:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?Use the manifest}
+    restart: unless-stopped
+    networks: [ingress]
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8080/']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  proxy:
+    image: ${PROXY_IMAGE:?Use the manifest}
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Required}
+      TLS_EMAIL: ${TLS_EMAIL:?Required}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [ingress, public]
+
+networks:
+  backend:
+    internal: true
+  ingress:
+    internal: true
+  public:
+
+volumes:
+  postgres_data:
+  minio_data:
+  caddy_data:
+  caddy_config:

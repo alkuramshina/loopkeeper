@@ -14,6 +14,7 @@ export default tseslint.config(
       // Tool configs are outside the frontend TypeScript projects.
       'frontend/vite.config.ts',
       'frontend/playwright.config.ts',
+      'frontend/playwright.production.config.ts',
     ],
   },
   eslint.configs.recommended,

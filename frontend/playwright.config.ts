@@ -14,6 +14,7 @@ const webUrl = `http://localhost:${webPort}`;
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: '**/production/**',
   globalTeardown: './e2e/support/media-storage.ts',
   // Every spec creates its own users and campaigns, but the API shares one
   // in-memory throttler and one database, so keep runs deterministic.

@@ -5,7 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
 import { ConfigModule, ConfigType } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
-import { validationSchema } from './config/validation';
+import { validateEnvironment } from './config/validation';
 import { UserModule } from './user/user.module';
 import appConfig from './config/app.config';
 import jwtConfig from './auth/config/jwt.config';
@@ -26,7 +26,7 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig, jwtConfig],
-      validationSchema,
+      validate: validateEnvironment,
       envFilePath: [`.env.${nodeEnv}`, '.env'],
       ignoreEnvFile: nodeEnv === 'production',
     }),

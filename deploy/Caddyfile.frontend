@@ -1,0 +1,15 @@
+:8080 {
+  root * /srv
+  encode zstd gzip
+  header X-Content-Type-Options nosniff
+  header Referrer-Policy strict-origin-when-cross-origin
+  @static path /assets/* /favicon* /robots.txt /*.js /*.css /*.svg /*.png /*.webp /*.woff /*.woff2 /*.ico /*.map /*.json /*.jpg /*.jpeg /*.gif /*.pdf /*.txt /*.webmanifest /*.html
+  handle @static {
+    file_server
+  }
+  handle {
+    try_files {path} /index.html
+    header Cache-Control "no-cache"
+    file_server
+  }
+}

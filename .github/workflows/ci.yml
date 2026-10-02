@@ -10,12 +10,59 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '26'
+  NODE_VERSION: '24.21.0'
   # Both Jest E2E and the Playwright API refuse any database other than loopkeeper_test.
   DATABASE_URL: postgresql://loopkeeper:loopkeeper@localhost:5434/loopkeeper_test
   LOOPKEEPER_TEST_DATABASE_URL: postgresql://loopkeeper:loopkeeper@localhost:5434/loopkeeper_test
 
 jobs:
+  production:
+    runs-on: ubuntu-24.04
+    needs: [backend, frontend]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Verify deployment configuration rules
+        run: node --test deploy/validate-environment.test.mjs
+      - name: Build all production images
+        run: node deploy/build-images.mjs
+      - name: Verify isolated production stack
+        run: node deploy/test-production.mjs
+        env:
+          SMOKE_KEEP: 'true'
+      - run: npm ci
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Verify production browser over controlled TLS
+        run: npx playwright test --config playwright.production.config.ts
+        working-directory: frontend
+        env:
+          SMOKE_INTERNAL_TLS: 'true'
+      - name: Sign into GHCR for trusted main commits only
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish verified images and immutable manifest
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: node deploy/publish-images.mjs
+      - uses: actions/upload-artifact@v6
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: deployment-${{ github.sha }}
+          path: deployment/
+          retention-days: 90
+
   backend:
     runs-on: ubuntu-24.04
     services:

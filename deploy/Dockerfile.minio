@@ -25,4 +25,5 @@ ENTRYPOINT ["minio"]
 FROM debian:bookworm-slim AS client
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=client-build /mc /usr/local/bin/mc
+COPY minio-init.sh /usr/local/bin/minio-init.sh
 ENTRYPOINT ["mc"]

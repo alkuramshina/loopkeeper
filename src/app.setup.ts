@@ -7,12 +7,19 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { developmentRequestLogger } from './common/middleware/development-request-logger.middleware';
 import { ValidationException } from './common/exceptions/validation.exception';
 import appConfig from './config/app.config';
+import type { Application } from 'express';
 
 export function configureApplication(app: INestApplication): void {
   const applicationConfig = app.get<ConfigType<typeof appConfig>>(
     appConfig.KEY,
   );
   const jwtTokenConfig = app.get<ConfigType<typeof jwtConfig>>(jwtConfig.KEY);
+
+  const expressApplication = app.getHttpAdapter().getInstance() as Application;
+  expressApplication.set(
+    'trust proxy',
+    applicationConfig.trustProxyHops || false,
+  );
 
   if (applicationConfig.environment === 'development') {
     app.use(developmentRequestLogger);

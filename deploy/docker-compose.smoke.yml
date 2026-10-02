@@ -1,0 +1,6 @@
+# Only used with a unique project and random credentials by test-production.mjs.
+services:
+  proxy:
+    environment:
+      TLS_MODE: tls internal
+    ports: !override ['127.0.0.1:8443:443', '127.0.0.1:8088:80']

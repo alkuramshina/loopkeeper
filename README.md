@@ -8,9 +8,17 @@ Backend: NestJS, TypeScript, Prisma and PostgreSQL. Frontend: React, Vite, TanSt
 
 Character sheets are implemented in the frontend for each supported game system. The backend validates character data against system rules in code, using the campaign's system. Character requests and responses have no template ID; there is no template table or template endpoint. The seed installs game system reference data only (and an admin account when explicitly enabled).
 
+## Production deployment
+
+See [deploy/README.md](deploy/README.md) for the production images, configuration,
+first installation, update gates and rollback procedure. Production requires
+HTTPS, independent random secrets of at least 32 characters and private storage.
+Swagger is disabled. CI publication and a working technical installation do not
+declare a release.
+
 ## Local development
 
-Use Node.js 22+ and Docker. Copy .env.example to .env and set three distinct random secrets (JWT_SECRET, REFRESH_JWT_SECRET and INVITATION_SECRET), each at least 20 characters. For example:
+Use Node.js 24.21.0 LTS (see .nvmrc) and Docker. Copy .env.example to .env and set three distinct random secrets (JWT_SECRET, REFRESH_JWT_SECRET and INVITATION_SECRET), each at least 20 characters. For example:
 
 ~~~sh
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"

@@ -84,6 +84,7 @@ build/
 
 # Docker
 docker-compose.override.yml
+deployment/
 
 # OS generated files
 .DS_Store
