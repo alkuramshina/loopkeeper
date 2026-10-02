@@ -1,4 +1,4 @@
-import { readdir, rm } from 'node:fs/promises';
+import { clearTestMedia, storedTestObjects } from './helpers/media-storage';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import sharp from 'sharp';
@@ -10,7 +10,6 @@ import {
 } from './helpers/database';
 
 const password = 'test-password-123';
-const mediaStoragePath = 'data/test-media';
 const characterData = {
   age: 15,
   type: 'COMPUTER_GEEK',
@@ -54,13 +53,13 @@ describe('Campaign deletion (e2e)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
-    await rm(mediaStoragePath, { recursive: true, force: true });
+    await clearTestMedia();
     await resetTestDatabase();
     app = await createTestApp();
   });
   afterEach(async () => app.close());
   afterAll(async () => {
-    await rm(mediaStoragePath, { recursive: true, force: true });
+    await clearTestMedia();
     await closeTestDatabase();
   });
 
@@ -189,7 +188,7 @@ describe('Campaign deletion (e2e)', () => {
         cardBId: elementCard.body.cardId,
       })
       .expect(201);
-    expect(await readdir(mediaStoragePath)).toHaveLength(5);
+    expect(await storedTestObjects()).toHaveLength(5);
 
     await request(app.getHttpServer())
       .delete(`/campaigns/${campaignId}`)
@@ -215,7 +214,7 @@ describe('Campaign deletion (e2e)', () => {
       ]),
     ).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
     // Only the other campaign's cover remains.
-    expect(await readdir(mediaStoragePath)).toHaveLength(1);
+    expect(await storedTestObjects()).toHaveLength(1);
     expect(await prisma.mediaAsset.count()).toBe(1);
 
     for (const user of [owner, player, viewer]) {

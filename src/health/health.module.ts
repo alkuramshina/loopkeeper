@@ -3,10 +3,12 @@ import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from './health.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PrismaHealthIndicator } from './prisma-health.indicator';
+import { MediaStorageModule } from '../media/media-storage.module';
+import { MediaHealthIndicator } from './media-health.indicator';
 
 @Module({
-  imports: [TerminusModule, PrismaModule],
+  imports: [TerminusModule, PrismaModule, MediaStorageModule],
   controllers: [HealthController],
-  providers: [PrismaHealthIndicator],
+  providers: [PrismaHealthIndicator, MediaHealthIndicator],
 })
 export class HealthModule {}

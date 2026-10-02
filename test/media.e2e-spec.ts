@@ -1,5 +1,8 @@
-import { access, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import {
+  clearTestMedia,
+  storedTestObjects,
+  testObjectExists,
+} from './helpers/media-storage';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import sharp from 'sharp';
@@ -11,7 +14,6 @@ import {
 } from './helpers/database';
 
 const password = 'test-password-123';
-const mediaStoragePath = 'data/test-media';
 const playerCharacterData = {
   age: 15,
   type: 'COMPUTER_GEEK',
@@ -98,7 +100,7 @@ describe('Media (e2e)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
-    await rm(mediaStoragePath, { recursive: true, force: true });
+    await clearTestMedia();
     await resetTestDatabase();
     app = await createTestApp();
   });
@@ -108,7 +110,7 @@ describe('Media (e2e)', () => {
   });
 
   afterAll(async () => {
-    await rm(mediaStoragePath, { recursive: true, force: true });
+    await clearTestMedia();
     await closeTestDatabase();
   });
 
@@ -352,9 +354,7 @@ describe('Media (e2e)', () => {
       .expect(404);
 
     expect(await getTestPrisma().mediaAsset.count()).toBe(0);
-    await expect(access(mediaStoragePath)).rejects.toMatchObject({
-      code: 'ENOENT',
-    });
+    expect(await storedTestObjects()).toEqual([]);
 
     const firstCharacterAvatar = await request(app.getHttpServer())
       .post(`/characters/${playerCharacter.body.characterId}/avatar`)
@@ -609,12 +609,8 @@ describe('Media (e2e)', () => {
       .set(authenticate(owner))
       .expect(404);
     expect(await getTestPrisma().mediaAsset.count()).toBe(0);
-    await expect(
-      access(join(mediaStoragePath, storedAvatar.storageKey)),
-    ).rejects.toMatchObject({ code: 'ENOENT' });
-    await expect(
-      access(join(mediaStoragePath, storedCover.storageKey)),
-    ).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await testObjectExists(storedAvatar.storageKey)).toBe(false);
+    expect(await testObjectExists(storedCover.storageKey)).toBe(false);
   });
 
   it('replaces and deletes avatars without leaving accessible assets', async () => {

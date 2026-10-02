@@ -14,6 +14,12 @@ const sources = import.meta.glob<string>(
 );
 
 describe('translations', () => {
+  it('translates the safe media storage error', () => {
+    expect(i18n.exists('errors.media.storage_unavailable')).toBe(true);
+    expect(i18n.t('errors.media.storage_unavailable')).toContain(
+      'временно недоступно',
+    );
+  });
   it('defines every static key used in the source in the Russian locale', () => {
     const missing: string[] = [];
     for (const [file, source] of Object.entries(sources)) {

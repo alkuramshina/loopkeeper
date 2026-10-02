@@ -1,5 +1,6 @@
 import { HealthCheckService } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './prisma-health.indicator';
+import { MediaHealthIndicator } from './media-health.indicator';
 import { HealthController } from './health.controller';
 
 describe('HealthController', () => {
@@ -9,7 +10,10 @@ describe('HealthController', () => {
   const prismaHealth = {
     isHealthy: jest.fn(),
   } as unknown as PrismaHealthIndicator;
-  const controller = new HealthController(health, prismaHealth);
+  const mediaHealth = {
+    isHealthy: jest.fn().mockResolvedValue({ media: { status: 'up' } }),
+  } as unknown as MediaHealthIndicator;
+  const controller = new HealthController(health, prismaHealth, mediaHealth);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -33,6 +37,7 @@ describe('HealthController', () => {
     const checks = (health.check as jest.Mock).mock.calls[0][0] as Array<
       () => Promise<unknown>
     >;
+    await expect(checks[1]()).resolves.toEqual({ media: { status: 'up' } });
     await expect(checks[0]()).resolves.toEqual({
       database: { status: 'up' },
     });

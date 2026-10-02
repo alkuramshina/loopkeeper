@@ -1,0 +1,28 @@
+FROM golang:1.24.8-alpine3.22 AS source
+RUN apk add --no-cache git
+ARG MINIO_VERSION=RELEASE.2025-10-15T17-29-55Z
+ARG MC_VERSION=RELEASE.2025-08-13T08-35-41Z
+WORKDIR /build
+RUN git clone --depth 1 --branch "$MINIO_VERSION" https://github.com/minio/minio.git server
+RUN git clone --depth 1 --branch "$MC_VERSION" https://github.com/minio/mc.git client
+
+FROM source AS server-build
+WORKDIR /build/server
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    for attempt in 1 2 3; do CGO_ENABLED=0 go build -trimpath -o /minio . && exit 0; done; exit 1
+
+FROM source AS client-build
+WORKDIR /build/client
+RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
+    for attempt in 1 2 3; do CGO_ENABLED=0 go build -trimpath -o /mc . && exit 0; done; exit 1
+
+FROM debian:bookworm-slim AS server
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+COPY --from=server-build /minio /usr/local/bin/minio
+EXPOSE 9000 9001
+ENTRYPOINT ["minio"]
+
+FROM debian:bookworm-slim AS client
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=client-build /mc /usr/local/bin/mc
+ENTRYPOINT ["mc"]

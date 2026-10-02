@@ -1,4 +1,10 @@
+import { randomUUID } from 'node:crypto';
 export const TEST_DATABASE_NAME = 'loopkeeper_test';
+const runPrefix =
+  process.env.LOOPKEEPER_BROWSER_MEDIA_PREFIX ??
+  process.env.LOOPKEEPER_TEST_MEDIA_PREFIX ??
+  'tests/' + randomUUID();
+process.env.LOOPKEEPER_TEST_MEDIA_PREFIX = runPrefix;
 
 export function configureTestEnvironment(): void {
   process.env.NODE_ENV = 'test';
@@ -20,8 +26,13 @@ export function configureTestEnvironment(): void {
     process.env.REFRESH_COOKIE_SECURE ?? 'false';
   process.env.REFRESH_COOKIE_SAMESITE =
     process.env.REFRESH_COOKIE_SAMESITE ?? 'lax';
-  process.env.MEDIA_STORAGE_PATH =
-    process.env.MEDIA_STORAGE_PATH ?? 'data/test-media';
+  process.env.S3_ENDPOINT = 'http://localhost:9002';
+  process.env.S3_REGION = 'us-east-1';
+  process.env.S3_BUCKET = 'loopkeeper-test';
+  process.env.S3_ACCESS_KEY_ID = 'loopkeeper-test-app';
+  process.env.S3_SECRET_ACCESS_KEY = 'loopkeeper-test-app-secret';
+  process.env.S3_FORCE_PATH_STYLE = 'true';
+  process.env.S3_KEY_PREFIX = runPrefix;
 }
 
 export function getTestDatabaseUrl(): string {

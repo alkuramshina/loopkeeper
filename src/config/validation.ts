@@ -1,3 +1,4 @@
+import { normalizeKeyPrefix } from '../media/media-storage';
 import * as Joi from 'joi';
 
 export const validationSchema = Joi.object({
@@ -23,15 +24,37 @@ export const validationSchema = Joi.object({
     .default(5)
     .when('NODE_ENV', { is: 'production', then: Joi.number().max(5) }),
 
-  MEDIA_STORAGE_PATH: Joi.string()
-    .trim()
-    .min(1)
-    .custom((value: string, helpers) =>
-      /(^|[\\/])public([\\/]|$)/i.test(value)
+  S3_ENDPOINT: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .custom((value: string, helpers) => {
+      const url = new URL(value);
+      return url.username ||
+        url.password ||
+        url.search ||
+        url.hash ||
+        url.pathname !== '/'
         ? helpers.error('any.invalid')
-        : value,
-    )
-    .default('data/media'),
+        : value;
+    })
+    .required(),
+  S3_REGION: Joi.string().trim().min(1).required(),
+  S3_BUCKET: Joi.string()
+    .pattern(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/)
+    .required(),
+  S3_ACCESS_KEY_ID: Joi.string().trim().min(1).required(),
+  S3_SECRET_ACCESS_KEY: Joi.string().min(1).required(),
+  S3_FORCE_PATH_STYLE: Joi.string().valid('true', 'false').required(),
+  S3_KEY_PREFIX: Joi.string()
+    .allow('')
+    .default('')
+    .custom((value: string, helpers) => {
+      try {
+        normalizeKeyPrefix(value);
+        return value;
+      } catch {
+        return helpers.error('any.invalid');
+      }
+    }),
 
   JWT_SECRET: Joi.string().min(20).required(),
   JWT_EXPIRES_IN: Joi.string().default('1h'),

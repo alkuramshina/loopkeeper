@@ -35,6 +35,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      # Build pinned upstream MinIO sources; official images are unavailable.
+      - name: Start isolated media storage
+        run: |
+          JWT_SECRET=ci-access-secret-long-enough REFRESH_JWT_SECRET=ci-refresh-secret-long-enough INVITATION_SECRET=ci-invitation-secret-long-enough docker compose --env-file .env.example -f deploy/docker-compose.yml --profile test up -d --wait minio-test
+          JWT_SECRET=ci-access-secret-long-enough REFRESH_JWT_SECRET=ci-refresh-secret-long-enough INVITATION_SECRET=ci-invitation-secret-long-enough docker compose --env-file .env.example -f deploy/docker-compose.yml --profile test run --rm --no-deps minio-test-init
       - run: npm ci
       - run: npx prisma generate && npx prisma validate
       - run: npx tsc --noEmit --incremental false -p tsconfig.json
@@ -66,6 +71,11 @@ jobs:
             package-lock.json
             frontend/package-lock.json
       # The browser suite starts the API from the repository root.
+      # Build pinned upstream MinIO sources; official images are unavailable.
+      - name: Start isolated media storage
+        run: |
+          JWT_SECRET=ci-access-secret-long-enough REFRESH_JWT_SECRET=ci-refresh-secret-long-enough INVITATION_SECRET=ci-invitation-secret-long-enough docker compose --env-file .env.example -f deploy/docker-compose.yml --profile test up -d --wait minio-test
+          JWT_SECRET=ci-access-secret-long-enough REFRESH_JWT_SECRET=ci-refresh-secret-long-enough INVITATION_SECRET=ci-invitation-secret-long-enough docker compose --env-file .env.example -f deploy/docker-compose.yml --profile test run --rm --no-deps minio-test-init
       - run: npm ci && npx prisma generate
       - run: npm ci
         working-directory: frontend

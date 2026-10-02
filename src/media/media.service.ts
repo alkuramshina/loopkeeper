@@ -1,22 +1,13 @@
+import { lockCampaignMember } from '../campaign/access/campaign-write';
 import { randomUUID } from 'node:crypto';
-import {
-  mkdir,
-  open,
-  readdir,
-  readFile,
-  rename,
-  rm,
-  stat,
-  writeFile,
-} from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { open, readdir, rm, stat } from 'node:fs/promises';
+import { join } from 'node:path';
 import {
   HttpStatus,
-  Inject,
+  Logger,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { ConfigType } from '@nestjs/config';
 import sharp from 'sharp';
 import { CampaignElementType, CampaignRole, Prisma } from '@prisma/client';
 import {
@@ -25,7 +16,6 @@ import {
 } from '../campaign/access/campaign-membership';
 
 import { DomainException } from '../common/exceptions/domain.exception';
-import appConfig from '../config/app.config';
 import {
   editableElementWhere,
   readableElementWhere,
@@ -36,6 +26,11 @@ import {
   MAX_MEDIA_BYTES,
 } from './media-upload-exception.filter';
 import { MEDIA_UPLOAD_TEMP_PATH } from './temporary-file-storage';
+import {
+  MediaStorage,
+  MediaObject,
+  MediaObjectNotFound,
+} from './media-storage';
 
 const MIN_AVATAR_DIMENSION = 256;
 const MAX_AVATAR_DIMENSION = 2048;
@@ -97,16 +92,11 @@ type NormalizedAvatar = {
 
 @Injectable()
 export class MediaService {
-  private readonly storagePath: string;
-
+  private readonly logger = new Logger(MediaService.name);
   constructor(
     private readonly prisma: PrismaService,
-
-    @Inject(appConfig.KEY)
-    config: ConfigType<typeof appConfig>,
-  ) {
-    this.storagePath = resolve(config.mediaStoragePath);
-  }
+    private readonly storage: MediaStorage,
+  ) {}
 
   async replaceAvatar(userId: string, file: UploadedFile) {
     const user = await this.prisma.user.findFirst({
@@ -119,7 +109,7 @@ export class MediaService {
     const normalizedAvatar = await this.normalizeAvatar(file);
     const storageKey = `${randomUUID()}.webp`;
 
-    await this.writeAtomically(storageKey, normalizedAvatar.content);
+    await this.putObject(storageKey, normalizedAvatar.content);
 
     let result: {
       asset: { assetId: string };
@@ -128,6 +118,7 @@ export class MediaService {
 
     try {
       result = await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "userId" FROM "users" WHERE "userId" = ${userId} FOR UPDATE`;
         const user = await tx.user.findFirst({
           where: { userId, isDeleted: false },
           select: {
@@ -170,12 +161,12 @@ export class MediaService {
         };
       });
     } catch (error) {
-      await this.removeStorageFile(storageKey);
+      await this.cleanupObject(storageKey);
       throw error;
     }
 
     if (result.previousStorageKey) {
-      await this.removeStorageFile(result.previousStorageKey);
+      await this.cleanupObject(result.previousStorageKey);
     }
 
     return {
@@ -186,6 +177,7 @@ export class MediaService {
 
   async deleteAvatar(userId: string): Promise<void> {
     const asset = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "userId" FROM "users" WHERE "userId" = ${userId} FOR UPDATE`;
       const user = await tx.user.findFirst({
         where: { userId, isDeleted: false },
         select: { avatarAssetId: true },
@@ -207,7 +199,7 @@ export class MediaService {
       return avatarAsset;
     });
 
-    await this.removeStorageFile(asset.storageKey);
+    await this.cleanupObject(asset.storageKey);
   }
 
   async replaceCharacterAvatar(
@@ -218,7 +210,7 @@ export class MediaService {
     const character = await this.authorizeCharacterAvatar(userId, characterId);
     const normalizedAvatar = await this.normalizeAvatar(file);
     const storageKey = `${randomUUID()}.webp`;
-    await this.writeAtomically(storageKey, normalizedAvatar.content);
+    await this.putObject(storageKey, normalizedAvatar.content);
 
     let result: {
       asset: { assetId: string };
@@ -226,6 +218,10 @@ export class MediaService {
     };
     try {
       result = await this.prisma.$transaction(async (tx) => {
+        await lockCampaignMember(tx, userId, character.campaignId, [
+          CampaignRole.PLAYER,
+        ]);
+        await this.authorizeCharacterAvatar(userId, characterId, tx);
         const currentCharacter = await tx.character.findUniqueOrThrow({
           where: { characterId: character.characterId },
           select: {
@@ -260,12 +256,12 @@ export class MediaService {
         };
       });
     } catch (error) {
-      await this.removeStorageFile(storageKey);
+      await this.cleanupObject(storageKey);
       throw error;
     }
 
     if (result.previousStorageKey) {
-      await this.removeStorageFile(result.previousStorageKey);
+      await this.cleanupObject(result.previousStorageKey);
     }
     return {
       assetId: result.asset.assetId,
@@ -279,6 +275,10 @@ export class MediaService {
   ): Promise<void> {
     const character = await this.authorizeCharacterAvatar(userId, characterId);
     const asset = await this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, userId, character.campaignId, [
+        CampaignRole.PLAYER,
+      ]);
+      await this.authorizeCharacterAvatar(userId, characterId, tx);
       const currentCharacter = await tx.character.findUniqueOrThrow({
         where: { characterId: character.characterId },
         select: { avatarAssetId: true },
@@ -295,7 +295,7 @@ export class MediaService {
       });
       return avatarAsset;
     });
-    await this.removeStorageFile(asset.storageKey);
+    await this.cleanupObject(asset.storageKey);
   }
 
   async replaceCampaignCover(
@@ -306,7 +306,7 @@ export class MediaService {
     await this.requireCampaignOwner(userId, campaignId);
     const normalizedAvatar = await this.normalizeCover(file);
     const storageKey = `${randomUUID()}.webp`;
-    await this.writeAtomically(storageKey, normalizedAvatar.content);
+    await this.putObject(storageKey, normalizedAvatar.content);
 
     let result: {
       asset: { assetId: string };
@@ -314,6 +314,8 @@ export class MediaService {
     };
     try {
       result = await this.prisma.$transaction(async (tx) => {
+        await lockCampaignMember(tx, userId, campaignId, [CampaignRole.OWNER]);
+        await this.requireCampaignOwner(userId, campaignId, tx);
         const campaign = await tx.campaign.findUniqueOrThrow({
           where: { campaignId },
           select: {
@@ -348,12 +350,12 @@ export class MediaService {
         };
       });
     } catch (error) {
-      await this.removeStorageFile(storageKey);
+      await this.cleanupObject(storageKey);
       throw error;
     }
 
     if (result.previousStorageKey) {
-      await this.removeStorageFile(result.previousStorageKey);
+      await this.cleanupObject(result.previousStorageKey);
     }
     return {
       assetId: result.asset.assetId,
@@ -364,6 +366,8 @@ export class MediaService {
   async deleteCampaignCover(userId: string, campaignId: string): Promise<void> {
     await this.requireCampaignOwner(userId, campaignId);
     const asset = await this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, userId, campaignId, [CampaignRole.OWNER]);
+      await this.requireCampaignOwner(userId, campaignId, tx);
       const campaign = await tx.campaign.findUniqueOrThrow({
         where: { campaignId },
         select: { coverAssetId: true },
@@ -380,7 +384,7 @@ export class MediaService {
       });
       return coverAsset;
     });
-    await this.removeStorageFile(asset.storageKey);
+    await this.cleanupObject(asset.storageKey);
   }
 
   async replaceElementCover(
@@ -448,6 +452,23 @@ export class MediaService {
     }
   }
 
+  private async lockEditableElement(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    elementId: string,
+  ): Promise<void> {
+    const element = await tx.campaignElement.findFirst({
+      where: { elementId, ...editableElementWhere(userId) },
+      select: { campaignId: true },
+    });
+    if (!element) throw this.elementNotFound();
+    await lockCampaignMember(tx, userId, element.campaignId, [
+      CampaignRole.OWNER,
+      CampaignRole.PLAYER,
+    ]);
+    await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
+  }
+
   private async attachElementAsset(
     userId: string,
     elementId: string,
@@ -455,12 +476,12 @@ export class MediaService {
     image: NormalizedAvatar,
   ) {
     const storageKey = `${randomUUID()}.webp`;
-    await this.writeAtomically(storageKey, image.content);
+    await this.putObject(storageKey, image.content);
 
     let result: { assetId: string; url: string; previousKey?: string };
     try {
       result = await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
+        await this.lockEditableElement(tx, userId, elementId);
         const element = await tx.campaignElement.findFirst({
           where: {
             elementId,
@@ -502,11 +523,11 @@ export class MediaService {
         };
       });
     } catch (error) {
-      await this.removeStorageFile(storageKey);
+      await this.cleanupObject(storageKey);
       throw error;
     }
 
-    if (result.previousKey) await this.removeStorageFile(result.previousKey);
+    if (result.previousKey) await this.cleanupObject(result.previousKey);
     return result;
   }
 
@@ -516,7 +537,7 @@ export class MediaService {
     slot: ElementMediaSlot,
   ): Promise<void> {
     const storageKey = await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
+      await this.lockEditableElement(tx, userId, elementId);
       const element = await tx.campaignElement.findFirst({
         where: { elementId, ...editableElementWhere(userId) },
         select: {
@@ -537,7 +558,7 @@ export class MediaService {
       await tx.mediaAsset.delete({ where: { assetId: asset.assetId } });
       return asset.storageKey;
     });
-    await this.removeStorageFile(storageKey);
+    await this.cleanupObject(storageKey);
   }
 
   // Removes media that no entity references any more: asset rows whose owner
@@ -559,53 +580,88 @@ export class MediaService {
       where: orphanAssetWhere,
       select: { assetId: true, storageKey: true },
     });
-    const orphanKeys = new Set(orphanAssets.map((asset) => asset.storageKey));
-    const knownKeys = new Set(
-      (
-        await this.prisma.mediaAsset.findMany({ select: { storageKey: true } })
-      ).map((asset) => asset.storageKey),
-    );
-
-    const orphanFiles: string[] = [];
-    for (const directory of [this.storagePath, MEDIA_UPLOAD_TEMP_PATH]) {
-      const entries = await readdir(directory, { withFileTypes: true }).catch(
-        () => [],
-      );
-      for (const entry of entries) {
-        if (!entry.isFile()) continue;
-        // Files of orphan asset rows are removed together with the rows.
-        if (directory === this.storagePath && knownKeys.has(entry.name)) {
-          continue;
-        }
-        const path = join(directory, entry.name);
-        const { mtime } = await stat(path);
-        if (mtime < cutoff) orphanFiles.push(path);
-      }
-    }
-
-    if (apply) {
-      if (orphanAssets.length) {
-        await this.prisma.mediaAsset.deleteMany({
-          where: {
-            ...orphanAssetWhere,
-            assetId: { in: orphanAssets.map((asset) => asset.assetId) },
-          },
-        });
-        await Promise.all(
-          [...orphanKeys].map((key) => this.removeStorageFile(key)),
-        );
-      }
-      await Promise.all(orphanFiles.map((path) => rm(path, { force: true })));
-    }
-
-    return {
+    const report = {
       applied: apply,
       orphanAssets: orphanAssets.length,
-      orphanFiles: orphanFiles.length,
+      orphanFiles: 0,
+      deletedAssets: 0,
+      deletedObjects: 0,
+      deletedTemporaryFiles: 0,
+      errors: 0,
     };
+    const removeObject = async (key: string) => {
+      try {
+        await this.storage.delete(key);
+        report.deletedObjects++;
+      } catch {
+        report.errors++;
+      }
+    };
+    try {
+      if (apply) {
+        for (const asset of orphanAssets) {
+          const removed = await this.prisma.mediaAsset.deleteMany({
+            where: { ...orphanAssetWhere, assetId: asset.assetId },
+          });
+          if (removed.count) {
+            report.deletedAssets += removed.count;
+            await removeObject(asset.storageKey);
+          }
+        }
+      }
+      let cursor: string | undefined;
+      do {
+        const page = await this.storage.list(cursor);
+        for (const object of page.objects) {
+          if (object.modifiedAt >= cutoff) continue;
+          const asset = await this.prisma.mediaAsset.findFirst({
+            where: { storageKey: object.key },
+            select: { assetId: true },
+          });
+          if (asset) continue;
+          report.orphanFiles++;
+          if (apply) {
+            const current = await this.prisma.mediaAsset.findFirst({
+              where: { storageKey: object.key },
+              select: { assetId: true },
+            });
+            if (!current) await removeObject(object.key);
+          }
+        }
+        cursor = page.cursor;
+      } while (cursor);
+    } catch {
+      this.logger.warn(
+        'Media reconciliation interrupted: ' + JSON.stringify(report),
+      );
+      throw new Error(
+        'Media reconciliation failed while listing objects or checking references',
+      );
+    }
+    const entries = await readdir(MEDIA_UPLOAD_TEMP_PATH, {
+      withFileTypes: true,
+    }).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return [];
+      throw error;
+    });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const path = join(MEDIA_UPLOAD_TEMP_PATH, entry.name);
+      try {
+        if ((await stat(path)).mtime >= cutoff) continue;
+        report.orphanFiles++;
+        if (apply) {
+          await rm(path, { force: true });
+          report.deletedTemporaryFiles++;
+        }
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') report.errors++;
+      }
+    }
+    return report;
   }
 
-  async getMediaContent(userId: string, assetId: string): Promise<Buffer> {
+  async getMediaContent(userId: string, assetId: string): Promise<MediaObject> {
     const asset = await this.prisma.mediaAsset.findFirst({
       where: {
         assetId,
@@ -649,17 +705,19 @@ export class MediaService {
     }
 
     try {
-      return await readFile(this.storageFilePath(asset.storageKey));
-    } catch {
-      throw new NotFoundException();
+      return await this.storage.get(asset.storageKey);
+    } catch (error) {
+      if (error instanceof MediaObjectNotFound) throw new NotFoundException();
+      throw this.storageUnavailable();
     }
   }
 
   private async requireCampaignOwner(
     userId: string,
     campaignId: string,
+    db: Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
-    const campaign = await this.prisma.campaign.findFirst({
+    const campaign = await db.campaign.findFirst({
       where: { campaignId, ...ownerCampaignWhere(userId) },
       select: { campaignId: true },
     });
@@ -672,8 +730,12 @@ export class MediaService {
     }
   }
 
-  private async authorizeCharacterAvatar(userId: string, characterId: string) {
-    const character = await this.prisma.character.findFirst({
+  private async authorizeCharacterAvatar(
+    userId: string,
+    characterId: string,
+    db: Prisma.TransactionClient = this.prisma,
+  ) {
+    const character = await db.character.findFirst({
       where: {
         characterId,
         campaign: memberCampaignWhere(userId),
@@ -691,7 +753,7 @@ export class MediaService {
     if (character.ownerId !== userId) {
       throw new NotFoundException();
     }
-    const membership = await this.prisma.campaignMember.findFirst({
+    const membership = await db.campaignMember.findFirst({
       where: {
         campaignId: character.campaignId,
         userId,
@@ -703,8 +765,23 @@ export class MediaService {
     return character;
   }
 
-  async removeStorageFile(storageKey: string): Promise<void> {
-    await rm(this.storageFilePath(storageKey), { force: true });
+  // Cleanup after commit or rollback must never replace the operation result.
+  async cleanupObject(storageKey: string): Promise<void> {
+    try {
+      await this.storage.delete(storageKey);
+    } catch {
+      this.logger.warn(
+        'Media object cleanup failed; reconciliation will retry',
+      );
+    }
+  }
+
+  private storageUnavailable(): DomainException {
+    return new DomainException(
+      HttpStatus.SERVICE_UNAVAILABLE,
+      'media.storage_unavailable',
+      'Media storage is temporarily unavailable',
+    );
   }
 
   private validateUpload(file: UploadedFile): void {
@@ -930,24 +1007,12 @@ export class MediaService {
     }
   }
 
-  private async writeAtomically(
-    storageKey: string,
-    content: Buffer,
-  ): Promise<void> {
-    await mkdir(this.storagePath, { recursive: true });
-    const targetPath = this.storageFilePath(storageKey);
-    const temporaryPath = `${targetPath}.${randomUUID()}.tmp`;
-
+  private async putObject(storageKey: string, content: Buffer): Promise<void> {
     try {
-      await writeFile(temporaryPath, content, { flag: 'wx' });
-      await rename(temporaryPath, targetPath);
-    } finally {
-      await rm(temporaryPath, { force: true });
+      await this.storage.put(storageKey, content, content.length);
+    } catch {
+      throw this.storageUnavailable();
     }
-  }
-
-  private storageFilePath(storageKey: string): string {
-    return join(this.storagePath, storageKey);
   }
 
   private elementNotFound(): DomainException {

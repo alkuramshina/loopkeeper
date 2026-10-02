@@ -1,102 +1,84 @@
 # Loopkeeper
 
-Loopkeeper — веб-приложение для совместного ведения нарративных ролевых кампаний, где важнее история, загадка и атмосфера, чем статы и броски. Первая поддерживаемая система — **Tales from the Loop**.
+A web app for running narrative TTRPG campaigns together. The first supported system is **Tales from the Loop**.
 
-## Что умеет
+The master manages campaign materials and reveals them to players. Players keep their own notes. Everyone can read the investigation board; the master and players add cards, move them and connect them to explore the mystery. Viewers have read access. Board updates currently require a manual refresh.
 
-- **Кампании и участники.** Мастер создаёт кампанию и приглашает людей по одноразовой ссылке: игроков или наблюдателей. Каждая кампания изолирована от остальных.
-- **Материалы кампании.** Мастер ведёт заметки, локации (с картой), NPC и прочие материалы. По умолчанию их видит только он, а когда нужно — открывает участникам.
-- **Дело и заметки игрока.** Игрок видит открытые материалы в «Деле», от новых к старым, и ведёт свои заметки: личные, для мастера или для всех. Быструю заметку можно записать прямо во время сцены.
-- **Персонажи.** У каждого игрока свой лист персонажа по шаблону системы.
-- **Доска расследования.** Мастер и игроки вместе выкладывают на общую доску карточки: свои записи, открытые материалы и персонажей. Карточки можно двигать, помечать тегами и цветом и соединять подписанными связями.
-- **Оформление.** Обложка кампании, аватары и фоны рабочего пространства.
+Backend: NestJS, TypeScript, Prisma and PostgreSQL. Frontend: React, Vite, TanStack Query and React Flow. Images live in private S3-compatible storage and are delivered through the API after checking current access.
 
-Изменения на доске пока не приходят в реальном времени: чтобы увидеть правки других участников, нажмите «Обновить».
+## Local development
 
-## Стек
+Use Node.js 22+ and Docker. Copy .env.example to .env and set three distinct random secrets (JWT_SECRET, REFRESH_JWT_SECRET and INVITATION_SECRET), each at least 20 characters. For example:
 
-- Backend: NestJS, TypeScript, PostgreSQL, Prisma.
-- Frontend: React, Vite, TanStack Query, React Flow.
-- Тесты: Jest (backend), Vitest и Testing Library (frontend), Playwright (браузерные сценарии).
+~~~sh
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+npm install
+npm run db:up
+npm run prisma:deploy
+npm run prisma:seed
+npm run start:dev
+~~~
 
-## Быстрый старт
+The API runs at http://localhost:3000 and Swagger at /docs. Start the frontend in another terminal:
 
-Нужны Node.js 22+ и Docker.
-
-1. Скопируйте `.env.example` в `.env` и задайте `JWT_SECRET`, `REFRESH_JWT_SECRET` и `INVITATION_SECRET` — три разные случайные строки не короче 20 символов:
-
-   ```sh
-   node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
-   ```
-
-2. Запустите базу данных, примените миграции и справочные данные, запустите API:
-
-   ```sh
-   npm install
-   npm run db:up
-   npm run prisma:deploy
-   npm run prisma:seed
-   npm run start:dev
-   ```
-
-   API работает на `http://localhost:3000`, документация Swagger — на `http://localhost:3000/docs`.
-
-3. В другом терминале запустите интерфейс:
-
-   ```sh
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-   Откройте `http://localhost:5173`.
-
-### Всё в Docker
-
-```sh
-docker compose --env-file .env -f deploy/docker-compose.yml up --build
-```
-
-Поднимает PostgreSQL, применяет миграции и запускает API.
-
-## Тесты
-
-```sh
-npm test                 # unit-тесты backend
-npm run db:test:up       # отдельная тестовая база
-npm run test:e2e         # e2e-тесты backend
-npm run db:test:down
-
-cd frontend && npm test  # тесты интерфейса
-```
-
-E2E-тесты работают только с базой `loopkeeper_test` и не трогают рабочие данные.
-
-### Браузерные тесты (Playwright)
-
-```sh
-npm run db:test:up
+~~~sh
 cd frontend
-npm run test:e2e                  # или test:e2e:ui для интерактивного режима
-```
+npm install
+npm run dev
+~~~
 
-Playwright сам поднимает отдельный API на порту `3100` (база `loopkeeper_test` мигрируется и очищается перед запуском) и Vite на порту `5174`, поэтому рабочие серверы и данные не затрагиваются. Локально тесты запускаются в установленном Google Chrome, скачивать браузер не нужно. В CI используется Chromium от Playwright; локально его можно выбрать через `npx playwright install chromium` и `PLAYWRIGHT_CHANNEL=chromium npm run test:e2e`.
+Open http://localhost:5173. Set FRONTEND_URL to your frontend origin.
 
-## Полезные команды
+The db:up command starts PostgreSQL, MinIO and provisioning. Provisioning creates a private loopkeeper bucket and a separate runtime user; the API never creates buckets or policies. MinIO's API is on port 9000 and its console on 9001. The initial build compiles pinned upstream MinIO and mc releases because their official registry images are unavailable. Repeated starts reuse the built images.
 
-| Команда                  | Что делает                                        |
-| ------------------------ | ------------------------------------------------- |
-| `npm run db:down`        | Остановить контейнеры                             |
-| `npm run db:reset`       | Удалить локальную базу и создать её заново        |
-| `npm run prisma:migrate` | Создать и применить новую миграцию при разработке |
-| `npm run prisma:studio`  | Открыть просмотр базы в браузере                  |
+To start the API in Docker as well:
+
+~~~sh
+docker compose --env-file .env -f deploy/docker-compose.yml up --build
+~~~
+
+The API waits for migrations and bucket provisioning. Temporary storage failure permits process startup, but readiness fails.
+
+## Media configuration and operations
+
+S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY and S3_FORCE_PATH_STYLE (true or false) are required at startup. S3_KEY_PREFIX is optional. Keys in the database are relative; the driver adds the prefix once and lists only its exact prefix/ boundary. An empty prefix uses the entire dedicated environment bucket.
+
+Runtime permissions: GetObject, PutObject and DeleteObject within the application's object scope, ListBucket for that scope, GetBucketLocation, and HeadBucket readiness access. Root credentials are only for provisioning. Use separate credentials, buckets and endpoints for development, tests and production. Keep buckets private and do not publish signed object URLs.
+
+Existing upload routes and /media/:assetId URLs are unchanged. Images retain their normalization and size limits. Missing or inaccessible media returns 404 resource.not_found. Storage failure returns 503 media.storage_unavailable with a safe English message. Cleanup failure after a committed change is logged and does not undo the successful API response.
+
+S3 requests allow two attempts, a 2-second connection timeout, a 10-second request timeout and a 30-second total operation/read timeout. HeadBucket readiness has a 2-second total deadline. /health/live does not contact S3; /health/ready checks both PostgreSQL and storage.
+
+~~~sh
+npm run media:reconcile              # report only
+npm run media:reconcile -- --apply   # remove confirmed orphans older than one hour
+~~~
+
+Reconciliation visits all pages in its configured scope, checks database references again before deleting, and processes deletions sequentially. It also cleans abandoned uploads in the OS temporary directory. Failed deletions are counted and give a nonzero exit code. Listing/database failures stop the run; safe logs record completed work. Retry is safe.
+
+For the one-time transition from disk storage, stop the old API and check MediaAsset rows, managed /media/ references and the previous storage directory/volume. Reset only media that the owner has confirmed can be discarded. Do not reset campaign data and do not automatically delete assets on startup. No migration of old disk objects is provided. An empty installation can simply start with the S3 configuration above.
+
+Production needs independent backups of both PostgreSQL metadata and bucket objects, an off-server copy, and a tested coordinated restore. Bucket lifecycle rules must not delete referenced media. Scheduling reconciliation, production storage configuration and backup/restore verification belong to deployment readiness.
+
+## Tests
+
+~~~sh
+npm test
+npm run db:test:up
+npm run test:e2e
+cd frontend
+npm test
+npm run test:e2e
+~~~
+
+Test infrastructure uses loopkeeper_test PostgreSQL and a separate MinIO on port 9002 with the private loopkeeper-test bucket. Each backend/browser run gets a unique tests/ prefix. Cleanup refuses development endpoints, other buckets and empty/unsafe prefixes. Tests use restricted runtime credentials and clean only their own objects. Unit tests use fake storage and do not need MinIO.
+
+Playwright starts its own API on port 3100 and Vite on 5174. Locally it uses installed Google Chrome; no browser download is required. CI builds pinned MinIO/mc sources in both jobs and uses Playwright Chromium. Stop test services with npm run db:test:down.
 
 ## Entity views and campaign visits
 
-An entity is new for a campaign member when it is visible, was authored by someone else, and has no view record for that membership. Elements, board cards and board links return a required boolean `isNew`; characters are excluded. Reading a list, fetching a detail, or previewing a referenced source never records a view by itself.
+An entity is new when it is visible, authored by another member and has no view record for that membership. Elements, board cards and links expose isNew; characters are excluded. Fetching or previewing alone does not record a view.
 
-`POST /campaigns/:campaignId/views` accepts `{ "entities": [{ "entityType": "ELEMENT", "entityId": "uuid" }] }`, with 1–500 entries. Types are `ELEMENT`, `BOARD_CARD` and `BOARD_LINK`. All member roles may record their own views. A successful atomic batch returns `204`; duplicates and concurrent repeats preserve the first server timestamp. An inaccessible entity, missing ID or foreign campaign ID returns `404 views.entity_not_found`; nonmembers receive `404 campaign.not_found`.
+POST /campaigns/:campaignId/views accepts 1?500 entities with entityType (ELEMENT, BOARD_CARD or BOARD_LINK) and entityId. All member roles can record their own views; success returns 204. Inaccessible or foreign entities return 404 views.entity_not_found; nonmembers receive 404 campaign.not_found. The first view timestamp is preserved across repeats. A reference card's view is independent of its source.
 
-The frontend records an element after rendering its detail and records only the cards and links in a rendered board response, in batches of at most 500. Board highlights persist through technical refetches until manual refresh or leaving the board. A reference card's view is independent of the source element's view. Hiding an element preserves its views while removing its reference cards, links and their views transactionally.
-
-Campaign responses include `lastVisitAt: string | null` and `newVisibleMaterialCount`, counting all visible unviewed elements by other authors, including player notes addressed to the master. `POST /campaigns/:campaignId/visit` returns `{ "lastVisitAt": "ISO date-time" }` and only records a server-time visit; visits do not change views. `sharedAt` remains the last transition to `SHARED` for sorting and display and is cleared when an element is hidden.
+The frontend records views after rendering. Board highlights survive technical refetches until manual refresh or leaving. Hiding an element preserves its own views and transactionally removes its reference cards, links and their views. Campaign visits record lastVisitAt without changing views; newVisibleMaterialCount counts visible unviewed materials by others.

@@ -27,7 +27,7 @@ describe('UserService', () => {
         },
         {
           provide: MediaService,
-          useValue: { removeStorageFile: jest.fn() },
+          useValue: { cleanupObject: jest.fn() },
         },
       ],
     }).compile();

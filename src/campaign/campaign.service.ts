@@ -126,6 +126,7 @@ export class CampaignService {
 
     const { campaign, oldStorageKey } = await this.prisma.$transaction(
       async (tx) => {
+        await lockCampaignMember(tx, userId, campaignId, [CampaignRole.OWNER]);
         const current =
           updateDto.coverUrl !== undefined
             ? await tx.campaign.findUniqueOrThrow({
@@ -153,7 +154,7 @@ export class CampaignService {
       },
     );
     if (oldStorageKey) {
-      await this.mediaService.removeStorageFile(oldStorageKey);
+      await this.mediaService.cleanupObject(oldStorageKey);
     }
     return this.presentCampaign(
       campaign,
@@ -185,7 +186,7 @@ export class CampaignService {
       return assets.map((asset) => asset.storageKey);
     });
     await Promise.all(
-      storageKeys.map((key) => this.mediaService.removeStorageFile(key)),
+      storageKeys.map((key) => this.mediaService.cleanupObject(key)),
     );
   }
 

@@ -175,7 +175,7 @@ export class ElementService {
         return { updated, oldStorageKey: current?.mapAsset?.storageKey };
       },
     );
-    if (oldStorageKey) await this.media.removeStorageFile(oldStorageKey);
+    if (oldStorageKey) await this.media.cleanupObject(oldStorageKey);
     return { ...updated, isNew: false };
   }
 
@@ -264,9 +264,7 @@ export class ElementService {
       });
       return assets.map((asset) => asset.storageKey);
     });
-    await Promise.all(
-      storageKeys.map((key) => this.media.removeStorageFile(key)),
-    );
+    await Promise.all(storageKeys.map((key) => this.media.cleanupObject(key)));
   }
 
   private async requireAuthor(userId: string, elementId: string) {

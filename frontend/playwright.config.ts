@@ -1,13 +1,20 @@
+import { randomUUID } from 'node:crypto';
 import { defineConfig, devices } from '@playwright/test';
 
 // Browser tests run against their own API and Vite servers so they never touch
 // the development database or a developer's running servers.
 const apiPort = Number(process.env.PLAYWRIGHT_API_PORT ?? 3100);
 const webPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? 5174);
+const mediaPrefix =
+  process.env.LOOPKEEPER_BROWSER_MEDIA_PREFIX ??
+  'tests/browser-' + randomUUID();
+process.env.LOOPKEEPER_BROWSER_MEDIA_PREFIX = mediaPrefix;
+process.env.S3_KEY_PREFIX = mediaPrefix;
 const webUrl = `http://localhost:${webPort}`;
 
 export default defineConfig({
   testDir: './e2e',
+  globalTeardown: './e2e/support/media-storage.ts',
   // Every spec creates its own users and campaigns, but the API shares one
   // in-memory throttler and one database, so keep runs deterministic.
   fullyParallel: false,
@@ -58,7 +65,13 @@ export default defineConfig({
         INVITATION_SECRET: 'browser-test-invitation-secret-long-enough',
         REFRESH_COOKIE_SECURE: 'false',
         REFRESH_COOKIE_SAMESITE: 'lax',
-        MEDIA_STORAGE_PATH: 'data/browser-test-media',
+        S3_ENDPOINT: 'http://localhost:9002',
+        S3_REGION: 'us-east-1',
+        S3_BUCKET: 'loopkeeper-test',
+        S3_ACCESS_KEY_ID: 'loopkeeper-test-app',
+        S3_SECRET_ACCESS_KEY: 'loopkeeper-test-app-secret',
+        S3_FORCE_PATH_STYLE: 'true',
+        S3_KEY_PREFIX: mediaPrefix,
         THROTTLE_LIMIT: '10000',
         AUTH_THROTTLE_LIMIT: '10000',
       },

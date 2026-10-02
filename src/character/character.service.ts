@@ -132,6 +132,9 @@ export class CharacterService {
 
     const { updated, oldStorageKey } = await this.prisma.$transaction(
       async (tx) => {
+        await lockCampaignMember(tx, userId, character.campaignId, [
+          CampaignRole.PLAYER,
+        ]);
         const current =
           updateDto.avatarUrl !== undefined
             ? await tx.character.findUniqueOrThrow({
@@ -163,7 +166,7 @@ export class CharacterService {
       },
     );
     if (oldStorageKey) {
-      await this.mediaService.removeStorageFile(oldStorageKey);
+      await this.mediaService.cleanupObject(oldStorageKey);
     }
     return updated;
   }

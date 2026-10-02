@@ -1,5 +1,17 @@
+import {
+  clearTestMedia,
+  storedTestObjects,
+  testMediaStorage,
+} from './helpers/media-storage';
 import { randomUUID } from 'node:crypto';
-import { access, readdir, rm, utimes, writeFile } from 'node:fs/promises';
+import {
+  access,
+  readdir,
+  rm,
+  utimes,
+  writeFile,
+  mkdir,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -14,7 +26,6 @@ import {
 } from './helpers/database';
 
 const password = 'test-password-123';
-const mediaStoragePath = 'data/test-media';
 
 type Headers = { Authorization: string };
 
@@ -27,7 +38,7 @@ function createImage(width: number, height: number): Promise<Buffer> {
 }
 
 async function storedFiles(): Promise<string[]> {
-  return readdir(mediaStoragePath).catch(() => []);
+  return storedTestObjects();
 }
 
 async function pendingUploads(): Promise<string[]> {
@@ -41,13 +52,13 @@ describe('Element media (e2e)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
-    await rm(mediaStoragePath, { recursive: true, force: true });
+    await clearTestMedia();
     await resetTestDatabase();
     app = await createTestApp();
   });
   afterEach(async () => app.close());
   afterAll(async () => {
-    await rm(mediaStoragePath, { recursive: true, force: true });
+    await clearTestMedia();
     await closeTestDatabase();
   });
 
@@ -446,6 +457,27 @@ describe('Element media (e2e)', () => {
     expect(await getTestPrisma().mediaAsset.count()).toBe(0);
   });
 
+  it('accepts a map at the 10 MiB source limit and refuses one byte above it', async () => {
+    const { owner, campaignId } = await setupCampaign();
+    const elementId = await createElement(owner, campaignId, {
+      type: 'LOCATION',
+      title: 'Upper limit',
+    });
+    const source = await createImage(8192, 256);
+    const exact = Buffer.alloc(10 * 1024 * 1024);
+    source.copy(exact);
+    const accepted = await upload(owner, elementId, 'map', exact).expect(201);
+    await canReadMedia(owner, accepted.body.imageUrl, true);
+    const tooLarge = Buffer.concat([exact, Buffer.from([0])]);
+    await upload(owner, elementId, 'map', tooLarge)
+      .expect(413)
+      .expect((response) =>
+        expect(response.body.code).toBe('media.file_too_large'),
+      );
+    await canReadMedia(owner, accepted.body.imageUrl, true);
+    expect(await storedFiles()).toHaveLength(1);
+  });
+
   it('reconciles unreferenced asset rows and files', async () => {
     const { owner, campaignId } = await setupCampaign();
     const elementId = await createElement(owner, campaignId, {
@@ -462,7 +494,8 @@ describe('Element media (e2e)', () => {
     // Orphans are backdated past the grace period; fresh entries are kept.
     const past = new Date(Date.now() - 2 * 60 * 60 * 1000);
     const orphanKey = `${randomUUID()}.webp`;
-    await writeFile(join(mediaStoragePath, orphanKey), 'orphan');
+    const storage = testMediaStorage();
+    await storage.put(orphanKey, Buffer.from('orphan'), 6);
     await getTestPrisma().mediaAsset.create({
       data: {
         storageKey: orphanKey,
@@ -473,10 +506,11 @@ describe('Element media (e2e)', () => {
         createdAt: past,
       },
     });
-    const strayFile = join(mediaStoragePath, `${randomUUID()}.webp.tmp`);
+    await mkdir(MEDIA_UPLOAD_TEMP_PATH, { recursive: true });
+    const strayFile = join(MEDIA_UPLOAD_TEMP_PATH, `${randomUUID()}.webp.tmp`);
     await writeFile(strayFile, 'stray');
     await utimes(strayFile, past, past);
-    const freshFile = join(mediaStoragePath, `${randomUUID()}.webp.tmp`);
+    const freshFile = join(MEDIA_UPLOAD_TEMP_PATH, `${randomUUID()}.webp.tmp`);
     await writeFile(freshFile, 'in flight');
 
     const media = app.get(MediaService);
@@ -485,7 +519,8 @@ describe('Element media (e2e)', () => {
     expect(report).toMatchObject({ applied: false, orphanAssets: 1 });
     // Abandoned temporary uploads outside the storage directory count too.
     expect(report.orphanFiles).toBeGreaterThanOrEqual(1);
-    expect(await storedFiles()).toHaveLength(4);
+    expect(await storedFiles()).toHaveLength(2);
+    storage.onModuleDestroy();
 
     await media.reconcile({ apply: true, graceMs });
     await access(freshFile);

@@ -19,6 +19,19 @@ describe('OpenAPI contract', () => {
   });
 
   it('documents critical protected routes and the access-token scheme', () => {
+    for (const [path, method] of [
+      ['/media/{assetId}', 'get'],
+      ['/users/me/avatar', 'post'],
+      ['/elements/{elementId}/map', 'post'],
+    ] as const) {
+      expect(document.paths[path][method]?.responses['503']).toMatchObject({
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ApiErrorResponseDto' },
+          },
+        },
+      });
+    }
     expect(
       document.components?.securitySchemes?.['access-token'],
     ).toMatchObject({

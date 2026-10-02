@@ -1,5 +1,4 @@
-import { readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { storedBrowserObjects } from './support/media-storage';
 import { expect, Locator, Page, test } from './support/test';
 import {
   beginReturnVisit,
@@ -26,10 +25,7 @@ import {
   svgFile,
 } from './support/images';
 
-// The browser-test API stores media here (see playwright.config.ts).
-// Playwright runs from frontend/; the API runs from the repository root.
-const storagePath = join(process.cwd(), '..', 'data', 'browser-test-media');
-const storedFiles = () => readdirSync(storagePath).length;
+const storedFiles = async () => (await storedBrowserObjects()).length;
 
 function uploaded(page: Page, path: RegExp) {
   return page.waitForResponse(
@@ -176,7 +172,7 @@ test('P5b: bad avatar files are refused with a localized message and nothing is 
   await signInAs(page, owner);
   await page.goto('/settings/account');
   const input = page.getByLabel('Загрузить фото');
-  const files = storedFiles();
+  const files = await storedFiles();
 
   const cases: [string, Parameters<Locator['setInputFiles']>[0], RegExp][] = [
     ['over 5 MiB', oversizedPng(6 * 1024 * 1024), /^Файл слишком большой/],
@@ -194,7 +190,7 @@ test('P5b: bad avatar files are refused with a localized message and nothing is 
     await expect(page.getByRole('alert'), name).toHaveText(message);
   }
   expect((await currentUser(page, owner)).avatarUrl).toBeNull();
-  expect(storedFiles()).toBe(files);
+  expect(await storedFiles()).toBe(files);
 
   // A dropped connection fails the upload; the next attempt succeeds.
   await page.route('**/api/users/me/avatar', (route) =>
@@ -325,7 +321,7 @@ test('P5d: bad map and cover files are refused and nothing is stored', async ({
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);
   await page.getByRole('button', { name: 'Изменить' }).click();
-  const files = storedFiles();
+  const files = await storedFiles();
 
   const cases: [
     string,
@@ -369,7 +365,7 @@ test('P5d: bad map and cover files are refused and nothing is stored', async ({
     coverUrl: null,
     imageUrl: null,
   });
-  expect(storedFiles()).toBe(files);
+  expect(await storedFiles()).toBe(files);
 });
 
 test('P5d: deleting an element removes its cover and map files', async ({
@@ -394,7 +390,7 @@ test('P5d: deleting an element removes its cover and map files', async ({
     await png(2000, 1500),
   );
   const { coverUrl, imageUrl } = await element(page, owner, elementId);
-  const files = storedFiles();
+  const files = await storedFiles();
 
   await signInAs(page, owner);
   await page.goto(`/campaigns/${campaignId}/elements/${elementId}`);

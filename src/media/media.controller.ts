@@ -1,5 +1,7 @@
 import {
   Controller,
+  Logger,
+  HttpStatus,
   Delete,
   Get,
   HttpCode,
@@ -23,8 +25,12 @@ import {
   ApiParam,
   ApiOperation,
   ApiTags,
+  ApiServiceUnavailableResponse,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { pipeline } from 'node:stream/promises';
+import { Readable } from 'node:stream';
+import { DomainException } from '../common/exceptions/domain.exception';
 import { TokenPayloadDto } from '../auth/dto/token-payload.dto';
 import { LocationMapUploadGuard } from './location-map-upload.guard';
 import {
@@ -35,15 +41,17 @@ import {
 import { MediaService } from './media.service';
 import { TemporaryFileStorage } from './temporary-file-storage';
 import { ApiCommonErrors } from '../common/swagger/api-errors.decorator';
+import { ApiErrorResponseDto } from '../common/swagger/error-response.dto';
 
 const uploadOptions = {
-  limits: { fileSize: MAX_MEDIA_BYTES, files: 1, fields: 0 },
+  // Busboy treats its byte threshold as exclusive; allow the documented limit.
+  limits: { fileSize: MAX_MEDIA_BYTES + 1, files: 1, fields: 0 },
 };
 
 // Location maps may be larger, so they are streamed to a temporary file.
 const mapUploadOptions = {
   storage: new TemporaryFileStorage(),
-  limits: { fileSize: MAX_MAP_BYTES, files: 1, fields: 0 },
+  limits: { fileSize: MAX_MAP_BYTES + 1, files: 1, fields: 0 },
 };
 
 const fileBody: ApiBodyOptions = {
@@ -58,7 +66,13 @@ const fileBody: ApiBodyOptions = {
 @ApiBearerAuth('access-token')
 @UseFilters(MediaUploadExceptionFilter)
 @Controller()
+@ApiServiceUnavailableResponse({
+  type: ApiErrorResponseDto,
+  description:
+    'media.storage_unavailable: media storage is temporarily unavailable',
+})
 export class MediaController {
+  private readonly logger = new Logger(MediaController.name);
   constructor(private readonly mediaService: MediaService) {}
 
   @ApiOperation({ summary: 'Upload and set the authenticated user avatar' })
@@ -277,13 +291,51 @@ export class MediaController {
       assetId,
     );
 
-    response
-      .status(200)
-      .set({
-        'Content-Type': 'image/webp',
-        'X-Content-Type-Options': 'nosniff',
-        'Cache-Control': 'private, max-age=0, must-revalidate',
-      })
-      .send(content);
+    const disconnect = () => content.body.destroy();
+    response.once('close', disconnect);
+    // Wait for the first bytes before committing image headers. An upstream
+    // read failure can still use the normal safe API error response here.
+    const chunks = content.body[Symbol.asyncIterator]();
+    let first: IteratorResult<Buffer>;
+    try {
+      first = await chunks.next();
+      if (first.done && content.byteSize > 0) {
+        throw new Error('Media stream ended before its first bytes');
+      }
+    } catch {
+      response.off('close', disconnect);
+      content.body.destroy();
+      if (response.destroyed) return;
+      throw new DomainException(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'media.storage_unavailable',
+        'Media storage is temporarily unavailable',
+      );
+    }
+    if (response.destroyed) {
+      content.body.destroy();
+      return;
+    }
+    const output = Readable.from(
+      (async function* () {
+        if (!first.done) yield first.value;
+        for await (const chunk of chunks) yield chunk;
+      })(),
+    );
+    response.status(200).set({
+      'Content-Type': 'image/webp',
+      'Content-Length': String(content.byteSize),
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'private, max-age=0, must-revalidate',
+    });
+    try {
+      await pipeline(output, response);
+    } catch {
+      this.logger.warn('Media response stream closed before completion');
+      response.destroy();
+    } finally {
+      response.off('close', disconnect);
+      content.body.destroy();
+    }
   }
 }

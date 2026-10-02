@@ -14,9 +14,13 @@ async function main(): Promise<void> {
       graceMs: 60 * 60 * 1000,
     });
     console.log(JSON.stringify(report, null, 2));
+    if (report.errors) process.exitCode = 1;
   } finally {
     await app.close();
   }
 }
 
-void main();
+void main().catch(() => {
+  console.error('Media reconciliation failed');
+  process.exitCode = 1;
+});

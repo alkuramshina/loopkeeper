@@ -75,33 +75,35 @@ export class UserService {
 
   async update(userId: string, updateUserDto: UpdateUserDto) {
     const replacesManagedAvatar = updateUserDto.avatarUrl !== undefined;
-    const user = replacesManagedAvatar
-      ? await this.prisma.user.findUnique({
+    const { updatedUser, oldStorageKey } = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT "userId" FROM "users" WHERE "userId" = ${userId} FOR UPDATE`;
+        const user = replacesManagedAvatar
+          ? await tx.user.findUnique({
+              where: { userId },
+              select: {
+                avatarAssetId: true,
+                avatarAsset: { select: { storageKey: true } },
+              },
+            })
+          : null;
+        const updatedUser = await tx.user.update({
           where: { userId },
-          select: {
-            avatarAssetId: true,
-            avatarAsset: { select: { storageKey: true } },
+          data: {
+            name: updateUserDto.name,
+            avatarUrl: updateUserDto.avatarUrl,
+            ...(replacesManagedAvatar ? { avatarAssetId: null } : {}),
           },
-        })
-      : null;
-
-    const updatedUser = await this.prisma.user.update({
-      where: { userId },
-      data: {
-        name: updateUserDto.name,
-        avatarUrl: updateUserDto.avatarUrl,
-        ...(replacesManagedAvatar ? { avatarAssetId: null } : {}),
+          select: publicUserSelect,
+        });
+        if (user?.avatarAssetId)
+          await tx.mediaAsset.delete({
+            where: { assetId: user.avatarAssetId },
+          });
+        return { updatedUser, oldStorageKey: user?.avatarAsset?.storageKey };
       },
-      select: publicUserSelect,
-    });
-
-    if (user?.avatarAssetId) {
-      await this.prisma.mediaAsset.delete({
-        where: { assetId: user.avatarAssetId },
-      });
-      await this.mediaService.removeStorageFile(user.avatarAsset!.storageKey);
-    }
-
+    );
+    if (oldStorageKey) await this.mediaService.cleanupObject(oldStorageKey);
     return updatedUser;
   }
 
