@@ -1,3 +1,4 @@
+import { characterSheet } from '../characters/tales-from-the-loop';
 import { useBoardViews, ViewSaveStatus } from './use-entity-views';
 import {
   FormEvent,
@@ -40,7 +41,6 @@ import {
   Campaign,
   CampaignElement,
   Character,
-  CharacterTemplate,
 } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ProtectedImage } from '../../components/protected-image';
@@ -853,15 +853,7 @@ export function BoardPage() {
     enabled: hasCharacterCards,
     retry: false,
   });
-  const templates = useQuery({
-    queryKey: ['character-templates', campaign.data?.system],
-    queryFn: () =>
-      api.request<CharacterTemplate[]>(
-        `/game-systems/${campaign.data?.system}/templates`,
-      ),
-    enabled: hasCharacterCards && Boolean(campaign.data?.system),
-    retry: false,
-  });
+  const sheet = characterSheet(campaign.data?.system);
   useEffect(() => {
     const cardId = searchParams.get('card');
     const card = board.data?.cards.find((item) => item.cardId === cardId);
@@ -934,9 +926,7 @@ export function BoardPage() {
     if (!board.data) return;
     const characterConditions = new Map<string, string[]>();
     for (const character of characters.data ?? []) {
-      const fields =
-        templates.data?.find((item) => item.templateId === character.templateId)
-          ?.schema.fields ?? [];
+      const fields = sheet?.fields ?? [];
       characterConditions.set(
         character.characterId,
         fields
@@ -997,7 +987,7 @@ export function BoardPage() {
     canManage,
     views.highlight,
     characters.data,
-    templates.data,
+    sheet,
     persistNodeDimensions,
     setEdges,
     setNodes,

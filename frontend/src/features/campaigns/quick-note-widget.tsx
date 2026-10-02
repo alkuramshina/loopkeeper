@@ -1,9 +1,10 @@
+import { characterSheet } from '../characters/tales-from-the-loop';
 import { useLayoutEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PencilLine, Pin, PinOff } from 'lucide-react';
-import { Campaign, Character, CharacterTemplate } from '../../api/client';
+import { Campaign, Character } from '../../api/client';
 import { useAuth } from '../../auth/auth-context';
 import { ModalDialog } from '../../components/modal-dialog';
 import { Button } from '../../components/ui/button';
@@ -26,23 +27,10 @@ export function useMyCharacter(campaignId: string, enabled = true) {
   );
 }
 function MyCharacter({ campaign }: { campaign: Campaign }) {
-  const { api } = useAuth();
   const { t } = useTranslation();
   const character = useMyCharacter(campaign.campaignId);
-  const templates = useQuery({
-    queryKey: ['character-templates', campaign.system],
-    queryFn: () =>
-      api.request<CharacterTemplate[]>(
-        `/game-systems/${campaign.system}/templates`,
-      ),
-    enabled: Boolean(character && campaign.system),
-    retry: false,
-  });
   if (!character) return null;
-  const conditions = (
-    templates.data?.find((item) => item.templateId === character.templateId)
-      ?.schema.fields ?? []
-  ).filter(
+  const conditions = (characterSheet(campaign.system)?.fields ?? []).filter(
     (field) =>
       field.section === 'conditions' &&
       field.type === 'boolean' &&

@@ -190,9 +190,8 @@
     "create": "Создать персонажа",
     "name": "Имя",
     "description": "Описание",
-    "template": "Шаблон",
     "avatar": "Аватар персонажа",
-    "templateUnavailable": "Шаблон персонажа недоступен.",
+    "sheetUnavailable": "Лист персонажа для этой системы недоступен.",
     "addToBoard": "Добавить на доску",
     "sections": {
       "identity": "Основное",

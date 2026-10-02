@@ -82,26 +82,10 @@ const board = {
   cards: [{ cardId: 'k1', reference: { kind: 'ELEMENT', elementId: 'berg' } }],
   links: [],
 };
-const template = {
-  templateId: 'tftl',
-  name: 'Kid',
-  schema: {
-    fields: [
-      { key: 'upset', label: 'Upset', section: 'conditions', type: 'boolean' },
-      {
-        key: 'scared',
-        label: 'Scared',
-        section: 'conditions',
-        type: 'boolean',
-      },
-    ],
-  },
-};
 const character = {
   characterId: 'maya',
   campaignId: 'c',
   ownerId: 'player',
-  templateId: 'tftl',
   name: 'Майя Стрём',
   description: 'Книжный червь',
   data: { scared: true, upset: false },
@@ -163,7 +147,7 @@ describe('CasePage', () => {
         return Promise.resolve({
           campaignId: 'c',
           title: 'Лето петли',
-          system: 'tftl',
+          system: 'TALES_FROM_THE_LOOP',
           currentUserRole: role,
           lastVisitAt: at(19, 12),
           newVisibleMaterialCount: 2,
@@ -178,8 +162,6 @@ describe('CasePage', () => {
         return Promise.resolve(board);
       if (path === '/campaigns/c/characters')
         return Promise.resolve([character]);
-      if (path === '/game-systems/tftl/templates')
-        return Promise.resolve([template]);
       if (path === '/elements/booth') return Promise.resolve(booth);
       if (path === '/elements/my-note') return Promise.resolve(myNote);
       if (path === '/campaigns/c/cards') return Promise.resolve({});

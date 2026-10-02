@@ -1,4 +1,4 @@
-import { CampaignRole } from '@prisma/client';
+import { CampaignRole, System } from '@prisma/client';
 import { lockCampaignMember } from '../campaign/access/campaign-write';
 import { clearCardViews } from '../entity-view/entity-view.helpers';
 import { HttpStatus, Injectable } from '@nestjs/common';
@@ -14,17 +14,10 @@ import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 import { memberCampaignWhere } from '../campaign/access/campaign-membership';
 
-type FieldDefinition = {
-  key: string;
-  type: 'string' | 'number' | 'boolean' | 'select';
-  required?: boolean;
-  min?: number;
-  max?: number;
-  maxLength?: number;
-  options?: string[];
-};
-
-type CharacterSchema = { fields: FieldDefinition[] };
+import {
+  talesFromTheLoopRules,
+  type CharacterFieldRule,
+} from './tales-from-the-loop.rules';
 
 /** Who plays the character, so every member can see it next to the name. */
 const withOwner = {
@@ -54,24 +47,12 @@ export class CharacterService {
       throw this.campaignNotFound();
     }
 
-    const template = await this.prisma.characterTemplate.findFirst({
-      where: {
-        templateId: createDto.templateId,
-        systemSlug: campaign.system,
-        isActive: true,
-      },
-    });
-    if (!template) {
-      throw this.templateNotFound();
-    }
-
-    this.validateData(createDto.data, template.schema);
+    this.validateSystemData(createDto.data, campaign.system);
 
     return this.prisma.character.create({
       data: {
         campaignId,
         ownerId: userId,
-        templateId: template.templateId,
         name: createDto.name,
         description: createDto.description,
         avatarUrl: createDto.avatarUrl,
@@ -120,14 +101,11 @@ export class CharacterService {
     await this.campaignAccess.requirePlayer(userId, character.campaignId);
 
     if (updateDto.data) {
-      const template = await this.prisma.characterTemplate.findUnique({
-        where: { templateId: character.templateId },
-        select: { schema: true },
+      const campaign = await this.prisma.campaign.findUniqueOrThrow({
+        where: { campaignId: character.campaignId },
+        select: { system: true },
       });
-      if (!template) {
-        throw this.templateNotFound();
-      }
-      this.validateData(updateDto.data, template.schema);
+      this.validateSystemData(updateDto.data, campaign.system);
     }
 
     const { updated, oldStorageKey } = await this.prisma.$transaction(
@@ -203,17 +181,8 @@ export class CharacterService {
 
   private validateData(
     data: Record<string, unknown>,
-    rawSchema: Prisma.JsonValue,
+    schema: { fields: CharacterFieldRule[] },
   ) {
-    const schema = rawSchema as unknown as CharacterSchema;
-    if (!Array.isArray(schema.fields)) {
-      throw new DomainException(
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        'internal.error',
-        'An unexpected error occurred',
-      );
-    }
-
     const fieldsByKey = new Map(
       schema.fields.map((field) => [field.key, field]),
     );
@@ -309,11 +278,18 @@ export class CharacterService {
     );
   }
 
-  private templateNotFound(): DomainException {
-    return new DomainException(
-      HttpStatus.NOT_FOUND,
-      'resource.not_found',
-      'The requested character template is unavailable',
-    );
+  private validateSystemData(
+    data: Record<string, unknown>,
+    system: System | null,
+  ) {
+    if (system !== System.TALES_FROM_THE_LOOP) {
+      throw new DomainException(
+        HttpStatus.BAD_REQUEST,
+        'validation.failed',
+        'The game system is not supported',
+        [{ field: 'data', code: 'validation.invalid_value' }],
+      );
+    }
+    this.validateData(data, talesFromTheLoopRules);
   }
 }

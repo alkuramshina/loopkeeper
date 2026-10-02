@@ -367,12 +367,11 @@ describe('Entity views (e2e)', () => {
         where: { entityId: { in: [a.cardId, edge2.linkId] } },
       }),
     ).toBe(0);
-    const template = await db.characterTemplate.findFirstOrThrow();
     const character = await db.character.create({
       data: {
         campaignId,
         ownerId: player.userId,
-        templateId: template.templateId,
+
         name: 'A kid',
       },
     });

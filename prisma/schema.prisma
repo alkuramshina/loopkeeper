@@ -270,33 +270,14 @@ model InvestigationBoardNode {
 }
 
 model GameSystem {
-  slug        System              @id
+  slug        System     @id
   name        String
   description String?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   campaigns   Campaign[]
-  templates   CharacterTemplate[]
 
   @@map("game_systems")
-}
-
-model CharacterTemplate {
-  templateId String   @id @default(uuid())
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  name       String
-  schema     Json
-  version    Int      @default(1)
-
-  isActive   Boolean     @default(true)
-  system     GameSystem  @relation(fields: [systemSlug], references: [slug])
-  systemSlug System
-  characters Character[]
-
-  @@unique([systemSlug, name, version])
-  @@index([systemSlug, isActive])
-  @@map("character_templates")
 }
 
 model Character {
@@ -315,8 +296,6 @@ model Character {
   campaignId         String
   owner              User                @relation(fields: [ownerId], references: [userId])
   ownerId            String
-  template           CharacterTemplate   @relation(fields: [templateId], references: [templateId])
-  templateId         String
   investigationCards InvestigationCard[] @relation("InvestigationCardCharacter")
 
   @@unique([campaignId, ownerId], map: "characters_active_player_per_campaign_owner_key", where: raw("\"isActive\" = true"))

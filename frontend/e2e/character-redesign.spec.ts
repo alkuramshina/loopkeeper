@@ -11,6 +11,10 @@ test('F13g: player conditions autosave and appear in the note widget and on the 
   page,
   request,
 }) => {
+  const templateRequests: string[] = [];
+  page.on('request', (req) => {
+    if (req.url().includes('/templates')) templateRequests.push(req.url());
+  });
   const { campaignId, owner, player, viewer } =
     await createCampaignWithRoles(request);
   await createPlayerCharacter(request, player, campaignId, 'Алекс');
@@ -62,13 +66,24 @@ test('F13g: player conditions autosave and appear in the note widget and on the 
   await expect(
     viewerPage.getByRole('button', { name: 'Сломлен(а)' }),
   ).toBeDisabled();
-  for (const width of [320, 768]) {
+  for (const width of [1440, 320, 768]) {
     await page.setViewportSize({ width, height: 700 });
     await page.goto(`/campaigns/${campaignId}/characters/${characterId}`);
+    await expect(page.getByRole('heading', { name: 'Алекс' })).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth),
     ).toBeLessThanOrEqual(width);
+    if (width !== 768) {
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme });
+        await page.screenshot({
+          path: test.info().outputPath(`sheet-${width}-${colorScheme}.png`),
+          fullPage: true,
+        });
+      }
+    }
   }
   await ownerPage.context().close();
   await viewerPage.context().close();
+  expect(templateRequests).toEqual([]);
 });

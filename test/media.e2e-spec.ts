@@ -208,11 +208,6 @@ describe('Media (e2e)', () => {
         system: 'TALES_FROM_THE_LOOP',
       })
       .expect(201);
-    const templates = await request(app.getHttpServer())
-      .get('/game-systems/TALES_FROM_THE_LOOP/templates')
-      .set(authenticate(owner))
-      .expect(200);
-    const playerTemplateId = templates.body[0].templateId;
     const player = await registerUser(app, 'limits-player@loopkeeper.dev');
     await inviteAndAccept(
       app,
@@ -226,7 +221,7 @@ describe('Media (e2e)', () => {
       .set(authenticate(player))
       .send({
         name: 'Player character',
-        templateId: playerTemplateId,
+
         data: playerCharacterData,
       })
       .expect(201);
@@ -321,17 +316,12 @@ describe('Media (e2e)', () => {
       'VIEWER',
     );
 
-    const templates = await request(app.getHttpServer())
-      .get('/game-systems/TALES_FROM_THE_LOOP/templates')
-      .set(authenticate(owner))
-      .expect(200);
-    const playerTemplateId = templates.body[0].templateId;
     const playerCharacter = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.body.campaignId}/characters`)
       .set(authenticate(player))
       .send({
         name: 'Player character',
-        templateId: playerTemplateId,
+
         data: playerCharacterData,
       })
       .expect(201);
@@ -549,17 +539,12 @@ describe('Media (e2e)', () => {
       campaign.body.campaignId,
       'PLAYER',
     );
-    const templates = await request(app.getHttpServer())
-      .get('/game-systems/TALES_FROM_THE_LOOP/templates')
-      .set(authenticate(owner))
-      .expect(200);
-    const playerTemplateId = templates.body[0].templateId;
     const character = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.body.campaignId}/characters`)
       .set(authenticate(player))
       .send({
         name: 'Player character',
-        templateId: playerTemplateId,
+
         data: playerCharacterData,
       })
       .expect(201);

@@ -54,19 +54,12 @@ describe('CharactersPage', () => {
         return Promise.resolve({
           campaignId: 'c',
           title: 'Campaign',
-          system: 'system',
+          system: 'TALES_FROM_THE_LOOP',
           currentUserRole: 'PLAYER',
         });
       if (path === '/campaigns/c/characters' && !init)
         return Promise.resolve([]);
-      if (path === '/game-systems/system/templates')
-        return Promise.resolve([
-          {
-            templateId: 'pc-template',
-            name: 'PC template',
-            schema: { fields: [] },
-          },
-        ]);
+
       if (path === '/campaigns/c/characters' && init?.method === 'POST')
         return Promise.resolve({
           characterId: 'pc',
@@ -89,69 +82,53 @@ describe('CharactersPage', () => {
     fireEvent.change(screen.getByLabelText('Имя'), {
       target: { value: 'Alex' },
     });
+    fireEvent.change(screen.getByLabelText('Возраст'), {
+      target: { value: '12' },
+    });
+    fireEvent.change(screen.getByLabelText('Тип'), {
+      target: { value: 'BOOKWORM' },
+    });
     fireEvent.submit(form);
     await waitFor(() =>
       expect(request).toHaveBeenCalledWith('/campaigns/c/characters', {
         method: 'POST',
         body: JSON.stringify({
           name: 'Alex',
-          templateId: 'pc-template',
-          data: {},
+
+          data: { age: 12, type: 'BOOKWORM' },
         }),
       }),
     );
   });
 
-  it('saves template conditions and changed story fields from the detail', async () => {
+  it('saves system conditions and changed story fields from the detail', async () => {
     const character = {
       characterId: 'pc',
       campaignId: 'c',
       ownerId: 'player',
-      templateId: 'pc-template',
+
       name: 'Alex',
       description: '',
       isActive: true,
-      data: { drive: 'Find clues', upset: false, broken: false },
+      data: {
+        age: 12,
+        type: 'BOOKWORM',
+        drive: 'Find clues',
+        upset: false,
+        broken: false,
+      },
     };
     request.mockImplementation((path: string, init?: RequestInit) => {
       if (path === '/campaigns/c')
         return Promise.resolve({
           campaignId: 'c',
           title: 'Campaign',
-          system: 'system',
+          system: 'TALES_FROM_THE_LOOP',
           currentUserRole: 'PLAYER',
         });
       if (path === '/campaigns/c/characters')
         return Promise.resolve([character]);
-      if (path === '/game-systems/system/templates')
-        return Promise.resolve([
-          {
-            templateId: 'pc-template',
-            name: 'Kid',
-            schema: {
-              fields: [
-                {
-                  key: 'drive',
-                  label: 'Drive',
-                  section: 'story',
-                  type: 'string',
-                },
-                {
-                  key: 'upset',
-                  label: 'Upset',
-                  section: 'conditions',
-                  type: 'boolean',
-                },
-                {
-                  key: 'broken',
-                  label: 'Broken',
-                  section: 'conditions',
-                  type: 'boolean',
-                },
-              ],
-            },
-          },
-        ]);
+
       if (path === '/characters/pc' && init?.method === 'PATCH')
         return Promise.resolve({
           ...character,
@@ -189,18 +166,30 @@ describe('CharactersPage', () => {
     );
   });
 
-  it('offers the template choice only when there is more than one', async () => {
+  it('loads the system sheet without requesting a template API', async () => {
+    renderPage();
+    expect(await screen.findByLabelText('Возраст')).toBeInTheDocument();
+    expect(screen.getByLabelText('Тип')).toBeInTheDocument();
+    expect(
+      request.mock.calls.some(([path]) => path.includes('/templates')),
+    ).toBe(false);
+  });
+
+  it('does not offer creation for an unsupported system', async () => {
     const base = request.getMockImplementation()!;
     request.mockImplementation((path: string, init?: RequestInit) =>
-      path === '/game-systems/system/templates'
-        ? Promise.resolve([
-            { templateId: 'a', name: 'Kid', schema: { fields: [] } },
-            { templateId: 'b', name: 'Teen', schema: { fields: [] } },
-          ])
+      path === '/campaigns/c'
+        ? Promise.resolve({
+            campaignId: 'c',
+            title: 'Campaign',
+            system: 'UNKNOWN',
+            currentUserRole: 'PLAYER',
+          })
         : base(path, init),
     );
     renderPage();
-    expect(await screen.findByLabelText('Шаблон')).toBeInTheDocument();
+    await screen.findByRole('heading', { name: 'Персонажи' });
+    expect(screen.queryByRole('form')).toBeNull();
   });
 
   it('hides "Add to board" once the character is on the board', async () => {
@@ -209,7 +198,7 @@ describe('CharactersPage', () => {
       campaignId: 'c',
       ownerId: 'someone',
       owner: { userId: 'someone', name: 'Liza' },
-      templateId: 'pc-template',
+
       name: 'Maja',
       isActive: true,
       data: { age: 12, type: 'BOOKWORM' },

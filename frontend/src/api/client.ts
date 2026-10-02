@@ -195,36 +195,12 @@ export type Board = {
   links: BoardLink[];
 };
 
-export type CharacterField = {
-  key: string;
-  label: string;
-  section?: string;
-  type: 'string' | 'number' | 'boolean' | 'select';
-  required?: boolean;
-  min?: number;
-  max?: number;
-  maxLength?: number;
-  options?: string[];
-};
-
-export type CharacterTemplate = {
-  templateId: string;
-  name: string;
-
-  schema: {
-    title?: string;
-    sections?: Array<{ key: string; label: string }>;
-    fields: CharacterField[];
-  };
-};
-
 export type Character = {
   characterId: string;
   campaignId: string;
   ownerId: string;
   /** The player of the character. */
   owner?: { userId: string; name: string | null };
-  templateId: string;
   name: string;
   description?: string | null;
   avatarUrl?: string | null;

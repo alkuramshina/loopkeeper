@@ -6,6 +6,8 @@ The master manages campaign materials and reveals them to players. Players keep 
 
 Backend: NestJS, TypeScript, Prisma and PostgreSQL. Frontend: React, Vite, TanStack Query and React Flow. Images live in private S3-compatible storage and are delivered through the API after checking current access.
 
+Character sheets are implemented in the frontend for each supported game system. The backend validates character data against system rules in code, using the campaign's system. Character requests and responses have no template ID; there is no template table or template endpoint. The seed installs game system reference data only (and an admin account when explicitly enabled).
+
 ## Local development
 
 Use Node.js 22+ and Docker. Copy .env.example to .env and set three distinct random secrets (JWT_SECRET, REFRESH_JWT_SECRET and INVITATION_SECRET), each at least 20 characters. For example:

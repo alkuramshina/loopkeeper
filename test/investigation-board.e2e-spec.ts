@@ -410,16 +410,15 @@ describe('Investigation board (e2e)', () => {
       .expect(201);
 
     const prisma = getTestPrisma();
-    const [ownerRecord, playerRecord, template] = await Promise.all([
+    const [ownerRecord, playerRecord] = await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { email: owner.email } }),
       prisma.user.findUniqueOrThrow({ where: { email: player.email } }),
-      prisma.characterTemplate.findFirstOrThrow(),
     ]);
     const playerCharacter = await prisma.character.create({
       data: {
         campaignId,
         ownerId: playerRecord.userId,
-        templateId: template.templateId,
+
         name: 'Alex',
         data: {},
       },

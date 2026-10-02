@@ -116,16 +116,12 @@ describe('Campaign deletion (e2e)', () => {
     }
     await invite(owner, campaignId, 'PLAYER'); // left pending
 
-    const templates = await request(app.getHttpServer())
-      .get('/game-systems/TALES_FROM_THE_LOOP/templates')
-      .set(player)
-      .expect(200);
     const character = await request(app.getHttpServer())
       .post(`/campaigns/${campaignId}/characters`)
       .set(player)
       .send({
         name: 'Alex',
-        templateId: templates.body[0].templateId,
+
         data: characterData,
       })
       .expect(201);

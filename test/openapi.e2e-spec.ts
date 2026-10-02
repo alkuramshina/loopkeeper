@@ -19,6 +19,14 @@ describe('OpenAPI contract', () => {
   });
 
   it('documents critical protected routes and the access-token scheme', () => {
+    expect(document.paths).not.toHaveProperty(
+      '/game-systems/{systemId}/templates',
+    );
+    for (const name of ['CreateCharacterDto', 'CharacterResponseDto']) {
+      expect(document.components?.schemas?.[name]).not.toHaveProperty(
+        'properties.templateId',
+      );
+    }
     for (const [path, method] of [
       ['/media/{assetId}', 'get'],
       ['/users/me/avatar', 'post'],

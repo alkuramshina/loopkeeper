@@ -4,7 +4,6 @@ import {
   IsOptional,
   IsString,
   IsUrl,
-  IsUUID,
   MaxLength,
 } from 'class-validator';
 
@@ -13,10 +12,6 @@ export class CreateCharacterDto {
   @IsString()
   @MaxLength(100)
   name!: string;
-
-  @ApiProperty({ format: 'uuid' })
-  @IsUUID()
-  templateId!: string;
 
   @ApiProperty({ type: 'object', additionalProperties: true })
   @IsObject()

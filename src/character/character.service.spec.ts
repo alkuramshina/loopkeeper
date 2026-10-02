@@ -23,7 +23,7 @@ describe('CharacterService', () => {
     ],
   } as Prisma.JsonValue;
 
-  it('accepts data that conforms to the template schema', () => {
+  it('accepts data that conforms to the field rules', () => {
     expect(() =>
       validator.validateData({ age: 15, pride: 'My friends' }, schema),
     ).not.toThrow();

@@ -1,16 +1,12 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
   ApiOperation,
-  ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import { GameSystemService } from './game-system.service';
-import {
-  CharacterTemplateResponseDto,
-  GameSystemResponseDto,
-} from './dto/game-system-response.dto';
+import { GameSystemResponseDto } from './dto/game-system-response.dto';
 
 @ApiTags('Game systems')
 @ApiBearerAuth('access-token')
@@ -23,15 +19,5 @@ export class GameSystemController {
   @Get()
   findAll() {
     return this.gameSystems.findAll();
-  }
-
-  @ApiOperation({
-    summary: 'List active character templates for a game system',
-  })
-  @ApiParam({ name: 'systemId', enum: ['TALES_FROM_THE_LOOP'] })
-  @ApiOkResponse({ type: CharacterTemplateResponseDto, isArray: true })
-  @Get(':systemId/templates')
-  findTemplates(@Param('systemId') systemId: string) {
-    return this.gameSystems.findTemplates(systemId);
   }
 }

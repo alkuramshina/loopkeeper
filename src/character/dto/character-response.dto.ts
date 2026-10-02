@@ -41,7 +41,4 @@ export class CharacterResponseDto {
 
   @ApiProperty({ type: CharacterOwnerDto })
   owner!: CharacterOwnerDto;
-
-  @ApiProperty({ format: 'uuid' })
-  templateId!: string;
 }

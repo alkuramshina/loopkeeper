@@ -115,17 +115,10 @@ describe('Characters (e2e)', () => {
     await inviteAndAccept(app, owner, player, campaign.campaignId, 'PLAYER');
     await inviteAndAccept(app, owner, viewer, campaign.campaignId, 'VIEWER');
 
-    const templates = await request(app.getHttpServer())
-      .get('/game-systems/TALES_FROM_THE_LOOP/templates')
-      .set(authenticate(player))
-      .expect(200);
-    expect(templates.body).toHaveLength(1);
-    const playerTemplateId = templates.body[0].templateId;
-
     const playerCharacter = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
-      .send({ name: 'Alex', templateId: playerTemplateId, data: characterData })
+      .send({ name: 'Alex', data: characterData })
       .expect(201);
 
     await request(app.getHttpServer())
@@ -133,7 +126,7 @@ describe('Characters (e2e)', () => {
       .set(authenticate(player))
       .send({
         name: 'Another Alex',
-        templateId: playerTemplateId,
+
         data: characterData,
       })
       .expect(409);
@@ -143,7 +136,7 @@ describe('Characters (e2e)', () => {
       .set(authenticate(viewer))
       .send({
         name: 'Viewer',
-        templateId: playerTemplateId,
+
         data: characterData,
       })
       .expect(404);
@@ -153,7 +146,7 @@ describe('Characters (e2e)', () => {
       .set(authenticate(owner))
       .send({
         name: 'Mr. Berg',
-        templateId: playerTemplateId,
+
         data: {
           role: 'Loop technician',
           secret: 'Knows where the robot came from.',
@@ -204,15 +197,10 @@ describe('Characters (e2e)', () => {
     );
     await inviteAndAccept(app, owner, viewer, campaign.campaignId, 'VIEWER');
 
-    const templates = await request(app.getHttpServer())
-      .get('/game-systems/TALES_FROM_THE_LOOP/templates')
-      .set(authenticate(player))
-      .expect(200);
-    const templateId = templates.body[0].templateId;
     const created = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
-      .send({ name: 'Alex', templateId, data: characterData })
+      .send({ name: 'Alex', data: characterData })
       .expect(201);
     const characterId: string = created.body.characterId;
 
@@ -259,7 +247,7 @@ describe('Characters (e2e)', () => {
     const replacement = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
-      .send({ name: 'Kim', templateId, data: characterData })
+      .send({ name: 'Kim', data: characterData })
       .expect(201);
     await request(app.getHttpServer())
       .patch(`/characters/${characterId}`)
@@ -299,25 +287,19 @@ describe('Characters (e2e)', () => {
       .expect(404);
   });
 
-  it('validates data against the selected template', async () => {
+  it('validates data against the campaign game system', async () => {
     const owner = await registerUser(app, 'owner@loopkeeper.dev', 'Owner');
     const player = await registerUser(app, 'player@loopkeeper.dev', 'Player');
     const campaign = await createCampaign(app, owner);
 
     await inviteAndAccept(app, owner, player, campaign.campaignId, 'PLAYER');
 
-    const templates = await request(app.getHttpServer())
-      .get('/game-systems/TALES_FROM_THE_LOOP/templates')
-      .set(authenticate(player))
-      .expect(200);
-    const templateId = templates.body[0].templateId;
-
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
       .send({
         name: 'Invalid character',
-        templateId,
+
         data: { ...characterData, age: 25, unexpected: true },
       })
       .expect(400);
@@ -326,26 +308,47 @@ describe('Characters (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
-      .send({ name: 'No type', templateId, data: { age: 12 } })
+      .send({ name: 'No type', data: { age: 12 } })
       .expect(400);
     const minimal = await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
-      .send({ name: 'Maja', templateId, data: { age: 12, type: 'BOOKWORM' } })
+      .send({ name: 'Maja', data: { age: 12, type: 'BOOKWORM' } })
       .expect(201);
     expect(minimal.body.owner).toEqual({
       userId: minimal.body.ownerId,
       name: 'Player',
     });
+    expect(minimal.body).not.toHaveProperty('templateId');
+    for (const invalid of [
+      { age: 12, type: 'UNKNOWN' },
+      { age: 12, type: 'BOOKWORM', broken: 'yes' },
+      { age: 12, type: 'BOOKWORM', body: 6 },
+      { age: 12, type: 'BOOKWORM', drive: 'x'.repeat(501) },
+      { age: 12, type: 'BOOKWORM', unexpected: true },
+    ]) {
+      const result = await request(app.getHttpServer())
+        .patch(`/characters/${minimal.body.characterId}`)
+        .set(authenticate(player))
+        .send({ data: invalid })
+        .expect(400);
+      expect(result.body.code).toBe('validation.failed');
+    }
+    const unchanged = await request(app.getHttpServer())
+      .get(`/characters/${minimal.body.characterId}`)
+      .set(authenticate(player))
+      .expect(200);
+    expect(unchanged.body.data).toEqual({ age: 12, type: 'BOOKWORM' });
 
     await request(app.getHttpServer())
       .post(`/campaigns/${campaign.campaignId}/characters`)
       .set(authenticate(player))
       .send({
-        name: 'Wrong template',
+        name: 'Legacy template field',
         templateId: '11111111-1111-4111-8111-111111111111',
+
         data: characterData,
       })
-      .expect(404);
+      .expect(400);
   });
 });
