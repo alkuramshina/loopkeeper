@@ -1,3 +1,6 @@
+import { useElementView, ViewSaveStatus } from './use-entity-views';
+import { PageError } from '../../components/page-error';
+import { NewMark } from '../../components/ui/new-mark';
 import { ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
@@ -521,6 +524,7 @@ export function ElementDetail({
   /** Frequent actions of a reader, kept at hand below the text. */
   readerActions?: ReactNode;
 }) {
+  const view = useElementView(element);
   const canEdit = viewer.contributor && viewer.isAuthor;
   const [editing, setEditing] = useState(startEditing && canEdit);
   const [saveStatus, setSaveStatus] = useState<AutosaveStatus>('saved');
@@ -529,6 +533,10 @@ export function ElementDetail({
     flushRef.current = flush;
   }).current;
 
+  if (view.unavailable)
+    return (
+      <PageError unavailableKey="elements.unavailable" error={undefined} />
+    );
   return (
     <article
       aria-label={element.title}
@@ -563,6 +571,8 @@ export function ElementDetail({
         saveStatus={saveStatus}
         viewer={viewer}
       />
+      <ViewSaveStatus failed={view.failed} retry={view.retry} />
+      {element.isNew && <NewMark />}
       <div className="material-scroll">
         {editing ? (
           <EditMaterial

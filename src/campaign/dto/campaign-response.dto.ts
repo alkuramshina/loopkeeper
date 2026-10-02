@@ -26,10 +26,8 @@ export class CampaignResponseDto {
   @ApiProperty({ enum: CampaignRole })
   currentUserRole!: CampaignRole;
 
-  @ApiPropertyOptional({ nullable: true, format: 'date-time' })
-  newSinceAt!: Date | null;
-
-  @ApiPropertyOptional({
+  @ApiProperty({
+    type: String,
     nullable: true,
     format: 'date-time',
     description: 'When the current user last opened this campaign.',
@@ -41,6 +39,6 @@ export class CampaignResponseDto {
 }
 
 export class CampaignVisitResponseDto {
-  @ApiPropertyOptional({ nullable: true, format: 'date-time' })
-  newSinceAt!: Date | null;
+  @ApiProperty({ format: 'date-time' })
+  lastVisitAt!: Date;
 }

@@ -1,3 +1,4 @@
+import { useElementView, ViewSaveStatus } from './use-entity-views';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -100,6 +101,7 @@ function NoteEditor({
   focusTitle: boolean;
   onDelete: (note: CampaignElement) => void;
 }) {
+  const view = useElementView(note);
   const { campaignId } = useParams();
   const { api } = useAuth();
   const { t } = useTranslation();
@@ -162,6 +164,10 @@ function NoteEditor({
     });
   };
 
+  if (view.unavailable)
+    return (
+      <PageError unavailableKey="elements.unavailable" error={undefined} />
+    );
   return (
     <article aria-label={note.title} className="note-editor">
       <header className="note-editor-bar">
@@ -197,6 +203,7 @@ function NoteEditor({
           />
         </span>
       </header>
+      <ViewSaveStatus failed={view.failed} retry={view.retry} />
       <div className="note-editor-scroll">
         <div className="note-editor-document">
           <div className="note-title-field">

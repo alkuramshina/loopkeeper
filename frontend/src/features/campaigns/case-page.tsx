@@ -243,9 +243,8 @@ function CaseOverview({
       caseEntries(
         elements.filter((item) => filter === 'all' || item.type === filter),
         notesElsewhere,
-        campaign.newSinceAt,
       ),
-    [campaign.newSinceAt, elements, filter, notesElsewhere],
+    [elements, filter, notesElsewhere],
   );
   const total = caseEntries(elements, notesElsewhere).all.length;
   const path = (item: CampaignElement) =>
@@ -302,11 +301,7 @@ function CaseOverview({
               {entries.recent.length > 0 && (
                 <section aria-labelledby="case-recent" className="case-section">
                   <h2 className="case-section-title" id="case-recent">
-                    <NewMark>
-                      {t('case.recent', {
-                        date: dayFormat.format(new Date(campaign.newSinceAt!)),
-                      })}
-                    </NewMark>
+                    <NewMark>{t('case.recent')}</NewMark>
                   </h2>
                   <ul className="case-recent-grid">
                     {entries.recent.map((item) => (

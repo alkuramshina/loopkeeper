@@ -152,8 +152,29 @@
   flex: 1;
   overflow-wrap: anywhere;
 }
+.materials-row-title .ui-new-mark {
+  margin-inline-start: var(--space-2);
+}
 .materials-row .ui-access {
   flex: none;
+}
+@media (max-width: 599px) {
+  .materials-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: var(--space-1);
+  }
+  .materials-row-title .ui-new-mark {
+    display: flex;
+    width: fit-content;
+    margin-inline-start: 0;
+    margin-block-start: var(--space-1);
+    white-space: nowrap;
+  }
+  .materials-row .ui-access {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 .materials-list-note,
 .materials-select {

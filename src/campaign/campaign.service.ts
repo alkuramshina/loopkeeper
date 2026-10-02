@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { CampaignElementAccess, CampaignRole, Prisma } from '@prisma/client';
+import { CampaignRole, Prisma } from '@prisma/client';
 import { DomainException } from '../common/exceptions/domain.exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaService } from '../media/media.service';
@@ -7,7 +7,9 @@ import { CampaignAccessService } from './access/campaign-access.service';
 import { memberCampaignWhere } from './access/campaign-membership';
 import { CreateCampaignDto } from './dto/create-campaign.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
-import { nextVisitWindow } from './visit-window';
+import { readableElementWhere } from '../element/element-access';
+import { lockCampaignMember } from './access/campaign-write';
+import { EntityViewType } from '@prisma/client';
 
 const campaignForCurrentUser = (userId: string) =>
   ({
@@ -23,7 +25,7 @@ const campaignForCurrentUser = (userId: string) =>
       select: {
         campaignRole: true,
         memberId: true,
-        participantState: { select: { newSinceAt: true, lastVisitAt: true } },
+        participantState: { select: { lastVisitAt: true } },
       },
     },
   }) satisfies Prisma.CampaignSelect;
@@ -105,21 +107,13 @@ export class CampaignService {
           'Campaign not found',
         );
       }
-      const state = await tx.campaignParticipantState.findUnique({
-        where: { memberId: member.memberId },
-      });
       const now = new Date();
-      const newSinceAt = nextVisitWindow(
-        state?.lastVisitAt ?? null,
-        state?.newSinceAt ?? null,
-        now,
-      );
       await tx.campaignParticipantState.upsert({
         where: { memberId: member.memberId },
-        create: { memberId: member.memberId, lastVisitAt: now, newSinceAt },
-        update: { lastVisitAt: now, newSinceAt },
+        create: { memberId: member.memberId, lastVisitAt: now },
+        update: { lastVisitAt: now },
       });
-      return { newSinceAt };
+      return { lastVisitAt: now };
     });
   }
 
@@ -170,6 +164,7 @@ export class CampaignService {
   async remove(userId: string, campaignId: string) {
     await this.campaignAccess.requireOwner(userId, campaignId);
     const storageKeys = await this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, userId, campaignId, [CampaignRole.OWNER]);
       const assets = await tx.mediaAsset.findMany({
         where: {
           OR: [
@@ -204,7 +199,6 @@ export class CampaignService {
     return {
       ...campaignData,
       currentUserRole: members[0].campaignRole,
-      newSinceAt: members[0].participantState?.newSinceAt ?? null,
       lastVisitAt: members[0].participantState?.lastVisitAt ?? null,
       newVisibleMaterialCount,
     };
@@ -217,16 +211,19 @@ export class CampaignService {
     }>,
   ) {
     const member = campaign.members[0];
-    const since = member.participantState?.newSinceAt;
-    if (!since || member.campaignRole === CampaignRole.OWNER)
-      return Promise.resolve(0);
-    return this.prisma.campaignElement.count({
-      where: {
-        campaignId: campaign.campaignId,
-        access: CampaignElementAccess.SHARED,
-        sharedAt: { gt: since },
-        createdById: { not: userId },
-      },
+    const views = this.prisma.entityView.findMany({
+      where: { memberId: member.memberId, entityType: EntityViewType.ELEMENT },
+      select: { entityId: true },
     });
+    return views.then((seen) =>
+      this.prisma.campaignElement.count({
+        where: {
+          campaignId: campaign.campaignId,
+          ...readableElementWhere(userId),
+          createdById: { not: userId },
+          elementId: { notIn: seen.map((view) => view.entityId) },
+        },
+      }),
+    );
   }
 }

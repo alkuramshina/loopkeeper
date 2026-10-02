@@ -208,8 +208,9 @@ describe('ElementsPage', () => {
       }
       if (path === '/elements/created' && !init)
         return Promise.resolve(created);
+      if (path === '/campaigns/c/views') return Promise.resolve(undefined);
       if (path === '/campaigns/c/visit')
-        return Promise.resolve({ newSinceAt: null });
+        return Promise.resolve({ lastVisitAt: null });
       throw new Error(`Unexpected request: ${path}`);
     });
   });

@@ -5,6 +5,8 @@ import { CampaignService } from './campaign.service';
 
 describe('CampaignService', () => {
   const prisma = {
+    entityView: { findMany: jest.fn().mockResolvedValue([]) },
+    campaignElement: { count: jest.fn().mockResolvedValue(0) },
     campaign: {
       findFirst: jest.fn(),
     },

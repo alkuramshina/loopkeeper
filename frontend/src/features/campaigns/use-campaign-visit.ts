@@ -20,17 +20,17 @@ export function useCampaignVisit(campaign?: Campaign) {
     recorded.set(key, now);
     void Promise.resolve()
       .then(() =>
-        api.request<{ newSinceAt: string | null }>(
+        api.request<{ lastVisitAt: string | null }>(
           `/campaigns/${campaignId}/visit`,
           {
             method: 'POST',
           },
         ),
       )
-      .then(({ newSinceAt }) => {
+      .then(({ lastVisitAt }) => {
         queryClient.setQueryData<Campaign>(
           ['campaign', campaignId],
-          (current) => (current ? { ...current, newSinceAt } : current),
+          (current) => (current ? { ...current, lastVisitAt } : current),
         );
         void queryClient.invalidateQueries({
           queryKey: ['campaign', campaignId],

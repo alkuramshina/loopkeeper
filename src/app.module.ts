@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { EntityViewModule } from './entity-view/entity-view.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './health/health.module';
@@ -42,6 +43,7 @@ const nodeEnv = (process.env.NODE_ENV ?? 'development') as
       }),
     }),
     HealthModule,
+    EntityViewModule,
     AuthModule,
     UserModule,
     PrismaModule,

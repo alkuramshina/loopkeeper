@@ -1,3 +1,11 @@
+import { EntityViewType, CampaignRole } from '@prisma/client';
+import { lockCampaignMember } from '../campaign/access/campaign-write';
+import {
+  authorView,
+  clearCardViews,
+  withViewStatus,
+} from '../entity-view/entity-view.helpers';
+import { visibleCardWhere } from './board-access';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   CampaignElementAccess,
@@ -73,9 +81,23 @@ export class InvestigationBoardService {
     const cardIds = new Set(result.cards.map((card) => card.cardId));
     return {
       ...result,
-      cards: result.cards.map((card) => this.presentCard(card)),
-      links: result.links.filter(
-        (link) => cardIds.has(link.fromCardId) && cardIds.has(link.toCardId),
+      cards: await withViewStatus(
+        this.prisma,
+        userId,
+        campaignId,
+        EntityViewType.BOARD_CARD,
+        result.cards.map((card) => this.presentCard(card)),
+        (row) => row.cardId,
+      ),
+      links: await withViewStatus(
+        this.prisma,
+        userId,
+        campaignId,
+        EntityViewType.BOARD_LINK,
+        result.links.filter(
+          (link) => cardIds.has(link.fromCardId) && cardIds.has(link.toCardId),
+        ),
+        (row) => row.linkId,
       ),
     };
   }
@@ -86,10 +108,18 @@ export class InvestigationBoardService {
     dto: CreateInvestigationCardDto,
   ) {
     await this.access.requireBoardContributor(userId, campaignId);
-    const board = await this.getOrCreate(campaignId);
     const cardKind = dto.cardKind ?? InvestigationCardKind.FREE;
 
     return this.prisma.$transaction(async (tx) => {
+      const member = await lockCampaignMember(tx, userId, campaignId, [
+        CampaignRole.OWNER,
+        CampaignRole.PLAYER,
+      ]);
+      const board = await tx.investigationBoard.upsert({
+        where: { campaignId },
+        create: { campaignId },
+        update: {},
+      });
       // Serialize reference checks and inserts across workers on this board.
       await tx.$queryRaw`SELECT "boardId" FROM "investigation_boards" WHERE "boardId" = ${board.boardId} FOR UPDATE`;
       const source = await this.resolveCardSource(
@@ -116,7 +146,13 @@ export class InvestigationBoardService {
         },
         include: cardInclude,
       });
-      return this.presentCard(card);
+      await authorView(
+        tx,
+        member.memberId,
+        EntityViewType.BOARD_CARD,
+        card.cardId,
+      );
+      return { ...this.presentCard(card), isNew: false };
     });
   }
 
@@ -139,13 +175,37 @@ export class InvestigationBoardService {
       include: cardInclude,
     });
 
-    return this.presentCard(updatedCard);
+    return (
+      await withViewStatus(
+        this.prisma,
+        userId,
+        card.campaignId,
+        EntityViewType.BOARD_CARD,
+        [this.presentCard(updatedCard)],
+        (row) => row.cardId,
+      )
+    )[0];
   }
 
   async deleteCard(userId: string, cardId: string) {
     const card = await this.requireCard(userId, cardId);
-    await this.prisma.investigationCard.delete({
-      where: { cardId: card.cardId },
+    await this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, userId, card.campaignId, [
+        CampaignRole.OWNER,
+        CampaignRole.PLAYER,
+      ]);
+      if (
+        !(await tx.investigationCard.findFirst({
+          where: {
+            cardId,
+            campaignId: card.campaignId,
+            AND: [this.visibleCardWhere],
+          },
+        }))
+      )
+        throw this.cardNotFound();
+      await clearCardViews(tx, { cardId, campaignId: card.campaignId });
+      await tx.investigationCard.delete({ where: { cardId } });
     });
   }
 
@@ -162,28 +222,45 @@ export class InvestigationBoardService {
         'A card cannot link to itself',
       );
     }
-    const board = await this.getOrCreate(campaignId);
     const [fromCardId, toCardId] = [dto.cardAId, dto.cardBId].sort();
-    const cards = await this.prisma.investigationCard.findMany({
-      where: {
-        cardId: { in: [fromCardId, toCardId] },
-        boardId: board.boardId,
-        AND: [this.visibleCardWhere],
-      },
-      select: { cardId: true },
-    });
-    if (cards.length !== 2) {
-      throw this.cardNotFound();
-    }
-    return this.prisma.investigationLink.create({
-      data: {
-        boardId: board.boardId,
-        campaignId,
-        fromCardId,
-        toCardId,
-        label: dto.label,
-        createdById: userId,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const member = await lockCampaignMember(tx, userId, campaignId, [
+        CampaignRole.OWNER,
+        CampaignRole.PLAYER,
+      ]);
+      const board = await tx.investigationBoard.upsert({
+        where: { campaignId },
+        create: { campaignId },
+        update: {},
+      });
+      const cards = await tx.investigationCard.findMany({
+        where: {
+          cardId: { in: [fromCardId, toCardId] },
+          boardId: board.boardId,
+          AND: [this.visibleCardWhere],
+        },
+        select: { cardId: true },
+      });
+      if (cards.length !== 2) {
+        throw this.cardNotFound();
+      }
+      const link = await tx.investigationLink.create({
+        data: {
+          boardId: board.boardId,
+          campaignId,
+          fromCardId,
+          toCardId,
+          label: dto.label,
+          createdById: userId,
+        },
+      });
+      await authorView(
+        tx,
+        member.memberId,
+        EntityViewType.BOARD_LINK,
+        link.linkId,
+      );
+      return { ...link, isNew: false };
     });
   }
 
@@ -193,16 +270,44 @@ export class InvestigationBoardService {
     dto: UpdateInvestigationLinkDto,
   ) {
     const link = await this.requireLink(userId, linkId);
-    return this.prisma.investigationLink.update({
+    const updated = await this.prisma.investigationLink.update({
       where: { linkId: link.linkId },
       data: dto,
     });
+    return (
+      await withViewStatus(
+        this.prisma,
+        userId,
+        link.campaignId,
+        EntityViewType.BOARD_LINK,
+        [updated],
+        (row) => row.linkId,
+      )
+    )[0];
   }
 
   async deleteLink(userId: string, linkId: string) {
     const link = await this.requireLink(userId, linkId);
-    await this.prisma.investigationLink.delete({
-      where: { linkId: link.linkId },
+    await this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, userId, link.campaignId, [
+        CampaignRole.OWNER,
+        CampaignRole.PLAYER,
+      ]);
+      if (
+        !(await tx.investigationLink.findFirst({
+          where: {
+            linkId,
+            campaignId: link.campaignId,
+            fromCard: { is: this.visibleCardWhere },
+            toCard: { is: this.visibleCardWhere },
+          },
+        }))
+      )
+        throw this.linkNotFound();
+      await tx.entityView.deleteMany({
+        where: { entityType: EntityViewType.BOARD_LINK, entityId: linkId },
+      });
+      await tx.investigationLink.delete({ where: { linkId } });
     });
   }
 
@@ -324,19 +429,7 @@ export class InvestigationBoardService {
     return cardData;
   }
 
-  private readonly visibleCardWhere: Prisma.InvestigationCardWhereInput = {
-    OR: [
-      { cardKind: InvestigationCardKind.FREE },
-      {
-        cardKind: InvestigationCardKind.ELEMENT_REFERENCE,
-        element: { access: CampaignElementAccess.SHARED },
-      },
-      {
-        cardKind: InvestigationCardKind.CHARACTER_REFERENCE,
-        character: { is: {} },
-      },
-    ],
-  };
+  private readonly visibleCardWhere = visibleCardWhere;
 
   private preview(content?: string | null): string | null {
     if (!content) {

@@ -74,7 +74,5 @@ test('M9: renames the account and changes the password', async ({
   await page.getByLabel('Пароль').fill(newPassword);
   await page.getByRole('button', { name: 'Войти', exact: true }).click();
   await expect(page).toHaveURL(/\/campaigns$/);
-  await expect(
-    page.locator('.sidebar-profile'),
-  ).toBeVisible();
+  await expect(page.locator('.sidebar-profile')).toBeVisible();
 });

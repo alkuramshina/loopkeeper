@@ -53,6 +53,9 @@ export class InvestigationCardReferenceResponseDto {
 }
 
 export class InvestigationCardResponseDto {
+  @ApiProperty()
+  isNew!: boolean;
+
   @ApiProperty({ format: 'uuid' })
   cardId!: string;
 
@@ -115,6 +118,9 @@ export class InvestigationCardResponseDto {
 }
 
 export class InvestigationLinkResponseDto {
+  @ApiProperty()
+  isNew!: boolean;
+
   @ApiProperty({ format: 'uuid' })
   linkId!: string;
 

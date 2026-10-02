@@ -13,6 +13,7 @@ const element = (
   updatedAt: string,
   extra: Partial<CampaignElement> = {},
 ): CampaignElement => ({
+  isNew: false,
   elementId: id,
   campaignId: 'c',
   type: 'LOCATION',
@@ -34,16 +35,17 @@ describe('caseEntries', () => {
       [
         element('old', new Date(2026, 8, 6, 12).toISOString()),
         element('latest', new Date(2026, 8, 20, 19, 52).toISOString(), {
+          isNew: true,
           sharedAt: new Date(2026, 8, 20, 19, 52).toISOString(),
         }),
         element('same-day', new Date(2026, 8, 20, 19, 40).toISOString(), {
+          isNew: true,
           sharedAt: new Date(2026, 8, 20, 19, 40).toISOString(),
         }),
         element('middle-a', new Date(2026, 8, 14, 18).toISOString()),
         element('middle-b', new Date(2026, 8, 14, 10).toISOString()),
       ],
       'player',
-      new Date(2026, 8, 19).toISOString(),
     );
     expect(entries.recent.map((item) => item.elementId)).toEqual([
       'latest',
@@ -67,7 +69,7 @@ describe('caseEntries', () => {
     expect(entries.all.map((item) => item.elementId)).toEqual(['shared']);
   });
 
-  it('does not mark old materials as new on the first visit', () => {
+  it('groups viewed materials by day', () => {
     const items = [0, 1, 2, 3, 4, 5].map((minute) =>
       element(`m${minute}`, new Date(2026, 8, 20, 12, minute).toISOString()),
     );
@@ -76,18 +78,18 @@ describe('caseEntries', () => {
     expect(entries.earlier[0].items).toHaveLength(6);
   });
 
-  it('uses the opening time instead of later edits for newness and ordering', () => {
+  it('uses server newness independently of opening and edit times', () => {
     const entries = caseEntries(
       [
         element('edited-later', '2026-09-27T15:00:00.000Z', {
           sharedAt: '2026-09-20T10:00:00.000Z',
         }),
         element('opened-later', '2026-09-26T11:00:00.000Z', {
+          isNew: true,
           sharedAt: '2026-09-26T10:00:00.000Z',
         }),
       ],
       'player',
-      '2026-09-25T10:00:00.000Z',
     );
 
     expect(entries.recent.map((item) => item.elementId)).toEqual([

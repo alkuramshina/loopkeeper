@@ -84,6 +84,9 @@ export class ElementAuthorDto {
 }
 
 export class ElementResponseDto {
+  @ApiProperty()
+  isNew!: boolean;
+
   @ApiProperty({ format: 'uuid' })
   elementId!: string;
 

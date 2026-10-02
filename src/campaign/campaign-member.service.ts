@@ -1,3 +1,5 @@
+import { lockCampaignMember } from './access/campaign-write';
+import { Prisma } from '@prisma/client';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { CampaignRole } from '@prisma/client';
 import { DomainException } from '../common/exceptions/domain.exception';
@@ -46,28 +48,36 @@ export class CampaignMemberService {
     updateDto: UpdateMemberDto,
   ) {
     await this.campaignAccess.requireOwner(ownerId, campaignId);
-    await this.requireManageableMember(campaignId, userId);
-
-    return this.prisma.campaignMember.update({
-      where: { userId_campaignId: { userId, campaignId } },
-      data: { campaignRole: updateDto.role },
-      select: memberSelect,
+    return this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, ownerId, campaignId, [CampaignRole.OWNER]);
+      await this.requireManageableMember(campaignId, userId, tx);
+      return tx.campaignMember.update({
+        where: { userId_campaignId: { userId, campaignId } },
+        data: { campaignRole: updateDto.role },
+        select: memberSelect,
+      });
     });
   }
 
   async remove(ownerId: string, campaignId: string, userId: string) {
     await this.campaignAccess.requireOwner(ownerId, campaignId);
-    await this.requireManageableMember(campaignId, userId);
-
-    // The participant's personal state cascades with the membership row.
-    await this.prisma.campaignMember.delete({
-      where: { userId_campaignId: { userId, campaignId } },
+    await this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, ownerId, campaignId, [CampaignRole.OWNER]);
+      await this.requireManageableMember(campaignId, userId, tx);
+      // Personal state and views cascade with the membership row; characters remain.
+      await tx.campaignMember.delete({
+        where: { userId_campaignId: { userId, campaignId } },
+      });
     });
   }
 
   // The OWNER row is never changed or removed through member management.
-  private async requireManageableMember(campaignId: string, userId: string) {
-    const member = await this.prisma.campaignMember.findUnique({
+  private async requireManageableMember(
+    campaignId: string,
+    userId: string,
+    tx: Prisma.TransactionClient,
+  ) {
+    const member = await tx.campaignMember.findUnique({
       where: { userId_campaignId: { userId, campaignId } },
       select: { campaignRole: true },
     });

@@ -137,7 +137,7 @@ export async function beginReturnVisit(
     headers: member.headers,
   });
   expect(first.ok()).toBeTruthy();
-  expect((await first.json()).newSinceAt).toBeNull();
+  expect((await first.json()).lastVisitAt).toEqual(expect.any(String));
   const url =
     process.env.LOOPKEEPER_TEST_DATABASE_URL ??
     'postgresql://loopkeeper:loopkeeper@localhost:5434/loopkeeper_test';
@@ -158,7 +158,7 @@ export async function beginReturnVisit(
     headers: member.headers,
   });
   expect(next.ok()).toBeTruthy();
-  expect((await next.json()).newSinceAt).not.toBeNull();
+  expect((await next.json()).lastVisitAt).toEqual(expect.any(String));
 }
 
 const kidData = {

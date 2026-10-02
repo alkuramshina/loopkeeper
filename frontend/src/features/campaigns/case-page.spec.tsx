@@ -36,6 +36,7 @@ const base = {
 };
 const booth = {
   ...base,
+  isNew: true,
   elementId: 'booth',
   type: 'LOCATION',
   title: 'Трансформаторная будка',
@@ -46,6 +47,7 @@ const booth = {
 };
 const journal = {
   ...base,
+  isNew: true,
   elementId: 'journal',
   type: 'NOTE',
   title: 'Запись в журнале',
@@ -154,11 +156,12 @@ describe('CasePage', () => {
           title: 'Лето петли',
           system: 'tftl',
           currentUserRole: role,
-          newSinceAt: at(19, 12),
+          lastVisitAt: at(19, 12),
           newVisibleMaterialCount: 2,
         });
+      if (path === '/campaigns/c/views') return Promise.resolve(undefined);
       if (path === '/campaigns/c/visit')
-        return Promise.resolve({ newSinceAt: at(19, 12) });
+        return Promise.resolve({ lastVisitAt: at(19, 12) });
       if (path === '/game-systems') return Promise.resolve([]);
       if (path === '/campaigns/c/elements' && !init)
         return Promise.resolve(elements);
@@ -181,10 +184,10 @@ describe('CasePage', () => {
     });
   });
 
-  it('shows newly opened materials since the last visit and the rest by day', async () => {
+  it('shows unseen materials first and the rest by day', async () => {
     renderPage();
     const recent = await screen.findByRole('region', {
-      name: /Новое с прошлого визита · 19 сентября/,
+      name: /Непросмотренное/,
     });
     expect(
       within(recent)
@@ -201,7 +204,7 @@ describe('CasePage', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'NPC' }));
     expect(
-      screen.queryByRole('region', { name: /Новое с прошлого визита/ }),
+      screen.queryByRole('region', { name: /Непросмотренное/ }),
     ).toBeNull();
     expect(
       screen.getByRole('region', { name: '14 сентября' }),
@@ -265,7 +268,7 @@ describe('CasePage', () => {
   it('lets a viewer read without notes or a character', async () => {
     role = 'VIEWER';
     renderPage();
-    await screen.findByRole('region', { name: /Новое с прошлого визита/ });
+    await screen.findByRole('region', { name: /Непросмотренное/ });
     expect(screen.queryByRole('form')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('region', { name: 'Мой персонаж' }),

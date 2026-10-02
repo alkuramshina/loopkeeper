@@ -217,7 +217,7 @@ export function CampaignWorkspaceShell({
     displayLabel?: string;
     icon: typeof LayoutDashboard;
   };
-  const hasNew = !isOwner && (campaign.newVisibleMaterialCount ?? 0) > 0;
+  const hasNew = (campaign.newVisibleMaterialCount ?? 0) > 0;
   const navLinks = (items: NavItem[], mobile = false) =>
     items.map(({ to, label, shortLabel, displayLabel, icon: Icon }) => (
       <NavLink
@@ -231,7 +231,7 @@ export function CampaignWorkspaceShell({
         <span className={mobile ? undefined : 'rail-label'}>
           {mobile ? (shortLabel ?? label) : (displayLabel ?? label)}
         </span>
-        {hasNew && to.endsWith('/case') && (
+        {hasNew && to.endsWith(isOwner ? '/elements' : '/case') && (
           <span
             className="campaign-nav-new"
             role="img"

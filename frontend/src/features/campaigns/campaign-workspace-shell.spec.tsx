@@ -185,7 +185,9 @@ describe('CampaignWorkspaceShell', () => {
     });
     // The case link and the compact menu both show the marker.
     expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(2);
-    expect(screen.getAllByRole('img', { name: 'новое' })).toHaveLength(1);
+    expect(
+      screen.getAllByRole('img', { name: 'Непросмотренное' }),
+    ).toHaveLength(1);
     expect(
       screen
         .getByRole('button', { name: 'Меню' })
@@ -207,7 +209,7 @@ describe('CampaignWorkspaceShell', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(0);
+    expect(container.querySelectorAll('.campaign-nav-new')).toHaveLength(2);
   });
 
   it('searches only visible materials with keyboard navigation', async () => {

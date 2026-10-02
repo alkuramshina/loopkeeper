@@ -91,8 +91,12 @@ Playwright сам поднимает отдельный API на порту `310
 | `npm run prisma:migrate` | Создать и применить новую миграцию при разработке |
 | `npm run prisma:studio`  | Открыть просмотр базы в браузере                  |
 
-## Campaign visit API
+## Entity views and campaign visits
 
-`POST /campaigns/:campaignId/visit` records a visit by the authenticated campaign member and returns `{ "newSinceAt": string | null }`. The first visit returns `null`. After a gap of more than one hour, the previous visit becomes the boundary for new activity; repeat visits within the hour preserve that boundary. A nonmember receives `404`.
+An entity is new for a campaign member when it is visible, was authored by someone else, and has no view record for that membership. Elements, board cards and board links return a required boolean `isNew`; characters are excluded. Reading a list, fetching a detail, or previewing a referenced source never records a view by itself.
 
-Campaign responses include the current member's `newSinceAt` and `newVisibleMaterialCount`. The count includes only currently shared materials opened after that boundary by someone else. Element responses include `sharedAt` for the last transition to `SHARED`; it is cleared when the element is hidden.
+`POST /campaigns/:campaignId/views` accepts `{ "entities": [{ "entityType": "ELEMENT", "entityId": "uuid" }] }`, with 1–500 entries. Types are `ELEMENT`, `BOARD_CARD` and `BOARD_LINK`. All member roles may record their own views. A successful atomic batch returns `204`; duplicates and concurrent repeats preserve the first server timestamp. An inaccessible entity, missing ID or foreign campaign ID returns `404 views.entity_not_found`; nonmembers receive `404 campaign.not_found`.
+
+The frontend records an element after rendering its detail and records only the cards and links in a rendered board response, in batches of at most 500. Board highlights persist through technical refetches until manual refresh or leaving the board. A reference card's view is independent of the source element's view. Hiding an element preserves its views while removing its reference cards, links and their views transactionally.
+
+Campaign responses include `lastVisitAt: string | null` and `newVisibleMaterialCount`, counting all visible unviewed elements by other authors, including player notes addressed to the master. `POST /campaigns/:campaignId/visit` returns `{ "lastVisitAt": "ISO date-time" }` and only records a server-time visit; visits do not change views. `sharedAt` remains the last transition to `SHARED` for sorting and display and is cleared when an element is hidden.

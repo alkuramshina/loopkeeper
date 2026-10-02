@@ -1,3 +1,6 @@
+import { CampaignRole } from '@prisma/client';
+import { lockCampaignMember } from '../campaign/access/campaign-write';
+import { clearCardViews } from '../entity-view/entity-view.helpers';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
@@ -173,7 +176,26 @@ export class CharacterService {
     }
     await this.campaignAccess.requirePlayer(userId, character.campaignId);
 
-    await this.prisma.character.delete({ where: { characterId } });
+    await this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, userId, character.campaignId, [
+        CampaignRole.PLAYER,
+      ]);
+      if (
+        !(await tx.character.findFirst({
+          where: {
+            characterId,
+            campaignId: character.campaignId,
+            ownerId: userId,
+          },
+        }))
+      )
+        throw this.characterNotFound();
+      await clearCardViews(tx, {
+        campaignId: character.campaignId,
+        characterId,
+      });
+      await tx.character.delete({ where: { characterId } });
+    });
   }
 
   private validateData(

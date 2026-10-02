@@ -182,7 +182,7 @@ test('main screens have no automatically detectable accessibility violations in 
   });
   await signInAs(page, player);
   const playerScreens: [string, string, string][] = [
-    ['case', `/campaigns/${campaignId}/case`, 'Ранее'],
+    ['case', `/campaigns/${campaignId}/case`, 'Дело'],
     [
       'case reading',
       `/campaigns/${campaignId}/case/${elementId}`,

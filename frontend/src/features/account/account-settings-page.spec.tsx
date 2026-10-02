@@ -20,7 +20,11 @@ vi.mock('../../auth/auth-context', () => ({
 
 function renderPage(path = '/settings/account') {
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/settings/account" element={<AccountSettingsPage />} />
@@ -48,7 +52,9 @@ function fillPasswords(current: string, next: string, confirmation: string) {
 describe('AccountSettingsPage', () => {
   beforeEach(() => {
     request.mockReset();
-    request.mockImplementation((path: string) => path === '/campaigns' ? Promise.resolve([]) : undefined);
+    request.mockImplementation((path: string) =>
+      path === '/campaigns' ? Promise.resolve([]) : undefined,
+    );
     signOut.mockReset();
     updateProfile.mockReset();
     profile.name = 'Алекс';
@@ -104,7 +110,9 @@ describe('AccountSettingsPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Новые пароли не совпадают',
     );
-    expect(request.mock.calls.filter(([path]) => path === '/auth/change-password')).toHaveLength(0);
+    expect(
+      request.mock.calls.filter(([path]) => path === '/auth/change-password'),
+    ).toHaveLength(0);
   });
 
   it('shows a localized error for a wrong current password', async () => {

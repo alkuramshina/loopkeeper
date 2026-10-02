@@ -126,7 +126,6 @@ export type Campaign = {
   description?: string | null;
   system?: string | null;
   currentUserRole: 'OWNER' | 'PLAYER' | 'VIEWER';
-  newSinceAt?: string | null;
   lastVisitAt?: string | null;
   newVisibleMaterialCount?: number;
   coverUrl?: string | null;
@@ -135,6 +134,7 @@ export type Campaign = {
 export type CampaignElementType = 'NOTE' | 'LOCATION' | 'NPC' | 'OTHER';
 export type CampaignElementAccess = 'PRIVATE' | 'MASTER_ONLY' | 'SHARED';
 export type CampaignElement = {
+  isNew: boolean;
   elementId: string;
   campaignId: string;
   type: CampaignElementType;
@@ -159,6 +159,7 @@ export type CampaignElementInput = Pick<
   typeData?: Record<string, unknown>;
 };
 export type BoardCard = {
+  isNew: boolean;
   cardId: string;
   cardKind: 'FREE' | 'ELEMENT_REFERENCE' | 'CHARACTER_REFERENCE';
   title: string;
@@ -179,6 +180,7 @@ export type BoardCard = {
 };
 
 export type BoardLink = {
+  isNew: boolean;
   linkId: string;
   createdAt?: string;
   createdById?: string;

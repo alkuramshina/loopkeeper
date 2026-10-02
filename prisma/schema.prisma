@@ -34,20 +34,20 @@ model User {
 }
 
 model MediaAsset {
-  assetId              String                @id @default(uuid())
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  storageKey           String                @unique
-  contentType          MediaAssetContentType @default(IMAGE_WEBP)
-  purpose              MediaAssetPurpose
-  byteSize             Int
-  width                Int
-  height               Int
-  avatarOwner          User?                 @relation("UserAvatar")
-  characterAvatar      Character?            @relation("CharacterAvatar")
-  campaignCover        Campaign?             @relation("CampaignCover")
-  elementCover         CampaignElement?      @relation("ElementCover")
-  elementMap           CampaignElement?      @relation("ElementMap")
+  assetId         String                @id @default(uuid())
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  storageKey      String                @unique
+  contentType     MediaAssetContentType @default(IMAGE_WEBP)
+  purpose         MediaAssetPurpose
+  byteSize        Int
+  width           Int
+  height          Int
+  avatarOwner     User?                 @relation("UserAvatar")
+  characterAvatar Character?            @relation("CharacterAvatar")
+  campaignCover   Campaign?             @relation("CampaignCover")
+  elementCover    CampaignElement?      @relation("ElementCover")
+  elementMap      CampaignElement?      @relation("ElementMap")
 
   @@index([purpose])
   @@map("media_assets")
@@ -103,6 +103,7 @@ model CampaignMember {
   campaignRole CampaignRole @default(PLAYER)
 
   participantState CampaignParticipantState?
+  entityViews      EntityView[]
 
   @@unique([userId, campaignId])
   // Exactly one OWNER per campaign; the row is created with the campaign.
@@ -118,9 +119,26 @@ model CampaignParticipantState {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
   lastVisitAt DateTime?
-  newSinceAt  DateTime?
 
   @@map("campaign_participant_states")
+}
+
+model EntityView {
+  memberId   String
+  member     CampaignMember @relation(fields: [memberId], references: [memberId], onDelete: Cascade)
+  entityType EntityViewType
+  entityId   String
+  seenAt     DateTime       @default(now())
+
+  @@id([memberId, entityType, entityId])
+  @@index([entityType, entityId])
+  @@map("entity_views")
+}
+
+enum EntityViewType {
+  ELEMENT
+  BOARD_CARD
+  BOARD_LINK
 }
 
 model CampaignInvitation {

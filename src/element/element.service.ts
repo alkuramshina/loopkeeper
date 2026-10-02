@@ -1,3 +1,10 @@
+import { lockCampaignMember } from '../campaign/access/campaign-write';
+import {
+  authorView,
+  clearCardViews,
+  withViewStatus,
+} from '../entity-view/entity-view.helpers';
+import { EntityViewType } from '@prisma/client';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   CampaignElementAccess,
@@ -51,20 +58,39 @@ export class ElementService {
     this.validateAccess(isOwner, access);
     if (!dto.title.trim()) throw this.invalid();
     this.validateTypeData(dto.type, dto.typeData, dto.imageUrl);
-    return this.prisma.campaignElement.create({
-      data: {
-        campaignId,
-        createdById: userId,
-        type: dto.type,
-        title: dto.title,
-        content: dto.content,
-        access,
-        sharedAt: access === CampaignElementAccess.SHARED ? new Date() : null,
-        typeData: (dto.typeData ?? {}) as Prisma.InputJsonValue,
-        sortOrder: dto.sortOrder,
-        imageUrl: dto.imageUrl,
-      },
-      include: elementInclude,
+    return this.prisma.$transaction(async (tx) => {
+      const member = await lockCampaignMember(tx, userId, campaignId, [
+        CampaignRole.OWNER,
+        CampaignRole.PLAYER,
+      ]);
+      this.validateAccess(member.campaignRole === CampaignRole.OWNER, access);
+      if (
+        member.campaignRole !== CampaignRole.OWNER &&
+        dto.type !== CampaignElementType.NOTE
+      )
+        throw this.invalid('type');
+      const element = await tx.campaignElement.create({
+        data: {
+          campaignId,
+          createdById: userId,
+          type: dto.type,
+          title: dto.title,
+          content: dto.content,
+          access,
+          sharedAt: access === CampaignElementAccess.SHARED ? new Date() : null,
+          typeData: (dto.typeData ?? {}) as Prisma.InputJsonValue,
+          sortOrder: dto.sortOrder,
+          imageUrl: dto.imageUrl,
+        },
+        include: elementInclude,
+      });
+      await authorView(
+        tx,
+        member.memberId,
+        EntityViewType.ELEMENT,
+        element.elementId,
+      );
+      return { ...element, isNew: false };
     });
   }
 
@@ -73,30 +99,20 @@ export class ElementService {
     campaignId: string,
     type?: CampaignElementType,
   ) {
-    const { isOwner, campaignRole } = await this.access.getAccess(
-      userId,
-      campaignId,
-    );
-    let visibility: Prisma.CampaignElementWhereInput;
-    if (isOwner) {
-      visibility = {
-        OR: [
-          { access: { not: CampaignElementAccess.PRIVATE } },
-          { createdById: userId },
-        ],
-      };
-    } else if (campaignRole === CampaignRole.PLAYER) {
-      visibility = {
-        OR: [{ access: CampaignElementAccess.SHARED }, { createdById: userId }],
-      };
-    } else {
-      visibility = { access: CampaignElementAccess.SHARED };
-    }
-    return this.prisma.campaignElement.findMany({
-      where: { campaignId, type, ...visibility },
+    await this.access.requireMember(userId, campaignId);
+    const elements = await this.prisma.campaignElement.findMany({
+      where: { campaignId, type, ...readableElementWhere(userId) },
       include: elementInclude,
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
+    return withViewStatus(
+      this.prisma,
+      userId,
+      campaignId,
+      EntityViewType.ELEMENT,
+      elements,
+      (row) => row.elementId,
+    );
   }
 
   async findOne(userId: string, elementId: string) {
@@ -105,7 +121,16 @@ export class ElementService {
       include: elementInclude,
     });
     if (!element) throw this.notFound();
-    return element;
+    return (
+      await withViewStatus(
+        this.prisma,
+        userId,
+        element.campaignId,
+        EntityViewType.ELEMENT,
+        [element],
+        (row) => row.elementId,
+      )
+    )[0];
   }
 
   async update(userId: string, elementId: string, dto: UpdateElementDto) {
@@ -151,7 +176,7 @@ export class ElementService {
       },
     );
     if (oldStorageKey) await this.media.removeStorageFile(oldStorageKey);
-    return updated;
+    return { ...updated, isNew: false };
   }
 
   async setAccess(
@@ -164,17 +189,29 @@ export class ElementService {
       element.campaign.members[0]?.campaignRole === CampaignRole.OWNER;
     this.validateAccess(isOwner, access);
     return this.prisma.$transaction(async (tx) => {
+      const member = await lockCampaignMember(tx, userId, element.campaignId, [
+        CampaignRole.OWNER,
+        CampaignRole.PLAYER,
+      ]);
+      this.validateAccess(member.campaignRole === CampaignRole.OWNER, access);
       await tx.$queryRaw`SELECT "elementId" FROM "campaign_elements" WHERE "elementId" = ${elementId} FOR UPDATE`;
       const current = await tx.campaignElement.findFirst({
-        where: { elementId, ...editableElementWhere(userId) },
+        where: {
+          elementId,
+          campaignId: element.campaignId,
+          ...editableElementWhere(userId),
+        },
         select: { access: true },
       });
       if (!current) throw this.notFound();
       // Leaving SHARED removes reference cards; their nodes and links cascade.
       if (access !== CampaignElementAccess.SHARED) {
-        await tx.investigationCard.deleteMany({ where: { elementId } });
+        await clearCardViews(tx, { campaignId: element.campaignId, elementId });
+        await tx.investigationCard.deleteMany({
+          where: { campaignId: element.campaignId, elementId },
+        });
       }
-      return tx.campaignElement.update({
+      const updated = await tx.campaignElement.update({
         where: { elementId },
         data: {
           access,
@@ -187,12 +224,31 @@ export class ElementService {
         },
         include: elementInclude,
       });
+      return { ...updated, isNew: false };
     });
   }
 
   async remove(userId: string, elementId: string) {
-    await this.requireAuthor(userId, elementId);
+    const candidate = await this.requireAuthor(userId, elementId);
     const storageKeys = await this.prisma.$transaction(async (tx) => {
+      await lockCampaignMember(tx, userId, candidate.campaignId, [
+        CampaignRole.OWNER,
+        CampaignRole.PLAYER,
+      ]);
+      if (
+        !(await tx.campaignElement.findFirst({
+          where: {
+            elementId,
+            campaignId: candidate.campaignId,
+            ...editableElementWhere(userId),
+          },
+        }))
+      )
+        throw this.notFound();
+      await clearCardViews(tx, { campaignId: candidate.campaignId, elementId });
+      await tx.entityView.deleteMany({
+        where: { entityType: EntityViewType.ELEMENT, entityId: elementId },
+      });
       const element = await tx.campaignElement.delete({
         where: { elementId },
         select: {

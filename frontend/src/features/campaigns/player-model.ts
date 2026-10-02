@@ -8,21 +8,18 @@ const dayKey = (iso: string) => {
 /**
  * The case: what is open to the group, newest first, without the notes of
  * `authorId` (a player keeps those in "My notes"). The
- * new materials since the last visit come first; the rest follows by day.
+ * unseen materials come first; the rest follows by day.
  */
 export function caseEntries(
   elements: CampaignElement[],
   authorId: string | undefined,
-  newSinceAt?: string | null,
 ) {
   const shared = elements
     .filter((item) => item.access === 'SHARED' && item.createdById !== authorId)
     .sort((a, b) =>
       (b.sharedAt ?? b.updatedAt).localeCompare(a.sharedAt ?? a.updatedAt),
     );
-  const recent = newSinceAt
-    ? shared.filter((item) => item.sharedAt && item.sharedAt > newSinceAt)
-    : [];
+  const recent = shared.filter((item) => item.isNew);
   const recentIds = new Set(recent.map((item) => item.elementId));
   const earlier: { day: string; items: CampaignElement[] }[] = [];
   for (const item of shared.filter(

@@ -1,3 +1,4 @@
+import { NewMark } from '../../components/ui/new-mark';
 import { FormEvent, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -399,6 +400,7 @@ export function ElementsPage() {
                         )}
                         <span className="materials-row-title">
                           {item.title}
+                          {item.isNew && <NewMark />}
                         </span>
                         {(owner || isAuthor(item)) && (
                           <AccessBadge

@@ -143,7 +143,11 @@ export function CampaignListPage() {
             <Link
               className="campaign-card"
               key={campaign.campaignId}
-              to={`/campaigns/${campaign.campaignId}`}
+              to={
+                (campaign.newVisibleMaterialCount ?? 0) > 0
+                  ? `/campaigns/${campaign.campaignId}/${campaign.currentUserRole === 'OWNER' ? 'elements' : 'case'}`
+                  : `/campaigns/${campaign.campaignId}`
+              }
             >
               <div className="campaign-card-media">
                 {campaign.coverUrl ? (

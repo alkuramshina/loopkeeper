@@ -1,5 +1,15 @@
 import '@testing-library/jest-dom/vitest';
 
 // JSDOM does not implement the native dialog API used by ModalDialog.
-HTMLDialogElement.prototype.showModal ??= function () { this.open = true; };
-HTMLDialogElement.prototype.close ??= function () { this.open = false; };
+if (
+  !Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'showModal')
+) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.open = true;
+  };
+}
+if (!Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, 'close')) {
+  HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+  };
+}

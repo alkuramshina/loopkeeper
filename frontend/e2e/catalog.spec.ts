@@ -17,7 +17,7 @@ function list(page: Page) {
 }
 
 function recent(page: Page) {
-  return page.getByRole('region', { name: 'Ранее' });
+  return page.getByRole('region', { name: /^(Непросмотренное|Ранее)$/ });
 }
 
 function accessSaved(page: Page) {

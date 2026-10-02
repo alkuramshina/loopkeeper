@@ -78,10 +78,29 @@ describe('OpenAPI contract', () => {
     });
     expect(document.components?.schemas?.CampaignResponseDto).toMatchObject({
       properties: expect.objectContaining({
-        newSinceAt: expect.any(Object),
+        lastVisitAt: expect.any(Object),
         newVisibleMaterialCount: expect.any(Object),
       }),
     });
+    expect(
+      document.paths['/campaigns/{campaignId}/views'].post?.responses,
+    ).toHaveProperty('204');
+    expect(document.components?.schemas?.RecordViewsDto).toMatchObject({
+      properties: { entities: { minItems: 1, maxItems: 500 } },
+    });
+    for (const name of [
+      'ElementResponseDto',
+      'InvestigationCardResponseDto',
+      'InvestigationLinkResponseDto',
+    ]) {
+      expect(document.components?.schemas?.[name]).toMatchObject({
+        required: expect.arrayContaining(['isNew']),
+        properties: { isNew: { type: 'boolean' } },
+      });
+    }
+    expect(
+      document.components?.schemas?.CampaignResponseDto,
+    ).not.toHaveProperty('properties.newSinceAt');
     expect(boardOperation?.responses?.['200']).toMatchObject({
       content: {
         'application/json': {

@@ -1,3 +1,4 @@
+import { useBoardViews, ViewSaveStatus } from './use-entity-views';
 import {
   FormEvent,
   useCallback,
@@ -109,8 +110,7 @@ function boardNodes(
   cards: BoardCard[],
   links: BoardLink[],
   canManage: boolean,
-  newSinceAt: string | null | undefined,
-  userId: string | undefined,
+  highlight: Set<string>,
   characterConditions: Map<string, string[]>,
   onResizeEnd: (cardId: string, dimensions: NodeDimensions) => void,
 ): Node<BoardNodeData>[] {
@@ -126,11 +126,7 @@ function boardNodes(
       card,
       conditions:
         characterConditions.get(card.reference?.characterId ?? '') ?? [],
-      isNew: Boolean(
-        newSinceAt &&
-        card.createdAt > newSinceAt &&
-        card.createdBy?.userId !== userId,
-      ),
+      isNew: highlight.has(card.cardId),
       linkCount: links.filter(
         (link) =>
           link.fromCardId === card.cardId || link.toCardId === card.cardId,
@@ -143,8 +139,7 @@ function boardNodes(
 
 function boardEdges(
   links: BoardLink[],
-  newSinceAt?: string | null,
-  userId?: string,
+  highlight: Set<string>,
   newLabel?: string,
 ): Edge[] {
   const pathStrategy: Edge['type'] = 'default';
@@ -152,13 +147,9 @@ function boardEdges(
     id: link.linkId,
     source: link.fromCardId,
     target: link.toCardId,
-    label:
-      newSinceAt &&
-      link.createdAt &&
-      link.createdAt > newSinceAt &&
-      link.createdById !== userId
-        ? [link.label, newLabel].filter(Boolean).join(' · ')
-        : link.label,
+    label: highlight.has(link.linkId)
+      ? [link.label, newLabel].filter(Boolean).join(' · ')
+      : link.label,
     type: pathStrategy,
   }));
 }
@@ -792,7 +783,7 @@ function parseTags(value: string) {
 
 export function BoardPage() {
   const { campaignId } = useParams();
-  const { api, profile } = useAuth();
+  const { api } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [editor, setEditor] = useState<EditorTarget>();
@@ -884,6 +875,15 @@ export function BoardPage() {
     [],
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const renderedIds = useMemo(
+    () =>
+      new Set([
+        ...nodes.map((node) => node.id),
+        ...edges.map((edge) => edge.id),
+      ]),
+    [nodes, edges],
+  );
+  const views = useBoardViews(campaignId, board.data, renderedIds);
 
   // Layout saves that the server has not confirmed yet. A board refetch must
   // not move these cards back to their stale server position.
@@ -958,8 +958,7 @@ export function BoardPage() {
       board.data.cards,
       board.data.links,
       canManage,
-      campaign.data?.newSinceAt,
-      profile?.userId,
+      views.highlight,
       characterConditions,
       persistNodeDimensions,
     );
@@ -982,8 +981,7 @@ export function BoardPage() {
     });
     const nextEdges = boardEdges(
       board.data.links,
-      campaign.data?.newSinceAt,
-      profile?.userId,
+      views.highlight,
       t('ui.newMark'),
     );
     setEdges((current) => {
@@ -998,8 +996,7 @@ export function BoardPage() {
   }, [
     board.data,
     canManage,
-    campaign.data?.newSinceAt,
-    profile?.userId,
+    views.highlight,
     characters.data,
     templates.data,
     persistNodeDimensions,
@@ -1108,12 +1105,7 @@ export function BoardPage() {
             : 'board-edge-dimmed'
           : '',
         board.data?.links.some(
-          (link) =>
-            link.linkId === edge.id &&
-            data?.newSinceAt &&
-            link.createdAt &&
-            link.createdAt > data.newSinceAt &&
-            link.createdById !== profile?.userId,
+          (link) => link.linkId === edge.id && views.highlight.has(link.linkId),
         )
           ? 'board-edge-new'
           : '',
@@ -1124,7 +1116,7 @@ export function BoardPage() {
   });
   // A failed refresh keeps the last snapshot on screen; only a board that
   // never loaded is replaced by the page state.
-  if (campaign.isError || (board.isError && !board.data))
+  if (views.unavailable || campaign.isError || (board.isError && !board.data))
     return (
       <PageError
         error={campaign.error ?? board.error ?? undefined}
@@ -1158,10 +1150,16 @@ export function BoardPage() {
               <button
                 type="button"
                 className="board-refresh-link"
-                onClick={() => void board.refetch()}
+                aria-describedby="board-refresh-hint"
+                onClick={() =>
+                  void board.refetch().then((result) => {
+                    if (result.isSuccess) views.reset();
+                  })
+                }
               >
                 {t('board.refresh')}
-              </button>
+              </button>{' '}
+              <span id="board-refresh-hint">{t('board.refreshHint')}</span>
             </>
           }
           title={t('board.title')}
@@ -1196,6 +1194,7 @@ export function BoardPage() {
             </>
           }
         />
+        <ViewSaveStatus failed={views.failed} retry={views.retry} />
         {(error ?? refreshError) && (
           <p className="form-error" role="alert">
             {error ?? refreshError}

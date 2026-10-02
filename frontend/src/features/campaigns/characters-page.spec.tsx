@@ -72,8 +72,9 @@ describe('CharactersPage', () => {
           characterId: 'pc',
           ...JSON.parse(init.body as string),
         });
+      if (path === '/campaigns/c/views') return Promise.resolve(undefined);
       if (path === '/campaigns/c/visit')
-        return Promise.resolve({ newSinceAt: null });
+        return Promise.resolve({ lastVisitAt: null });
       if (path === '/campaigns/c/investigation-board')
         return Promise.resolve(board);
       throw new Error(`Unexpected request: ${path}`);
@@ -157,7 +158,7 @@ describe('CharactersPage', () => {
           ...JSON.parse(init.body as string),
         });
       if (path === '/campaigns/c/visit')
-        return Promise.resolve({ newSinceAt: null });
+        return Promise.resolve({ lastVisitAt: null });
       if (path === '/campaigns/c/investigation-board')
         return Promise.resolve(board);
       throw new Error(`Unexpected request: ${path}`);
